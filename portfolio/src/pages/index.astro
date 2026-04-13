@@ -1,0 +1,19 @@
+---
+import CosmicWavesShaders from "#/components/ui/cosmic-waves";
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout>
+	<main class="relative h-screen w-screen overflow-hidden">
+		<div class="absolute inset-0">
+			<CosmicWavesShaders client:only="react" className="h-full w-full" speed={0.5} amplitude={0.1}  starDensity={0} colorShift={0.5} />
+		</div>
+
+		<div class="relative z-10 flex h-full w-full items-center justify-center">
+			<div class="flex items-center gap-3 rounded-full bg-black/30 px-6 py-3 text-lg font-medium text-white backdrop-blur-sm">
+				<span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+				<span>Loading...</span>
+			</div>
+		</div>
+	</main>
+</Layout>
