@@ -1,32 +1,32 @@
-import type React from "react"
-import { forwardRef } from "react"
-import { Shader } from "react-shaders"
-import { cn } from "#/lib/utils"
+import type React from 'react';
+import { forwardRef } from 'react';
+import { Shader } from 'react-shaders';
+import { cn } from '#/lib/utils';
 
 export interface CosmicWavesShadersProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
    * Wave flow animation speed
    * @default 1.0
    */
-  speed?: number
+  speed?: number;
 
   /**
    * Wave height and intensity
    * @default 1.0
    */
-  amplitude?: number
+  amplitude?: number;
 
   /**
    * Wave density and pattern scale
    * @default 1.0
    */
-  frequency?: number
+  frequency?: number;
 
   /**
    * Color cycling speed
    * @default 1.0
    */
-  colorShift?: number
+  colorShift?: number;
 }
 
 const fragmentShader = `
@@ -59,6 +59,12 @@ float fbm(vec2 p) {
     amplitude *= 0.5;
   }
   return value;
+}
+
+// Tiny dithering grain to reduce color banding in dark gradients
+float dither(vec2 fragCoord, float time) {
+  vec2 grid = fragCoord + vec2(time * 31.0, time * 17.0);
+  return hash(grid) - 0.5;
 }
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
@@ -124,16 +130,24 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
   vignette = smoothstep(0.0, 1.0, vignette);
 
   finalColor *= vignette;
-  
+
   // Smoothly fade in shader on initial render (~2s)
   float introFade = smoothstep(0.0, 2.0, iTime);
   finalColor *= introFade;
 
+  // Apply subtle, animated dithering to hide quantization bands
+  float grain = dither(fragCoord.xy, smoothTime) / 255.0;
+  finalColor += vec3(grain);
+  finalColor = clamp(finalColor, 0.0, 1.0);
+
   fragColor = vec4(finalColor, 1.0);
 }
-`
+`;
 
-export const CosmicWavesShaders = forwardRef<HTMLDivElement, CosmicWavesShadersProps>(
+export const CosmicWavesShaders = forwardRef<
+  HTMLDivElement,
+  CosmicWavesShadersProps
+>(
   (
     {
       className,
@@ -146,22 +160,27 @@ export const CosmicWavesShaders = forwardRef<HTMLDivElement, CosmicWavesShadersP
     ref,
   ) => {
     return (
-      <div className={cn("w-full h-full", className)} ref={ref} {...(props as any)}>
+      <div
+        className={cn('w-full h-full', className)}
+        ref={ref}
+        {...(props as any)}
+      >
         <Shader
           fs={fragmentShader}
-          style={{ width: "100%", height: "100%" } as CSSStyleDeclaration}
+          style={{ width: '100%', height: '100%' } as CSSStyleDeclaration}
           uniforms={{
-            u_speed: { type: "1f", value: speed },
-            u_amplitude: { type: "1f", value: amplitude },
-            u_frequency: { type: "1f", value: frequency },
-            u_colorShift: { type: "1f", value: colorShift },
+            u_speed: { type: '1f', value: speed },
+            u_amplitude: { type: '1f', value: amplitude },
+            u_frequency: { type: '1f', value: frequency },
+            u_colorShift: { type: '1f', value: colorShift },
           }}
         />
       </div>
-    )
+    );
   },
-)
+);
 
-CosmicWavesShaders.displayName = "CosmicWavesShaders"
+CosmicWavesShaders.displayName = 'CosmicWavesShaders';
 
-export default CosmicWavesShaders
+export default CosmicWavesShaders;
+
