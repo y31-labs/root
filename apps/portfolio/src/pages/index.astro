@@ -6,7 +6,7 @@ import Layout from "../layouts/Layout.astro";
 <Layout>
 	<main class="relative h-screen w-screen overflow-hidden">
 		<div class="absolute inset-0">
-			<CosmicWavesShaders client:only="react" className="h-full w-full" speed={0.5} amplitude={0.1}  starDensity={0} colorShift={0.5} />
+			<CosmicWavesShaders client:only="react" className="h-full w-full" speed={0.5} amplitude={0.1} colorShift={0.5} />
 		</div>
 
 		<div class="relative z-10 flex h-full w-full items-center justify-center">
@@ -17,3 +17,9 @@ import Layout from "../layouts/Layout.astro";
 		</div>
 	</main>
 </Layout>
+
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', function () {
+    window.posthog?.capture('portfolio_viewed');
+  });
+</script>
