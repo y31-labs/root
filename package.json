@@ -1,0 +1,15 @@
+{
+  "name": "root-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter portfolio dev",
+    "build": "bun run --filter portfolio build",
+    "preview": "bun run --filter portfolio preview",
+    "dev:portfolio": "bun --cwd apps/portfolio run dev",
+    "build:portfolio": "bun --cwd apps/portfolio run build",
+    "preview:portfolio": "bun --cwd apps/portfolio run preview"
+  }
+}
