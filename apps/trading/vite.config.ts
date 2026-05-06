@@ -9,7 +9,12 @@ const config = defineConfig({
   server: {
     port: 3000,
   },
-  plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
+  plugins: [
+    devtools(),
+    tailwindcss(),
+    tanstackStart({ spa: { enabled: true } }),
+    viteReact(),
+  ],
   resolve: {
     tsconfigPaths: true,
     alias: {
@@ -17,6 +22,11 @@ const config = defineConfig({
       '#convex': resolve(__dirname, 'convex'),
       '@workspace/ui': resolve(__dirname, '../../packages/ui/src'),
     },
+  },
+  optimizeDeps: {
+    include: [
+      '@workos/authkit-tanstack-react-start > @workos/authkit-session > @workos-inc/node > eventemitter3',
+    ],
   },
 });
 
