@@ -9,6 +9,7 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  redirect,
 } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
 import {
@@ -16,6 +17,7 @@ import {
   getSignInUrl,
   getSignUpUrl,
 } from '@workos/authkit-tanstack-react-start';
+import { useAuth } from '@workos/authkit-tanstack-react-start/client';
 import { type ConvexReactClient } from 'convex/react';
 import { type PropsWithChildren, type ReactNode } from 'react';
 
@@ -44,13 +46,15 @@ export const Route = createRootRouteWithContext<Context>()({
 
     return { userId, token };
   },
-  loader: async () =>
-    await Promise.all([getSignInUrl(), getSignUpUrl()]).then(
-      ([signInUrl, signUpUrl]) => ({
-        signInUrl,
-        signUpUrl,
-      }),
-    ),
+  loader: async () => {
+    const [{ user }, signInUrl, signUpUrl] = await Promise.all([
+      getAuth(),
+      getSignInUrl(),
+      getSignUpUrl(),
+    ]);
+    if (!user) throw redirect({ to: '/api/auth/sign-in' });
+    return { signInUrl, signUpUrl };
+  },
   component: RootComponent,
 });
 
