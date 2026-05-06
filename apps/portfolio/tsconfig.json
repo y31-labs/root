@@ -5,6 +5,9 @@
     "paths": {
       "#/*": [
         "src/*"
+      ],
+      "@workspace/ui/*": [
+        "../../packages/ui/src/*"
       ]
     },
     "jsx": "react-jsx",

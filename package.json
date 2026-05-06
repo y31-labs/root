@@ -2,7 +2,8 @@
   "name": "root-monorepo",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev": "bun run --filter portfolio dev",
@@ -10,6 +11,10 @@
     "preview": "bun run --filter portfolio preview",
     "dev:portfolio": "bun --cwd apps/portfolio run dev",
     "build:portfolio": "bun --cwd apps/portfolio run build",
-    "preview:portfolio": "bun --cwd apps/portfolio run preview"
+    "preview:portfolio": "bun --cwd apps/portfolio run preview",
+    "dev:trading": "bun --cwd apps/trading run dev",
+    "build:trading": "bun --cwd apps/trading run build",
+    "preview:trading": "bun --cwd apps/trading run preview",
+    "test:trading": "bun --cwd apps/trading run test"
   }
 }
