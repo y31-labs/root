@@ -45,9 +45,8 @@ export const Route = createRootRouteWithContext<Context>()({
     return { userId, token };
   },
   loader: async () =>
-    await Promise.all([getAuth(), getSignInUrl(), getSignUpUrl()]).then(
-      ([{ user }, signInUrl, signUpUrl]) => ({
-        user,
+    await Promise.all([getSignInUrl(), getSignUpUrl()]).then(
+      ([signInUrl, signUpUrl]) => ({
         signInUrl,
         signUpUrl,
       }),
@@ -80,7 +79,7 @@ function RootDocument({ children }: { children: ReactNode }) {
 }
 
 function LayoutComponent({ children }: PropsWithChildren) {
-  const { user, signInUrl, signUpUrl } = Route.useLoaderData();
+  const { signInUrl, signUpUrl } = Route.useLoaderData();
 
   return (
     <SidebarProvider
@@ -93,7 +92,7 @@ function LayoutComponent({ children }: PropsWithChildren) {
     >
       <AppSidebar variant='inset' />
       <SidebarInset>
-        <SiteHeader user={user} signInUrl={signInUrl} signUpUrl={signUpUrl} />
+        <SiteHeader signInUrl={signInUrl} signUpUrl={signUpUrl} />
         <div className='flex flex-1 flex-col'>
           <div className='@container/main flex flex-1 flex-col gap-2'>
             {children}
