@@ -16,6 +16,7 @@ import {
 } from '#/components/ui/dropdown-menu';
 import { Separator } from '#/components/ui/separator';
 import { SidebarTrigger } from '#/components/ui/sidebar';
+import { Spinner } from '#/components/ui/spinner';
 import { APP_TITLE } from '#/lib/const';
 import { useMatches } from '@tanstack/react-router';
 import type { User } from '@workos/authkit-tanstack-react-start';
@@ -26,12 +27,11 @@ import { LogOutIcon } from 'lucide-react';
 import { Fragment, useMemo } from 'react';
 
 interface AuthKitProps {
-  user: User | null;
   signInUrl: string;
   signUpUrl: string;
 }
 
-export function SiteHeader({ user, signInUrl, signUpUrl }: AuthKitProps) {
+export function SiteHeader({ signInUrl, signUpUrl }: AuthKitProps) {
   const matches = useMatches();
 
   const breadcrumbSegments = useMemo(() => {
@@ -75,11 +75,7 @@ export function SiteHeader({ user, signInUrl, signUpUrl }: AuthKitProps) {
         </Breadcrumb>
         <div className='ml-auto flex items-center gap-2'>
           <SearchCommandMenu />
-          <UserActions
-            user={user}
-            signInUrl={signInUrl}
-            signUpUrl={signUpUrl}
-          />
+          <UserActions signInUrl={signInUrl} signUpUrl={signUpUrl} />
         </div>
       </div>
     </header>
@@ -94,8 +90,12 @@ const getInitials = (user: User | null) =>
     .join('')
     .value();
 
-export function UserActions({ user, signInUrl, signUpUrl }: AuthKitProps) {
-  const { signOut } = useAuth();
+export function UserActions({ signInUrl, signUpUrl }: AuthKitProps) {
+  const { user, signOut, loading } = useAuth();
+
+  if (loading) {
+    return <Spinner />;
+  }
 
   return (
     <>

@@ -19,6 +19,7 @@ import { Route as ThreadsIndexRouteImport } from './routes/threads/index'
 import { Route as WatchlistSymbolRouteImport } from './routes/watchlist/$symbol'
 import { Route as ThreadsNewRouteImport } from './routes/threads/new'
 import { Route as ThreadsIdRouteImport } from './routes/threads/$id'
+import { Route as ApiAuthSignInRouteImport } from './routes/api/auth/sign-in'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -71,6 +72,11 @@ const ThreadsIdRoute = ThreadsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ThreadsRouteRoute,
 } as any)
+const ApiAuthSignInRoute = ApiAuthSignInRouteImport.update({
+  id: '/api/auth/sign-in',
+  path: '/api/auth/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
   id: '/api/auth/callback',
   path: '/api/auth/callback',
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/threads/': typeof ThreadsIndexRoute
   '/watchlist/': typeof WatchlistIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/threads': typeof ThreadsIndexRoute
   '/watchlist': typeof WatchlistIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/threads/': typeof ThreadsIndexRoute
   '/watchlist/': typeof WatchlistIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/threads/'
     | '/watchlist/'
     | '/api/auth/callback'
+    | '/api/auth/sign-in'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
     | '/threads'
     | '/watchlist'
     | '/api/auth/callback'
+    | '/api/auth/sign-in'
   id:
     | '__root__'
     | '/'
@@ -153,6 +164,7 @@ export interface FileRouteTypes {
     | '/threads/'
     | '/watchlist/'
     | '/api/auth/callback'
+    | '/api/auth/sign-in'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -162,6 +174,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   SettingsRoute: typeof SettingsRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
+  ApiAuthSignInRoute: typeof ApiAuthSignInRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -236,6 +249,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ThreadsIdRouteImport
       parentRoute: typeof ThreadsRouteRoute
     }
+    '/api/auth/sign-in': {
+      id: '/api/auth/sign-in'
+      path: '/api/auth/sign-in'
+      fullPath: '/api/auth/sign-in'
+      preLoaderRoute: typeof ApiAuthSignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/callback': {
       id: '/api/auth/callback'
       path: '/api/auth/callback'
@@ -283,6 +303,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   SettingsRoute: SettingsRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
+  ApiAuthSignInRoute: ApiAuthSignInRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -47,16 +47,19 @@ export function getRouter() {
     Wrap: ({ children }) => (
       <TooltipProvider>
         <QueryClientProvider client={queryClient}>
-          <AuthKitProvider>
-            <ConvexProviderWithAuth
-              client={convexQueryClient.convexClient}
-              useAuth={useAuthFromAuthKit}
-            >
-              {children}
-            </ConvexProviderWithAuth>
-          </AuthKitProvider>
+          {children}
         </QueryClientProvider>
       </TooltipProvider>
+    ),
+    InnerWrap: ({ children }) => (
+      <AuthKitProvider>
+        <ConvexProviderWithAuth
+          client={convexQueryClient.convexClient}
+          useAuth={useAuthFromAuthKit}
+        >
+          {children}
+        </ConvexProviderWithAuth>
+      </AuthKitProvider>
     ),
   });
 
