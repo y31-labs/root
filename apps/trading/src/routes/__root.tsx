@@ -1,6 +1,6 @@
 import { AppSidebar } from '#/components/navigation/app-sidebar';
 import { SiteHeader } from '#/components/site-header';
-import { SidebarInset, SidebarProvider } from '#/components/ui/sidebar';
+import { SidebarInset, SidebarProvider } from '@workspace/ui/components/ui/sidebar';
 import appCssUrl from '#/styles.css?url';
 import type { ConvexQueryClient } from '@convex-dev/react-query';
 import { type QueryClient } from '@tanstack/react-query';
@@ -11,13 +11,8 @@ import {
   createRootRouteWithContext,
   redirect,
 } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/react-start';
-import {
-  getAuth,
-  getSignInUrl,
-  getSignUpUrl,
-} from '@workos/authkit-tanstack-react-start';
-import { useAuth } from '@workos/authkit-tanstack-react-start/client';
+import { fetchWorkosAuth, setConvexQueryClientAuthForSsr } from '@workspace/web-foundation';
+import { getAuth, getSignInUrl, getSignUpUrl } from '@workos/authkit-tanstack-react-start';
 import { type ConvexReactClient } from 'convex/react';
 import { type PropsWithChildren, type ReactNode } from 'react';
 
@@ -39,11 +34,7 @@ export const Route = createRootRouteWithContext<Context>()({
   }),
   beforeLoad: async ({ context }) => {
     const { userId, token } = await fetchWorkosAuth();
-
-    // During SSR only (the only time serverHttpClient exists),
-    // set the WorkOS auth token to make HTTP queries with.
-    if (token) context.convexQueryClient.serverHttpClient?.setAuth(token);
-
+    setConvexQueryClientAuthForSsr(context.convexQueryClient, token);
     return { userId, token };
   },
   loader: async () => {
@@ -70,7 +61,7 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html lang='en'>
+    <html lang="en">
       <head>
         <HeadContent />
       </head>
@@ -94,26 +85,13 @@ function LayoutComponent({ children }: PropsWithChildren) {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant='inset' />
+      <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader signInUrl={signInUrl} signUpUrl={signUpUrl} />
-        <div className='flex flex-1 flex-col'>
-          <div className='@container/main flex flex-1 flex-col gap-2'>
-            {children}
-          </div>
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">{children}</div>
         </div>
       </SidebarInset>
     </SidebarProvider>
   );
 }
-
-const fetchWorkosAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const auth = await getAuth();
-  const { user } = auth;
-
-  return {
-    userId: user?.id ?? null,
-    token: user ? auth.accessToken : null,
-  };
-});
-

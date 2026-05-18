@@ -10,4 +10,3 @@ export const getEnv = (key: EnvKey) => {
   if (!value) throw new Error(`Environment variable ${key} is not set`);
   return value;
 };
-

@@ -5,15 +5,13 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
 });
 
-export const formatCurrency = (value: number) =>
-  currencyFormatter.format(value);
+export const formatCurrency = (value: number) => currencyFormatter.format(value);
 
 const compactNumberFormatter = new Intl.NumberFormat('en-US', {
   notation: 'compact',
 });
 
-export const formatCompactNumber = (value: number) =>
-  compactNumberFormatter.format(value);
+export const formatCompactNumber = (value: number) => compactNumberFormatter.format(value);
 
 const percentFormatter = new Intl.NumberFormat('en-US', {
   style: 'percent',
@@ -29,8 +27,7 @@ const timeFormatter = new Intl.DateTimeFormat('en-US', {
   minute: '2-digit',
 });
 
-export const formatTime = (timestamp: number) =>
-  timeFormatter.format(new Date(timestamp));
+export const formatTime = (timestamp: number) => timeFormatter.format(new Date(timestamp));
 
 const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -39,4 +36,3 @@ const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
 
 export const formatShortDate = (timestamp: number) =>
   shortDateFormatter.format(new Date(timestamp));
-

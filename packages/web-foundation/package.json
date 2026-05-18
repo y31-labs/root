@@ -1,0 +1,29 @@
+{
+  "name": "@workspace/web-foundation",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vite": "./src/vite.ts",
+    "./start": "./src/start.ts"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "@convex-dev/react-query": "^0.1.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@tanstack/react-query": "^5.0.0",
+    "@tanstack/react-start": "^1.0.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "@workos/authkit-tanstack-react-start": "^0.8.2",
+    "convex": "^1.37.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0",
+    "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
+  }
+}
+

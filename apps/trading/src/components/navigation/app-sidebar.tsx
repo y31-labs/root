@@ -9,24 +9,21 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '#/components/ui/sidebar';
+} from '@workspace/ui/components/ui/sidebar';
 import { Route as IndexRoute } from '#/routes/index';
 import { APP_TITLE } from '#/lib/const';
 import { Link } from '@tanstack/react-router';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible='offcanvas' {...props}>
+    <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className='data-[slot=sidebar-menu-button]:!p-1.5'
-            >
+            <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
               <Link to={IndexRoute.to}>
-                <IconInnerShadowTop className='!size-5' />
-                <span className='text-base font-semibold'>{APP_TITLE}</span>
+                <IconInnerShadowTop className="!size-5" />
+                <span className="text-base font-semibold">{APP_TITLE}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -35,9 +32,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain />
         <NavThread />
-        <NavSettings className='mt-auto' />
+        <NavSettings className="mt-auto" />
       </SidebarContent>
     </Sidebar>
   );
 }
-

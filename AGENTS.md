@@ -11,13 +11,21 @@ If you need additional information about library use context7.
 Always use `bun` and `bunx` for running commands.
 Never use `npm`, `npx`, `yarn`, or `pnpm`.
 
+## Packages and code conventions
+
+When adding a workspace package under `packages/`, follow [.docs/package-creation.md](.docs/package-creation.md).
+
+For import aliases and related rules (`#` inside packages, `@workspace/`, third-party imports), see [.docs/code-conventions.md](.docs/code-conventions.md).
+
 ## UI Components
 
-**Do not modify files in `src/components/ui/` and `src/components/ai-elements/`** - these are library components from shadcn/ui and should be treated as read-only.
+All shared UI primitives and shadcn-generated components live in [`packages/ui`](packages/ui) and are consumed as `@workspace/ui`. Do not add or maintain parallel design-system trees (for example `apps/*/src/components/ui/`) for the same role—extend or compose the shared package instead.
 
-If you need custom behavior, create a wrapper component elsewhere instead of editing the UI primitives.
+**Do not modify files under `packages/ui/src/components/ui/`** or other vendored UI directories under `packages/ui` except through the intended tooling—these are library-style components from shadcn/ui and should be treated as read-only.
 
-You can add new components with `bunx shadcn@latest add <component>`.
+If you need custom behavior, create a wrapper component in the consuming app (or another package) instead of editing the primitives in `packages/ui`.
+
+Add new shadcn components with `bun run ui:add <component>` from the monorepo root or from [`packages/ui`](packages/ui).
 
 ## AI Library
 
@@ -25,10 +33,10 @@ Use `@tanstack/ai` for the AI library.
 
 ## Convex
 
-Assume that all code gets generated automatically as `bunx convex dev` runs in the background.
+Assume Convex codegen stays in sync while `bun run code:convex` or `bun run trading:convex` runs from the monorepo root (each resolves the matching app’s `convex/` folder).
 
 ## UI / Theming
 
 Do not introduce raw Tailwind color classes (e.g. `emerald-500`, `red-500`, `green-400`) in app code under `src/`. Use semantic tokens from the theme: `background`, `foreground`, `primary`, `muted`, `success`, `warning`, `danger`, `destructive`, etc.
 
-See [docs/ui-theming.md](docs/ui-theming.md) for the full token reference, signal-to-token mapping (bullish→success, bearish→danger), radius scale, and the recipe for adding new tokens.
+See [.docs/ui-theming.md](.docs/ui-theming.md) for the full token reference, signal-to-token mapping (bullish→success, bearish→danger), radius scale, and the recipe for adding new tokens.

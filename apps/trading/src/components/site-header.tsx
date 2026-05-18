@@ -1,22 +1,22 @@
 import { SearchCommandMenu } from '#/components/search-command-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui/components/ui/avatar';
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '#/components/ui/breadcrumb';
-import { Button } from '#/components/ui/button';
+} from '@workspace/ui/components/ui/breadcrumb';
+import { Button } from '@workspace/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '#/components/ui/dropdown-menu';
-import { Separator } from '#/components/ui/separator';
-import { SidebarTrigger } from '#/components/ui/sidebar';
-import { Spinner } from '#/components/ui/spinner';
+} from '@workspace/ui/components/ui/dropdown-menu';
+import { Separator } from '@workspace/ui/components/ui/separator';
+import { SidebarTrigger } from '@workspace/ui/components/ui/sidebar';
+import { Spinner } from '@workspace/ui/components/ui/spinner';
 import { APP_TITLE } from '#/lib/const';
 import { useMatches } from '@tanstack/react-router';
 import type { User } from '@workos/authkit-tanstack-react-start';
@@ -44,13 +44,10 @@ export function SiteHeader({ signInUrl, signUpUrl }: AuthKitProps) {
   }, [matches]);
 
   return (
-    <header className='sticky top-0 z-50 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)'>
-      <div className='flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6'>
-        <SidebarTrigger className='-ml-1' />
-        <Separator
-          orientation='vertical'
-          className='mx-2 data-[orientation=vertical]:h-4'
-        />
+    <header className="sticky top-0 z-50 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
         <Breadcrumb>
           <BreadcrumbList>
             {breadcrumbSegments.map((segment, index) => {
@@ -60,9 +57,7 @@ export function SiteHeader({ signInUrl, signUpUrl }: AuthKitProps) {
                 <Fragment key={`${segment}-${index}`}>
                   <BreadcrumbItem>
                     {isLastSegment ? (
-                      <BreadcrumbPage className='text-base font-medium'>
-                        {segment}
-                      </BreadcrumbPage>
+                      <BreadcrumbPage className="text-base font-medium">{segment}</BreadcrumbPage>
                     ) : (
                       <span>{segment}</span>
                     )}
@@ -73,7 +68,7 @@ export function SiteHeader({ signInUrl, signUpUrl }: AuthKitProps) {
             })}
           </BreadcrumbList>
         </Breadcrumb>
-        <div className='ml-auto flex items-center gap-2'>
+        <div className="ml-auto flex items-center gap-2">
           <SearchCommandMenu />
           <UserActions signInUrl={signInUrl} signUpUrl={signUpUrl} />
         </div>
@@ -109,24 +104,18 @@ export function UserActions({ signInUrl, signUpUrl }: AuthKitProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onClick={() => signOut()}>
-              <LogOutIcon className='size-4' />
+              <LogOutIcon className="size-4" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </Authenticated>
       <Unauthenticated>
-        <Button
-          variant='outline'
-          onClick={() => (window.location.href = signInUrl)}
-        >
+        <Button variant="outline" onClick={() => (window.location.href = signInUrl)}>
           Sign in
         </Button>
-        <Button onClick={() => (window.location.href = signUpUrl)}>
-          Sign up
-        </Button>
+        <Button onClick={() => (window.location.href = signUpUrl)}>Sign up</Button>
       </Unauthenticated>
     </>
   );
 }
-

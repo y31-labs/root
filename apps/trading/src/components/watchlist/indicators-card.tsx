@@ -4,10 +4,7 @@ import {
   type IndicatorValue,
   type MacdIndicatorValue,
 } from '#/components/watchlist/market-data';
-import {
-  TermHoverCard,
-  type TermInfo,
-} from '#/components/watchlist/term-hover-card';
+import { TermHoverCard, type TermInfo } from '#/components/watchlist/term-hover-card';
 import { cn } from '#/lib/utils';
 
 type IndicatorsCardProps = {
@@ -60,19 +57,13 @@ const INDICATOR_TERMS = {
   },
   macdHistogram: {
     title: 'MACD Histogram',
-    description:
-      'The difference between the MACD line and its signal line, plotted as bars.',
+    description: 'The difference between the MACD line and its signal line, plotted as bars.',
     interpretation:
       'Positive bars indicate upward momentum, negative bars downward. Rising bars suggest strengthening momentum.',
   },
 } as const satisfies Record<string, TermInfo>;
 
-export function IndicatorsCard({
-  sma,
-  ema,
-  rsi,
-  macd,
-}: IndicatorsCardProps) {
+export function IndicatorsCard({ sma, ema, rsi, macd }: IndicatorsCardProps) {
   const smaValue = getIndicatorValues<IndicatorValue>(sma)[0]?.value;
   const emaValue = getIndicatorValues<IndicatorValue>(ema)[0]?.value;
   const rsiValue = getIndicatorValues<IndicatorValue>(rsi)[0]?.value;
@@ -85,62 +76,50 @@ export function IndicatorsCard({
     !!macdLatest;
 
   return (
-    <Section eyebrow='Technical indicators' description='Most recent daily values'>
+    <Section eyebrow="Technical indicators" description="Most recent daily values">
       {!hasAny ? (
-        <p className='text-sm text-muted-foreground'>
-          No indicator data available.
-        </p>
+        <p className="text-sm text-muted-foreground">No indicator data available.</p>
       ) : (
-        <div className='grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4'>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
           <Stat
-            label='SMA (20)'
-            term='SMA'
+            label="SMA (20)"
+            term="SMA"
             info={INDICATOR_TERMS.sma}
             value={formatValue(smaValue)}
-            hint='20-day simple moving average'
+            hint="20-day simple moving average"
           />
           <Stat
-            label='EMA (20)'
-            term='EMA'
+            label="EMA (20)"
+            term="EMA"
             info={INDICATOR_TERMS.ema}
             value={formatValue(emaValue)}
-            hint='20-day exponential moving average'
+            hint="20-day exponential moving average"
           />
           <Stat
-            label='RSI (14)'
-            term='RSI'
+            label="RSI (14)"
+            term="RSI"
             info={INDICATOR_TERMS.rsi}
             value={formatValue(rsiValue)}
-            hint='Relative strength index'
+            hint="Relative strength index"
             accessory={<RsiStatus value={rsiValue} />}
           />
           <Stat
-            label='MACD'
-            term='MACD'
+            label="MACD"
+            term="MACD"
             info={INDICATOR_TERMS.macd}
             value={formatValue(macdLatest?.value)}
             hint={
               macdLatest ? (
-                <span className='inline-flex flex-wrap items-center gap-x-1 gap-y-0.5'>
-                  <TermHoverCard
-                    term='Signal'
-                    info={INDICATOR_TERMS.macdSignal}
-                  >
+                <span className="inline-flex flex-wrap items-center gap-x-1 gap-y-0.5">
+                  <TermHoverCard term="Signal" info={INDICATOR_TERMS.macdSignal}>
                     <span>Signal</span>
                   </TermHoverCard>
-                  <span className='tabular-nums'>
-                    {formatValue(macdLatest.signal)}
-                  </span>
-                  <span className='text-muted-foreground/50'>·</span>
-                  <TermHoverCard
-                    term='Hist'
-                    info={INDICATOR_TERMS.macdHistogram}
-                  >
+                  <span className="tabular-nums">{formatValue(macdLatest.signal)}</span>
+                  <span className="text-muted-foreground/50">·</span>
+                  <TermHoverCard term="Hist" info={INDICATOR_TERMS.macdHistogram}>
                     <span>Hist</span>
                   </TermHoverCard>
-                  <span className='tabular-nums'>
-                    {formatValue(macdLatest.histogram)}
-                  </span>
+                  <span className="tabular-nums">{formatValue(macdLatest.histogram)}</span>
                 </span>
               ) : undefined
             }
@@ -168,14 +147,14 @@ function Stat({
   accessory?: React.ReactNode;
 }) {
   const labelNode = (
-    <span className='text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground'>
+    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
       {label}
     </span>
   );
 
   return (
-    <div className='min-w-0 space-y-1'>
-      <div className='flex items-center justify-between gap-2'>
+    <div className="min-w-0 space-y-1">
+      <div className="flex items-center justify-between gap-2">
         {info ? (
           <TermHoverCard term={term ?? label} info={info}>
             {labelNode}
@@ -185,21 +164,13 @@ function Stat({
         )}
         {accessory}
       </div>
-      <div className='text-2xl font-semibold tabular-nums'>{value}</div>
-      {hint ? (
-        <div className='truncate text-xs text-muted-foreground'>{hint}</div>
-      ) : null}
+      <div className="text-2xl font-semibold tabular-nums">{value}</div>
+      {hint ? <div className="truncate text-xs text-muted-foreground">{hint}</div> : null}
     </div>
   );
 }
 
-function StatusDot({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: 'success' | 'danger' | 'neutral';
-}) {
+function StatusDot({ label, tone }: { label: string; tone: 'success' | 'danger' | 'neutral' }) {
   return (
     <span
       className={cn(
@@ -224,17 +195,17 @@ function StatusDot({
 
 function RsiStatus({ value }: { value?: number }) {
   if (typeof value !== 'number') return null;
-  if (value >= 70) return <StatusDot label='Overbought' tone='danger' />;
-  if (value <= 30) return <StatusDot label='Oversold' tone='success' />;
-  return <StatusDot label='Neutral' tone='neutral' />;
+  if (value >= 70) return <StatusDot label="Overbought" tone="danger" />;
+  if (value <= 30) return <StatusDot label="Oversold" tone="success" />;
+  return <StatusDot label="Neutral" tone="neutral" />;
 }
 
 function MacdStatus({ value }: { value?: number }) {
   if (typeof value !== 'number') return null;
   return value >= 0 ? (
-    <StatusDot label='Bullish' tone='success' />
+    <StatusDot label="Bullish" tone="success" />
   ) : (
-    <StatusDot label='Bearish' tone='danger' />
+    <StatusDot label="Bearish" tone="danger" />
   );
 }
 
