@@ -50,9 +50,7 @@ export const getSymbol = query({
 
     return await ctx.db
       .query('watchlists')
-      .withIndex('by_user_symbol', (q) =>
-        q.eq('userId', identity.subject).eq('symbol', symbol),
-      )
+      .withIndex('by_user_symbol', (q) => q.eq('userId', identity.subject).eq('symbol', symbol))
       .unique();
   },
 });
@@ -76,9 +74,7 @@ export const addSymbol = mutation({
 
     const existing = await ctx.db
       .query('watchlists')
-      .withIndex('by_user_symbol', (q) =>
-        q.eq('userId', identity.subject).eq('symbol', symbol),
-      )
+      .withIndex('by_user_symbol', (q) => q.eq('userId', identity.subject).eq('symbol', symbol))
       .unique();
     if (existing) return existing._id;
 
@@ -87,13 +83,9 @@ export const addSymbol = mutation({
       symbol,
     });
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.watchlist.hydrateSymbolLabelInternal,
-      {
-        id,
-      },
-    );
+    await ctx.scheduler.runAfter(0, internal.watchlist.hydrateSymbolLabelInternal, {
+      id,
+    });
 
     return id;
   },
@@ -104,12 +96,9 @@ export const hydrateSymbolLabelInternal = internalAction({
     id: v.id('watchlists'),
   },
   handler: async (ctx, { id }) => {
-    const watchlistSymbol = await ctx.runQuery(
-      internal.watchlist.getSymbolInternal,
-      {
-        id,
-      },
-    );
+    const watchlistSymbol = await ctx.runQuery(internal.watchlist.getSymbolInternal, {
+      id,
+    });
     if (!watchlistSymbol) throw new Error('Watchlist symbol not found');
 
     const client = await getMassiveClient(ctx, 1);
@@ -146,9 +135,7 @@ export const removeSymbol = mutation({
 
     const existing = await ctx.db
       .query('watchlists')
-      .withIndex('by_user_symbol', (q) =>
-        q.eq('userId', identity.subject).eq('symbol', symbol),
-      )
+      .withIndex('by_user_symbol', (q) => q.eq('userId', identity.subject).eq('symbol', symbol))
       .unique();
     if (!existing) return { removed: false };
 
@@ -167,9 +154,7 @@ export const removeSymbol = mutation({
 // progressively into the page.
 
 type SymbolCoreData = Awaited<ReturnType<typeof fetchSymbolCoreDataLib>>;
-type SymbolCorporateData = Awaited<
-  ReturnType<typeof fetchSymbolCorporateDataLib>
->;
+type SymbolCorporateData = Awaited<ReturnType<typeof fetchSymbolCorporateDataLib>>;
 type SymbolIndicators = Awaited<ReturnType<typeof fetchSymbolIndicatorsLib>>;
 
 export const fetchSymbolCoreDataInternal = internalAction({
@@ -268,19 +253,12 @@ export const fetchQuotes = action({
   args: {
     symbols: v.array(v.string()),
   },
-  handler: async (
-    ctx,
-    { symbols },
-  ): Promise<{ quotes: SymbolQuote[] }> => {
+  handler: async (ctx, { symbols }): Promise<{ quotes: SymbolQuote[] }> => {
     await verifyIdentity(ctx);
 
-    const normalized = Array.from(
-      new Set(symbols.map(normalizeSymbol).filter(Boolean)),
-    );
+    const normalized = Array.from(new Set(symbols.map(normalizeSymbol).filter(Boolean)));
 
-    const quotes = await Promise.all(
-      normalized.map((symbol) => quoteCache.fetch(ctx, { symbol })),
-    );
+    const quotes = await Promise.all(normalized.map((symbol) => quoteCache.fetch(ctx, { symbol })));
 
     return { quotes };
   },

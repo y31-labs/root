@@ -6,7 +6,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '#/components/ui/sidebar';
+} from '@workspace/ui/components/ui/sidebar';
 import { Link, useMatchRoute } from '@tanstack/react-router';
 import type { NavItem } from '#/components/navigation/nav-types';
 import type { ComponentPropsWithoutRef } from 'react';
@@ -19,9 +19,7 @@ const items: NavItem[] = [
   },
 ];
 
-export function NavSettings(
-  props: ComponentPropsWithoutRef<typeof SidebarGroup>,
-) {
+export function NavSettings(props: ComponentPropsWithoutRef<typeof SidebarGroup>) {
   const matchRoute = useMatchRoute();
 
   return (
@@ -30,10 +28,7 @@ export function NavSettings(
         <SidebarMenu>
           {items.map(({ title, route: { to }, icon: Icon }) => (
             <SidebarMenuItem key={title}>
-              <SidebarMenuButton
-                asChild
-                isActive={!!matchRoute({ to, fuzzy: true })}
-              >
+              <SidebarMenuButton asChild isActive={!!matchRoute({ to, fuzzy: true })}>
                 <Link to={to}>
                   <Icon />
                   <span>{title}</span>
@@ -46,4 +41,3 @@ export function NavSettings(
     </SidebarGroup>
   );
 }
-

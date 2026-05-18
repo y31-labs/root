@@ -11,9 +11,7 @@ export function useLocalStorage<K extends keyof LocalStorageKeyPair>(
 ): [
   LocalStorageKeyPair[K],
   (
-    newValue:
-      | LocalStorageKeyPair[K]
-      | ((prev: LocalStorageKeyPair[K]) => LocalStorageKeyPair[K]),
+    newValue: LocalStorageKeyPair[K] | ((prev: LocalStorageKeyPair[K]) => LocalStorageKeyPair[K]),
   ) => void,
 ] {
   const [value, setValue] = useState<LocalStorageKeyPair[K]>(() => {
@@ -29,13 +27,8 @@ export function useLocalStorage<K extends keyof LocalStorageKeyPair>(
   useSetLocalStorage(key, value);
 
   const setStoredValue = (
-    newValue:
-      | LocalStorageKeyPair[K]
-      | ((prev: LocalStorageKeyPair[K]) => LocalStorageKeyPair[K]),
-  ) =>
-    setValue((prev) =>
-      newValue instanceof Function ? newValue(prev) : newValue,
-    );
+    newValue: LocalStorageKeyPair[K] | ((prev: LocalStorageKeyPair[K]) => LocalStorageKeyPair[K]),
+  ) => setValue((prev) => (newValue instanceof Function ? newValue(prev) : newValue));
   return [value, setStoredValue];
 }
 
@@ -51,4 +44,3 @@ export function useSetLocalStorage<K extends keyof LocalStorageKeyPair>(
     }
   }, [key, value]);
 }
-

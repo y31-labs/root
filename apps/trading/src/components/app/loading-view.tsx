@@ -1,4 +1,4 @@
-import { Spinner } from '#/components/ui/spinner';
+import { Spinner } from '@workspace/ui/components/ui/spinner';
 import { cn } from '#/lib/utils';
 
 interface LoadingViewProps {
@@ -14,11 +14,9 @@ export function LoadingView({ label, fullHeight = false }: LoadingViewProps) {
         fullHeight && 'h-full min-h-screen',
       )}
     >
-      <div className='flex items-center gap-3'>
-        <Spinner className='size-5' />
-        {label && (
-          <span className='text-base text-muted-foreground '>{label}</span>
-        )}
+      <div className="flex items-center gap-3">
+        <Spinner className="size-5" />
+        {label && <span className="text-base text-muted-foreground ">{label}</span>}
       </div>
     </div>
   );

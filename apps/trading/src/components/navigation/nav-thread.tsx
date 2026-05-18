@@ -1,8 +1,4 @@
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '#/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@workspace/ui/components/ui/collapsible';
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -12,7 +8,7 @@ import {
   SidebarMenuItem,
   SidebarMenuSkeleton,
   SidebarMenuSub,
-} from '#/components/ui/sidebar';
+} from '@workspace/ui/components/ui/sidebar';
 import { Route as ThreadsIndexRoute } from '#/routes/threads/route';
 import { Route as ThreadsIdRoute } from '#/routes/threads/$id';
 import { Route as NewThreadRoute } from '#/routes/threads/new';
@@ -30,22 +26,16 @@ export function NavThread() {
       <SidebarGroupLabel>Threads</SidebarGroupLabel>
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton
-            asChild
-            isActive={!!matchRoute({ to: NewThreadRoute.to })}
-          >
+          <SidebarMenuButton asChild isActive={!!matchRoute({ to: NewThreadRoute.to })}>
             <Link to={NewThreadRoute.to}>
               <Plus />
               <span>New Thread</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
-        <Collapsible defaultOpen className='group/collapsible'>
+        <Collapsible defaultOpen className="group/collapsible">
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={!!matchRoute({ to: ThreadsIndexRoute.to })}
-            >
+            <SidebarMenuButton asChild isActive={!!matchRoute({ to: ThreadsIndexRoute.to })}>
               <Link to={ThreadsIndexRoute.to}>
                 <HistoryIcon />
                 <span>History</span>
@@ -53,7 +43,7 @@ export function NavThread() {
             </SidebarMenuButton>
             <CollapsibleTrigger asChild>
               <SidebarMenuAction>
-                <ChevronDown className='transition-transform group-data-[state=open]/collapsible:rotate-180' />
+                <ChevronDown className="transition-transform group-data-[state=open]/collapsible:rotate-180" />
               </SidebarMenuAction>
             </CollapsibleTrigger>
             <CollapsibleContent>
@@ -106,4 +96,3 @@ function ThreadHistorySkeleton() {
     </SidebarMenuItem>
   ));
 }
-

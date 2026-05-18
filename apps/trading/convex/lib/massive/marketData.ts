@@ -31,14 +31,9 @@ export const SYMBOL_QUOTE_REQUEST_COUNT = 1;
 
 // --- Core: ticker details + recent aggregates + previous close ---------------
 
-export const fetchSymbolCoreData = async (
-  client: DefaultApi,
-  symbol: string,
-) => {
+export const fetchSymbolCoreData = async (client: DefaultApi, symbol: string) => {
   const now = new Date();
-  const from = new Date(now.getTime() - LOOKBACK_DAYS * Time.DAY)
-    .toISOString()
-    .slice(0, 10);
+  const from = new Date(now.getTime() - LOOKBACK_DAYS * Time.DAY).toISOString().slice(0, 10);
   const to = now.toISOString().slice(0, 10);
 
   try {
@@ -73,27 +68,19 @@ export const fetchSymbolCoreData = async (
 
 // --- Corporate: dividends, splits, related companies, news -------------------
 
-export const fetchSymbolCorporateData = async (
-  client: DefaultApi,
-  symbol: string,
-) => {
+export const fetchSymbolCorporateData = async (client: DefaultApi, symbol: string) => {
   try {
-    const [dividends, splits, relatedCompanies, news] =
-      await Promise.allSettled([
-        client.listDividends({ ticker: symbol, limit: 10 }),
-        client.listStockSplits({ ticker: symbol, limit: 10 }),
-        client.getRelatedCompanies({ ticker: symbol }),
-        client.listNews({ ticker: symbol, limit: 10 }),
-      ]);
+    const [dividends, splits, relatedCompanies, news] = await Promise.allSettled([
+      client.listDividends({ ticker: symbol, limit: 10 }),
+      client.listStockSplits({ ticker: symbol, limit: 10 }),
+      client.getRelatedCompanies({ ticker: symbol }),
+      client.listNews({ ticker: symbol, limit: 10 }),
+    ]);
 
     return {
       dividends: settledOr(dividends, 'corporate.dividends', symbol),
       splits: settledOr(splits, 'corporate.splits', symbol),
-      relatedCompanies: settledOr(
-        relatedCompanies,
-        'corporate.relatedCompanies',
-        symbol,
-      ),
+      relatedCompanies: settledOr(relatedCompanies, 'corporate.relatedCompanies', symbol),
       news: settledOr(news, 'corporate.news', symbol),
     };
   } catch (error) {
@@ -104,10 +91,7 @@ export const fetchSymbolCorporateData = async (
 
 // --- Indicators: SMA, EMA, RSI, MACD -----------------------------------------
 
-export const fetchSymbolIndicators = async (
-  client: DefaultApi,
-  symbol: string,
-) => {
+export const fetchSymbolIndicators = async (client: DefaultApi, symbol: string) => {
   try {
     const [sma, ema, rsi, macd] = await Promise.allSettled([
       client.getStocksSMA({
@@ -176,9 +160,7 @@ export const fetchSymbolQuote = async (
   symbol: string,
 ): Promise<SymbolQuote> => {
   const now = new Date();
-  const from = new Date(now.getTime() - 14 * Time.DAY)
-    .toISOString()
-    .slice(0, 10);
+  const from = new Date(now.getTime() - 14 * Time.DAY).toISOString().slice(0, 10);
   const to = now.toISOString().slice(0, 10);
 
   try {
@@ -193,8 +175,7 @@ export const fetchSymbolQuote = async (
       limit: 2,
     });
 
-    const results =
-      (response as { results?: AggregateBar[] } | undefined)?.results ?? [];
+    const results = (response as { results?: AggregateBar[] } | undefined)?.results ?? [];
     const latest = results[0];
     const prior = results[1];
 
@@ -205,9 +186,7 @@ export const fetchSymbolQuote = async (
         ? price - previousClose
         : undefined;
     const changePercent =
-      typeof change === 'number' &&
-      typeof previousClose === 'number' &&
-      previousClose > 0
+      typeof change === 'number' && typeof previousClose === 'number' && previousClose > 0
         ? change / previousClose
         : undefined;
 
@@ -243,9 +222,7 @@ const logFetchError = (name: string, symbol: string, error: unknown) => {
 
 const MASSIVE_BRANDING_HOST = 'https://api.massive.com/';
 
-const toProxiedBrandingUrl = (
-  original: string | undefined,
-): string | undefined => {
+const toProxiedBrandingUrl = (original: string | undefined): string | undefined => {
   if (!original || !original.startsWith(MASSIVE_BRANDING_HOST)) return original;
   const siteUrl = process.env.CONVEX_SITE_URL;
   if (!siteUrl) return original;

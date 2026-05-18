@@ -1,12 +1,5 @@
 import * as React from 'react';
-import {
-  Calculator,
-  Calendar,
-  CreditCard,
-  Settings,
-  Smile,
-  User,
-} from 'lucide-react';
+import { Calculator, Calendar, CreditCard, Settings, Smile, User } from 'lucide-react';
 import {
   CommandDialog,
   CommandEmpty,
@@ -16,8 +9,8 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-} from '#/components/ui/command';
-import { Button } from '#/components/ui/button';
+} from '@workspace/ui/components/ui/command';
+import { Button } from '@workspace/ui/components/ui/button';
 
 export function SearchCommandMenu() {
   const [open, setOpen] = React.useState(false);
@@ -38,25 +31,25 @@ export function SearchCommandMenu() {
     <>
       <Button
         onClick={() => setOpen(true)}
-        size='sm'
-        variant='outline'
-        className='text-muted-foreground hidden sm:flex'
+        size="sm"
+        variant="outline"
+        className="text-muted-foreground hidden sm:flex"
       >
         Search{' '}
         {['⌘', 'K'].map((s) => (
           <kbd
             key={s}
-            className='bg-muted text-muted-foreground pointer-events-none inline-flex h-5 items-center rounded border px-1.5 font-mono font-medium opacity-100 select-none'
+            className="bg-muted text-muted-foreground pointer-events-none inline-flex h-5 items-center rounded border px-1.5 font-mono font-medium opacity-100 select-none"
           >
             {s}
           </kbd>
         ))}
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder='Type a command or search...' />
+        <CommandInput placeholder="Type a command or search..." />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
-          <CommandGroup heading='Suggestions'>
+          <CommandGroup heading="Suggestions">
             <CommandItem>
               <Calendar />
               <span>Calendar</span>
@@ -71,7 +64,7 @@ export function SearchCommandMenu() {
             </CommandItem>
           </CommandGroup>
           <CommandSeparator />
-          <CommandGroup heading='Settings'>
+          <CommandGroup heading="Settings">
             <CommandItem>
               <User />
               <span>Profile</span>

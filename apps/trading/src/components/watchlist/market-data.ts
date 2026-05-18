@@ -25,21 +25,13 @@ export type MarketQuote = {
   };
 };
 
-export type SymbolCoreData = FunctionReturnType<
-  typeof api.watchlist.fetchSymbolCoreData
->;
+export type SymbolCoreData = FunctionReturnType<typeof api.watchlist.fetchSymbolCoreData>;
 
-export type SymbolCorporateData = FunctionReturnType<
-  typeof api.watchlist.fetchSymbolCorporateData
->;
+export type SymbolCorporateData = FunctionReturnType<typeof api.watchlist.fetchSymbolCorporateData>;
 
-export type SymbolIndicators = FunctionReturnType<
-  typeof api.watchlist.fetchSymbolIndicators
->;
+export type SymbolIndicators = FunctionReturnType<typeof api.watchlist.fetchSymbolIndicators>;
 
-export type FetchQuotesResult = FunctionReturnType<
-  typeof api.watchlist.fetchQuotes
->;
+export type FetchQuotesResult = FunctionReturnType<typeof api.watchlist.fetchQuotes>;
 
 export type SymbolQuote = FetchQuotesResult['quotes'][number];
 
@@ -96,7 +88,7 @@ export type RelatedCompanyResult = {
 
 export type NewsInsight = {
   ticker?: string;
-  sentiment?: 'positive' | 'neutral' | 'negative' | string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
   sentiment_reasoning?: string;
 };
 
@@ -132,21 +124,13 @@ export type MacdIndicatorValue = IndicatorValue & {
 };
 
 export function toMarketBars(aggregates: unknown): MarketBar[] {
-  const results =
-    (aggregates as { results?: MarketBar[] } | undefined)?.results ?? [];
+  const results = (aggregates as { results?: MarketBar[] } | undefined)?.results ?? [];
   return [...results].sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
 }
 
 export type ChartRange = '1W' | '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
-export const CHART_RANGES: ChartRange[] = [
-  '1W',
-  '1M',
-  '3M',
-  '6M',
-  '1Y',
-  'ALL',
-];
+export const CHART_RANGES: ChartRange[] = ['1W', '1M', '3M', '6M', '1Y', 'ALL'];
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -158,10 +142,7 @@ const RANGE_TO_DAYS: Record<Exclude<ChartRange, 'ALL'>, number> = {
   '1Y': 366,
 };
 
-export function filterBarsByRange(
-  bars: MarketBar[],
-  range: ChartRange,
-): MarketBar[] {
+export function filterBarsByRange(bars: MarketBar[], range: ChartRange): MarketBar[] {
   if (range === 'ALL' || bars.length === 0) return bars;
   const lastTs = bars.at(-1)?.t;
   if (typeof lastTs !== 'number') return bars;
@@ -169,9 +150,7 @@ export function filterBarsByRange(
   return bars.filter((bar) => typeof bar.t === 'number' && bar.t >= cutoff);
 }
 
-export function getTickerDetails(
-  details: unknown,
-): TickerDetailsResults | undefined {
+export function getTickerDetails(details: unknown): TickerDetailsResults | undefined {
   return (details as { results?: TickerDetailsResults } | undefined)?.results;
 }
 
@@ -179,13 +158,8 @@ export function getListResults<T>(value: unknown): T[] {
   return (value as { results?: T[] } | undefined)?.results ?? [];
 }
 
-export function getIndicatorValues<T extends IndicatorValue>(
-  indicator: unknown,
-): T[] {
-  return (
-    (indicator as { results?: { values?: T[] } } | undefined)?.results
-      ?.values ?? []
-  );
+export function getIndicatorValues<T extends IndicatorValue>(indicator: unknown): T[] {
+  return (indicator as { results?: { values?: T[] } } | undefined)?.results?.values ?? [];
 }
 
 export function previousCloseToQuote(previousClose: unknown): MarketQuote | undefined {
@@ -209,4 +183,3 @@ export function previousCloseToQuote(previousClose: unknown): MarketQuote | unde
     },
   };
 }
-

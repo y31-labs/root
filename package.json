@@ -6,15 +6,26 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --filter portfolio dev",
-    "build": "bun run --filter portfolio build",
-    "preview": "bun run --filter portfolio preview",
-    "dev:portfolio": "bun --cwd apps/portfolio run dev",
-    "build:portfolio": "bun --cwd apps/portfolio run build",
-    "preview:portfolio": "bun --cwd apps/portfolio run preview",
-    "dev:trading": "bun --cwd apps/trading run dev",
-    "build:trading": "bun --cwd apps/trading run build",
-    "preview:trading": "bun --cwd apps/trading run preview",
-    "test:trading": "bun --cwd apps/trading run test"
+    "portfolio:dev": "bun run --elide-lines=0 --filter portfolio dev",
+    "portfolio:build": "bun run --elide-lines=0 --filter portfolio build",
+    "portfolio:preview": "bun run --elide-lines=0 --filter portfolio preview",
+    "trading:dev": "bun run --elide-lines=0 --filter trading dev",
+    "trading:build": "bun run --elide-lines=0 --filter trading build",
+    "trading:preview": "bun run --elide-lines=0 --filter trading preview",
+    "trading:test": "bun run --elide-lines=0 --filter trading test",
+    "trading:convex": "bun run --elide-lines=0 --filter trading convex",
+    "code:dev": "bun run --elide-lines=0 --filter code dev",
+    "code:build": "bun run --elide-lines=0 --filter code build",
+    "code:preview": "bun run --elide-lines=0 --filter code preview",
+    "code:convex": "bun run --elide-lines=0 --filter code convex",
+    "ui:add": "bun run --cwd packages/ui ui:add",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "lint:typecheck": "oxlint --type-aware --type-check"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.50.0",
+    "oxlint": "^1.65.0",
+    "oxlint-tsgolint": "^0.22.1"
   }
 }
