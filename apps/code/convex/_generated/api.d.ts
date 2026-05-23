@@ -8,11 +8,8 @@
  * @module
  */
 
-import type * as messages from "../messages.js";
+import type * as githubActions from "../githubActions.js";
 import type * as repos from "../repos.js";
-import type * as runs from "../runs.js";
-import type * as stubActions from "../stubActions.js";
-import type * as tickets from "../tickets.js";
 import type * as utils from "../utils.js";
 
 import type {
@@ -22,11 +19,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  messages: typeof messages;
+  githubActions: typeof githubActions;
   repos: typeof repos;
-  runs: typeof runs;
-  stubActions: typeof stubActions;
-  tickets: typeof tickets;
   utils: typeof utils;
 }>;
 

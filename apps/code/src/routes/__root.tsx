@@ -1,4 +1,3 @@
-import appCssUrl from '#/styles.css?url';
 import type { ConvexQueryClient } from '@convex-dev/react-query';
 import { type QueryClient } from '@tanstack/react-query';
 import {
@@ -8,10 +7,22 @@ import {
   createRootRouteWithContext,
   redirect,
 } from '@tanstack/react-router';
-import { fetchWorkosAuth, setConvexQueryClientAuthForSsr } from '@workspace/web-foundation';
 import { getAuth } from '@workos/authkit-tanstack-react-start';
+import {
+  SidebarInset,
+  SidebarProvider,
+} from '@workspace/ui/components/ui/sidebar';
+import {
+  fetchWorkosAuth,
+  setConvexQueryClientAuthForSsr,
+} from '@workspace/web-foundation';
 import { type ConvexReactClient } from 'convex/react';
-import { type ReactNode } from 'react';
+import { type PropsWithChildren, type ReactNode } from 'react';
+
+import { AppSidebar } from '#/components/app/app-sidebar';
+
+import appCssUrl from '@workspace/ui/globals.css?url';
+import themeOverridesUrl from '#/theme-overrides.css?url';
 
 interface Context {
   queryClient: QueryClient;
@@ -26,7 +37,10 @@ export const Route = createRootRouteWithContext<Context>()({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Code' },
     ],
-    links: [{ rel: 'stylesheet', href: appCssUrl }],
+    links: [
+      { rel: 'stylesheet', href: appCssUrl },
+      { rel: 'stylesheet', href: themeOverridesUrl },
+    ],
   }),
   beforeLoad: async ({ context }) => {
     const { userId, token } = await fetchWorkosAuth();
@@ -36,7 +50,7 @@ export const Route = createRootRouteWithContext<Context>()({
   loader: async () => {
     const { user } = await getAuth();
     if (!user) throw redirect({ to: '/api/auth/sign-in' });
-    return {};
+    return { user };
   },
   component: RootComponent,
 });
@@ -44,16 +58,16 @@ export const Route = createRootRouteWithContext<Context>()({
 function RootComponent() {
   return (
     <RootDocument>
-      <main className="min-h-dvh bg-background text-foreground">
+      <LayoutComponent>
         <Outlet />
-      </main>
+      </LayoutComponent>
     </RootDocument>
   );
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang='en' className='dark'>
       <head>
         <HeadContent />
       </head>
@@ -64,3 +78,21 @@ function RootDocument({ children }: { children: ReactNode }) {
     </html>
   );
 }
+
+function LayoutComponent({ children }: PropsWithChildren) {
+  const { user } = Route.useLoaderData();
+
+  return (
+    <SidebarProvider defaultOpen={false}>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        <div className='flex min-h-svh flex-1 flex-col'>
+          <div className='@container/main flex min-h-svh flex-1 flex-col gap-2'>
+            {children}
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+

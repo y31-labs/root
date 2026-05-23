@@ -5,10 +5,9 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/styles/global.css",
+    "css": "../../packages/ui/src/styles/globals.css",
     "baseColor": "neutral",
-    "cssVariables": true,
-    "prefix": ""
+    "cssVariables": true
   },
   "iconLibrary": "lucide",
   "rtl": false,
@@ -18,8 +17,5 @@
     "ui": "@workspace/ui/components/ui",
     "lib": "#/lib",
     "hooks": "#/hooks"
-  },
-  "menuColor": "default-translucent",
-  "menuAccent": "subtle",
-  "registries": {}
+  }
 }

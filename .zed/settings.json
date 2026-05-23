@@ -1,0 +1,68 @@
+{
+  "lsp": {
+    "oxfmt": {
+      "initialization_options": {
+        "settings": {
+          "fmt.configPath": "oxfmt.config.ts",
+          "run": "onSave"
+        }
+      }
+    }
+  },
+  "languages": {
+    "JavaScript": {
+      "format_on_save": "on",
+      "prettier": { "allowed": false },
+      "code_actions_on_format": {
+        "source.organizeImports": true
+      },
+      "formatter": {
+        "external": {
+          "command": "./node_modules/.bin/oxfmt",
+          "arguments": [
+            "--stdin-filepath",
+            "{buffer_path}",
+            "-c",
+            "oxfmt.config.ts"
+          ]
+        }
+      }
+    },
+    "TypeScript": {
+      "format_on_save": "on",
+      "prettier": { "allowed": false },
+      "code_actions_on_format": {
+        "source.organizeImports": true
+      },
+      "formatter": {
+        "external": {
+          "command": "./node_modules/.bin/oxfmt",
+          "arguments": [
+            "--stdin-filepath",
+            "{buffer_path}",
+            "-c",
+            "oxfmt.config.ts"
+          ]
+        }
+      }
+    },
+    "TSX": {
+      "format_on_save": "on",
+      "prettier": { "allowed": false },
+      "code_actions_on_format": {
+        "source.organizeImports": true
+      },
+      "formatter": {
+        "external": {
+          "command": "./node_modules/.bin/oxfmt",
+          "arguments": [
+            "--stdin-filepath",
+            "{buffer_path}",
+            "-c",
+            "oxfmt.config.ts"
+          ]
+        }
+      }
+    }
+  }
+}

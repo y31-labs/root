@@ -6,7 +6,7 @@ export default defineConfig(
   mergeConfig(
     defineWebFoundationViteConfig({
       rootDir: import.meta.dirname,
-      port: 3001,
+      port: 3000,
       convexAlias: { name: '#convex', path: 'convex' },
       extraPlugins: [devtools()],
     }),
