@@ -1,108 +1,46 @@
-import { api } from '#convex/_generated/api';
-import { convexQuery } from '@convex-dev/react-query';
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@workspace/ui/components/ui/button';
-import { useMutation } from 'convex/react';
-import { useState } from 'react';
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { LoadingView } from "@workspace/ui/components/app/loading-view";
+import { useBoolean } from "@workspace/ui/hooks/use-boolean";
+import { useMutation } from "convex/react";
+import { use, useCallback } from "react";
 
-export const Route = createFileRoute('/')({
+import { ManageReposDialog } from "#/components/repos/manage-repos-dialog";
+import { RepoSelectorDropdown } from "#/components/repos/repo-selector-dropdown";
+import { api } from "#convex/_generated/api";
+import type { Id } from "#convex/_generated/dataModel";
+
+export const Route = createFileRoute("/")({
   component: HomePage,
+  pendingComponent: LoadingView,
 });
 
 function HomePage() {
-  const queryClient = useQueryClient();
-  const { data: repos = [] } = useQuery(convexQuery(api.repos.list, {}));
-  const createRepo = useMutation(api.repos.create);
-  const [owner, setOwner] = useState('');
-  const [name, setName] = useState('');
-  const [branch, setBranch] = useState('main');
+  const repos = use(useQuery(convexQuery(api.repos.list)).promise) ?? [];
+
+  const selectRepo = useMutation(api.repos.select);
+
+  const { value: open, setValue: setOpen, setTrue } = useBoolean(false);
+
+  const onSelectRepo = useCallback(
+    (id: Id<"repos">, selected: boolean) => selectRepo({ id, selected }).then((r) => r.updated),
+    [selectRepo],
+  );
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col gap-8 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Tickets</h1>
-        <p className="text-muted-foreground text-sm">
-          Pick a repository, then open its ticket list.
-        </p>
-      </div>
-
-      <section className="bg-card text-card-foreground flex flex-col gap-4 rounded-lg border border-border p-4 shadow-sm">
-        <div>
-          <h2 className="text-lg font-medium">Add allowlisted repo</h2>
-          <p className="text-muted-foreground text-sm">
-            GitHub wiring comes later; this is the MVP allowlist record.
-          </p>
+    <>
+      <div className="relative flex min-h-svh flex-1 flex-col">
+        <div className="flex justify-end p-4">
+          <RepoSelectorDropdown
+            repos={repos}
+            onSelectRepo={onSelectRepo}
+            onAddRepo={setTrue}
+            onManageRepos={setTrue}
+          />
         </div>
-        <div className="flex flex-col gap-3">
-          <label className="grid gap-1 text-sm font-medium" htmlFor="owner">
-            Owner
-            <input
-              id="owner"
-              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              value={owner}
-              onChange={(e) => setOwner(e.target.value)}
-              placeholder="acme"
-            />
-          </label>
-          <label className="grid gap-1 text-sm font-medium" htmlFor="name">
-            Repo name
-            <input
-              id="name"
-              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="web-app"
-            />
-          </label>
-          <label className="grid gap-1 text-sm font-medium" htmlFor="branch">
-            Default branch
-            <input
-              id="branch"
-              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-            />
-          </label>
-          <Button
-            type="button"
-            onClick={async () => {
-              await createRepo({
-                owner: owner.trim(),
-                name: name.trim(),
-                defaultBranch: branch.trim() || 'main',
-              });
-              await queryClient.invalidateQueries(convexQuery(api.repos.list, {}));
-              setOwner('');
-              setName('');
-            }}
-            disabled={!owner.trim() || !name.trim()}
-          >
-            Save repo
-          </Button>
-        </div>
-      </section>
-
-      <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">Repos</h2>
-        {repos.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No repos yet.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {repos.map((repo) => (
-              <li key={repo._id}>
-                <Link
-                  to="/tickets"
-                  search={{ repoId: repo._id }}
-                  className="text-primary font-medium underline-offset-4 hover:underline"
-                >
-                  {repo.owner}/{repo.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
-    </div>
+      <ManageReposDialog open={open} onOpenChange={setOpen} repos={repos} />
+    </>
   );
 }

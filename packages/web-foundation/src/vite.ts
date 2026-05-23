@@ -36,7 +36,6 @@ export function defineWebFoundationViteConfig(
 
   const alias: Record<string, string> = {
     [appSrcAlias.name]: resolve(rootDir, appSrcAlias.path),
-    '@workspace/ui': resolve(rootDir, '../../packages/ui/src'),
     eventemitter3: eventemitter3Esm,
   };
 

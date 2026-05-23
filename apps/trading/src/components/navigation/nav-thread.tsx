@@ -1,4 +1,8 @@
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@workspace/ui/components/ui/collapsible';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@workspace/ui/components/ui/collapsible';
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -26,24 +30,26 @@ export function NavThread() {
       <SidebarGroupLabel>Threads</SidebarGroupLabel>
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={!!matchRoute({ to: NewThreadRoute.to })}>
+          <SidebarMenuButton isActive={!!matchRoute({ to: NewThreadRoute.to })}>
             <Link to={NewThreadRoute.to}>
               <Plus />
               <span>New Thread</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
-        <Collapsible defaultOpen className="group/collapsible">
+        <Collapsible defaultOpen className='group/collapsible'>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={!!matchRoute({ to: ThreadsIndexRoute.to })}>
+            <SidebarMenuButton
+              isActive={!!matchRoute({ to: ThreadsIndexRoute.to })}
+            >
               <Link to={ThreadsIndexRoute.to}>
                 <HistoryIcon />
                 <span>History</span>
               </Link>
             </SidebarMenuButton>
-            <CollapsibleTrigger asChild>
+            <CollapsibleTrigger>
               <SidebarMenuAction>
-                <ChevronDown className="transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                <ChevronDown className='transition-transform group-data-[state=open]/collapsible:rotate-180' />
               </SidebarMenuAction>
             </CollapsibleTrigger>
             <CollapsibleContent>
@@ -77,7 +83,7 @@ function ThreadHistory() {
     <SidebarMenuSub>
       {threads.map(({ _id: id, title }) => (
         <SidebarMenuItem key={id}>
-          <SidebarMenuButton asChild>
+          <SidebarMenuButton>
             <Link to={ThreadsIdRoute.to} params={{ id }}>
               <IconMessage />
               <span>{title || 'Untitled'}</span>
@@ -96,3 +102,4 @@ function ThreadHistorySkeleton() {
     </SidebarMenuItem>
   ));
 }
+

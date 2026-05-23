@@ -10,24 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TicketsIndexRouteImport } from './routes/tickets/index'
-import { Route as TicketsTicketIdRouteImport } from './routes/tickets/$ticketId'
 import { Route as ApiAuthSignInRouteImport } from './routes/api/auth/sign-in'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TicketsIndexRoute = TicketsIndexRouteImport.update({
-  id: '/tickets/',
-  path: '/tickets/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TicketsTicketIdRoute = TicketsTicketIdRouteImport.update({
-  id: '/tickets/$ticketId',
-  path: '/tickets/$ticketId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSignInRoute = ApiAuthSignInRouteImport.update({
@@ -43,54 +31,30 @@ const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/tickets/$ticketId': typeof TicketsTicketIdRoute
-  '/tickets/': typeof TicketsIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/tickets/$ticketId': typeof TicketsTicketIdRoute
-  '/tickets': typeof TicketsIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/tickets/$ticketId': typeof TicketsTicketIdRoute
-  '/tickets/': typeof TicketsIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/tickets/$ticketId'
-    | '/tickets/'
-    | '/api/auth/callback'
-    | '/api/auth/sign-in'
+  fullPaths: '/' | '/api/auth/callback' | '/api/auth/sign-in'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/tickets/$ticketId'
-    | '/tickets'
-    | '/api/auth/callback'
-    | '/api/auth/sign-in'
-  id:
-    | '__root__'
-    | '/'
-    | '/tickets/$ticketId'
-    | '/tickets/'
-    | '/api/auth/callback'
-    | '/api/auth/sign-in'
+  to: '/' | '/api/auth/callback' | '/api/auth/sign-in'
+  id: '__root__' | '/' | '/api/auth/callback' | '/api/auth/sign-in'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  TicketsTicketIdRoute: typeof TicketsTicketIdRoute
-  TicketsIndexRoute: typeof TicketsIndexRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
   ApiAuthSignInRoute: typeof ApiAuthSignInRoute
 }
@@ -102,20 +66,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tickets/': {
-      id: '/tickets/'
-      path: '/tickets'
-      fullPath: '/tickets/'
-      preLoaderRoute: typeof TicketsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tickets/$ticketId': {
-      id: '/tickets/$ticketId'
-      path: '/tickets/$ticketId'
-      fullPath: '/tickets/$ticketId'
-      preLoaderRoute: typeof TicketsTicketIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/sign-in': {
@@ -137,8 +87,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  TicketsTicketIdRoute: TicketsTicketIdRoute,
-  TicketsIndexRoute: TicketsIndexRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
   ApiAuthSignInRoute: ApiAuthSignInRoute,
 }

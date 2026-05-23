@@ -41,7 +41,10 @@ export function WorkosConvexProvider({
 }) {
   return (
     <AuthKitProvider>
-      <ConvexProviderWithAuth client={convexQueryClient.convexClient} useAuth={useAuthFromAuthKit}>
+      <ConvexProviderWithAuth
+        client={convexQueryClient.convexClient}
+        useAuth={useAuthFromAuthKit}
+      >
         {children}
       </ConvexProviderWithAuth>
     </AuthKitProvider>
