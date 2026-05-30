@@ -6,7 +6,7 @@ import { useBoolean } from "@workspace/ui/hooks/use-boolean";
 import { useMutation } from "convex/react";
 import { use, useCallback } from "react";
 
-import { ManageReposDialog } from "#/components/repos/manage-repos-dialog";
+import { ReposDialog } from "#/components/repos/repos-dialog";
 import { RepoSelectorDropdown } from "#/components/repos/repo-selector-dropdown";
 import { api } from "#convex/_generated/api";
 import type { Id } from "#convex/_generated/dataModel";
@@ -35,12 +35,11 @@ function HomePage() {
           <RepoSelectorDropdown
             repos={repos}
             onSelectRepo={onSelectRepo}
-            onAddRepo={setTrue}
             onManageRepos={setTrue}
           />
         </div>
       </div>
-      <ManageReposDialog open={open} onOpenChange={setOpen} repos={repos} />
+      <ReposDialog open={open} onOpenChange={setOpen} repos={repos} />
     </>
   );
 }

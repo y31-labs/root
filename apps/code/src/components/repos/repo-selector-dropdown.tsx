@@ -1,36 +1,35 @@
-import { Button } from "@workspace/ui/components/ui/button";
+import { Button } from '@workspace/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@workspace/ui/components/ui/dropdown-menu";
-import { ChevronDown, Plus, Settings2 } from "lucide-react";
+} from '@workspace/ui/components/ui/dropdown-menu';
+import { ChevronDown, Pencil, Plus } from 'lucide-react';
 
-import type { Doc, Id } from "#convex/_generated/dataModel";
+import type { Doc, Id } from '#convex/_generated/dataModel';
 
-type Repo = Doc<"repos">;
+type Repo = Doc<'repos'>;
 
 interface RepoSelectorDropdownProps {
   repos: Repo[];
-  onSelectRepo: (id: Id<"repos">, selected: boolean) => Promise<boolean>;
-  onAddRepo: () => void;
+  onSelectRepo: (id: Id<'repos'>, selected: boolean) => Promise<boolean>;
   onManageRepos: () => void;
 }
 
 export function RepoSelectorDropdown({
   repos,
   onSelectRepo,
-  onAddRepo,
   onManageRepos,
 }: RepoSelectorDropdownProps) {
   const label = getButtonLabel(repos);
 
   if (!repos.length)
     return (
-      <Button type="button" onClick={onAddRepo}>
+      <Button type='button' onClick={onManageRepos}>
         <span>Add repository</span> <Plus />
       </Button>
     );
@@ -39,31 +38,29 @@ export function RepoSelectorDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button type="button" variant="outline" className="w-fit">
-            <span className="truncate">{label}</span>
+          <Button type='button' variant='outline' className='w-fit'>
+            <span className='truncate'>{label}</span>
             <ChevronDown />
           </Button>
         }
       />
-      <DropdownMenuContent align="end" className="min-w-56">
-        {repos.map((repo) => (
-          <DropdownMenuCheckboxItem
-            key={repo._id}
-            checked={repo.selected}
-            onCheckedChange={(checked) => onSelectRepo(repo._id, checked)}
-            onSelect={(e) => e.preventDefault()}
-          >
-            {getLabel(repo)}
-          </DropdownMenuCheckboxItem>
-        ))}
+      <DropdownMenuContent align='end' className='min-w-56'>
+        <DropdownMenuGroup>
+          {repos.map((repo) => (
+            <DropdownMenuCheckboxItem
+              key={repo._id}
+              checked={repo.selected}
+              onCheckedChange={(checked) => onSelectRepo(repo._id, checked)}
+              onSelect={(e) => e.preventDefault()}
+            >
+              {getLabel(repo)}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onManageRepos}>
-          <Settings2 />
-          Manage repos
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={onAddRepo}>
-          <Plus />
-          Add repo
+        <DropdownMenuItem onClick={onManageRepos}>
+          <Pencil />
+          Edit synced repositories
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -72,10 +69,10 @@ export function RepoSelectorDropdown({
 
 const getButtonLabel = (repos: Repo[]) => {
   const selectedRepos = repos.filter((r) => r.selected);
-  if (selectedRepos.length) return "Multiple selected";
+  if (selectedRepos.length > 1) return 'Multiple selected';
 
   const firstSelected = selectedRepos[0];
-  if (!firstSelected) return "Sync repository";
+  if (!firstSelected) return 'Sync repository';
 
   return getLabel(firstSelected);
 };
