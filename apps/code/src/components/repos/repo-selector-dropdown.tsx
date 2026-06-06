@@ -1,3 +1,4 @@
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { Button } from '@workspace/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -10,21 +11,16 @@ import {
 } from '@workspace/ui/components/ui/dropdown-menu';
 import { ChevronDown, Pencil, Plus } from 'lucide-react';
 
+import { repoQueries } from '#/queries';
 import type { Doc, Id } from '#convex/_generated/dataModel';
 
-type Repo = Doc<'repos'>;
-
 interface RepoSelectorDropdownProps {
-  repos: Repo[];
   onSelectRepo: (id: Id<'repos'>, selected: boolean) => Promise<boolean>;
   onManageRepos: () => void;
 }
 
-export function RepoSelectorDropdown({
-  repos,
-  onSelectRepo,
-  onManageRepos,
-}: RepoSelectorDropdownProps) {
+export function RepoSelectorDropdown({ onSelectRepo, onManageRepos }: RepoSelectorDropdownProps) {
+  const { data: repos } = useSuspenseQuery(repoQueries.list);
   const label = getButtonLabel(repos);
 
   if (!repos.length)
@@ -67,7 +63,7 @@ export function RepoSelectorDropdown({
   );
 }
 
-const getButtonLabel = (repos: Repo[]) => {
+const getButtonLabel = (repos: Doc<'repos'>[]) => {
   const selectedRepos = repos.filter((r) => r.selected);
   if (selectedRepos.length > 1) return 'Multiple selected';
 
@@ -77,4 +73,4 @@ const getButtonLabel = (repos: Repo[]) => {
   return getLabel(firstSelected);
 };
 
-const getLabel = (repo: Repo) => `${repo.owner}/${repo.name}`;
+const getLabel = (repo: Doc<'repos'>) => `${repo.owner}/${repo.name}`;
