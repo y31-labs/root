@@ -1,82 +1,37 @@
-# Code PR Agent: Implementation Contracts
+# Local Code Agent Contracts
 
-Normative contracts for Convex-shaped control plane and web client. Product narrative lives in [concept.md](./concept.md), [mvp.md](./mvp.md), and [architecture.md](./architecture.md).
+## Synced Entities
 
-## Canonical entities
+| Entity | Purpose |
+| --- | --- |
+| `Repo` | GitHub repository, selected state, approved manifest, and base SHA. |
+| `Ticket` | User task title, body, repository, status, and timestamps. |
+| `DesktopRegistration` | Installation ID, app version, and last-seen timestamp. |
+| `Run` | Engine, Codex version, exact SHA, lifecycle, attempt, and compact summary. |
+| `GateResult` | Gate kind, attempt, required flag, status, duration, and exit code. |
 
-Stable names and relationships (schema details belong in code; this is the contract).
+Local SQLite stores run timelines, crash-recovery state, and artifact indexes. App-data folders store
+patches, logs, screenshots, assertions, and Playwright traces.
 
-| Entity | Primary key | Required relationships | Notes |
-|--------|-------------|------------------------|--------|
-| `Repo` | `repoId` | — | Allowlisted GitHub target (`owner`, `name`, `defaultBranch`, installation or credential handle). |
-| `Ticket` | `ticketId` | `repoId`, `createdBy` | Title, body, status, timestamps. |
-| `Thread` | `threadId` | `ticketId` | One primary thread per ticket for MVP; optional `primaryRunId` later. |
-| `Message` | `messageId` | `threadId` | `role` ∈ {`user`, `assistant`, `system`}, `content`, `createdAt`; optional tool refs. |
-| `Run` | `runId` | `ticketId` | Lifecycle, trigger, branches, PR metadata, error summary, timestamps. |
-| `RunEvent` | `runEventId` | `runId` | Append-only trace: `type`, `payload`, `createdAt`. |
+## Run Lifecycle
 
-**Foreign key rules:** every `Message` belongs to exactly one `Thread`; every `Thread` to exactly one `Ticket`; every `Run` to exactly one `Ticket`; every `RunEvent` to exactly one `Run`. `Ticket` references exactly one `Repo` for MVP.
+```text
+queued -> preparing -> implementing -> verifying -> repairing
+       -> verified | failed | cancelled | needs_input
+```
 
-## Run lifecycle (state machine)
+Terminal states do not transition back to active states. A retry creates a new run from the original
+approved SHA. `verified` requires a local patch and a passing latest result for every required gate.
 
-### States
+## Engine Contract
 
-| State | Kind | Meaning |
-|-------|------|---------|
-| `queued` | non-terminal | Run accepted; waiting for worker/action pickup. |
-| `running` | non-terminal | Agent + tools executing (may span multiple commits). |
-| `succeeded` | terminal | Run objective met (e.g. PR opened/updated as defined for the trigger). |
-| `failed` | terminal | Unrecoverable error or exhausted retries; `error` populated. |
-| `needs_input` | terminal | Blocked on human/GitHub action (e.g. merge conflict with base); user may message and start a new run. |
-| `cancelled` | terminal | Best-effort stop requested; partial git state may exist; document in run metadata. |
+The MVP snapshots `engine: "codex-local"`. Future engines implement the shared `ImplementationEngine`
+interface without changing manifest or verification semantics.
 
-### Allowed transitions
+## Security Boundaries
 
-Only these directed transitions are valid:
-
-1. `queued` → `running` — when the executing action claims the run.
-2. `running` → `succeeded` | `failed` | `needs_input` | `cancelled` — when the action completes, errors, detects a user-resolvable blocker, or cancellation wins the race.
-
-There is **no** transition from any terminal state back to `queued` or `running`. A new user intent creates a **new** `Run` row (new `runId`), possibly reusing `headBranch` / PR correlation per [architecture.md](./architecture.md) recovery rules.
-
-### Who may transition (caller boundary)
-
-| Transition | Allowed caller |
-|------------|----------------|
-| → `queued` | **Public** mutation: enqueue run (from authenticated UI after validation). |
-| `queued` → `running` | **Internal** mutation or action-only helper invoked at start of run action (not directly from browser). |
-| `running` → terminal | **Internal** mutation, called only from Convex **actions** (or scheduled internal paths), after git/model work. |
-| `running` → `cancelled` (request) | **Public** mutation sets a `cancelRequestedAt` flag; action observes and transitions to `cancelled` best-effort (**internal** completes the terminal transition). |
-
-The UI never sets `running` or terminal states directly.
-
-## Public vs internal API boundaries
-
-### Public (callable from authenticated web client)
-
-Subject to auth and validation (repo allowlist, ticket ownership / org policy as implemented):
-
-- **Tickets:** create, update (title/body/status), archive/delete if product allows.
-- **Messages:** append user message; optionally append assistant message only if your product streams via mutation (prefer action → internal mutation for assistant turns to keep one path).
-- **Runs:** enqueue new run (`queued`); request cancel (flag + optional reason); enqueue retry as **new** `Run` with link to prior run if desired (still a new row per state machine above).
-
-### Internal-only (never exposed as public Convex endpoints to the browser)
-
-- Append `RunEvent` rows.
-- Transition `queued` → `running` or to any **terminal** state.
-- Write GitHub-affecting results (`prNumber`, `prUrl`, `headBranch`, SHAs) from actions.
-- Store or refresh credential-derived metadata (never raw tokens in queryable documents).
-- Any mutation that runs with elevated trust or skips user-scoped checks.
-
-**Rule of thumb:** if it touches git remotes, LLM provider keys, or interprets tool output into durable trace rows, it belongs behind an **action** that calls **internal** mutations.
-
-## Correlation and idempotency
-
-- Client may pass an optional `clientRunKey` (UUID) on enqueue; server rejects duplicate enqueue for the same ticket + key within a TTL to avoid double runs from retries.
-- `RunEvent` writes are append-only; action completion should be idempotent where possible (terminal state wins; no downgrade from terminal).
-
-## Related documents
-
-- [architecture.md](./architecture.md) — topology and data sketch.
-- [mvp.md](./mvp.md) — user-visible lifecycle expectations.
-- [safety-and-governance.md](./safety-and-governance.md) — tiering and operator modes (future enforcement hooks align to `RunEvent` types).
+- Desktop invokes `codex login status` but never reads or copies `~/.codex/auth.json`.
+- WorkOS refresh credentials live in macOS Keychain.
+- GitHub clone credentials are passed only to the clone operation.
+- Artifact reads and reveal operations are confined to app-managed run storage.
+- Convex mutations verify ownership and recompute terminal verification summaries.

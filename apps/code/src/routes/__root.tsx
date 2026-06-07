@@ -8,21 +8,20 @@ import {
   redirect,
 } from '@tanstack/react-router';
 import { getAuth } from '@workos/authkit-tanstack-react-start';
+import { LoadingView } from '@workspace/ui/components/app/loading-view';
+import { SidebarInset, SidebarProvider } from '@workspace/ui/components/ui/sidebar';
 import {
-  SidebarInset,
-  SidebarProvider,
-} from '@workspace/ui/components/ui/sidebar';
-import {
+  WorkosConvexProvider,
   fetchWorkosAuth,
   setConvexQueryClientAuthForSsr,
 } from '@workspace/web-foundation';
-import { type ConvexReactClient } from 'convex/react';
+import { AuthLoading, Authenticated, type ConvexReactClient } from 'convex/react';
 import { type PropsWithChildren, type ReactNode } from 'react';
 
 import { AppSidebar } from '#/components/app/app-sidebar';
 
-import appCssUrl from '@workspace/ui/globals.css?url';
 import themeOverridesUrl from '#/theme-overrides.css?url';
+import appCssUrl from '@workspace/ui/globals.css?url';
 
 interface Context {
   queryClient: QueryClient;
@@ -38,14 +37,16 @@ export const Route = createRootRouteWithContext<Context>()({
       { title: 'Code' },
     ],
     links: [
+      { rel: 'icon', href: '/code-favicon.svg', type: 'image/svg+xml' },
+      { rel: 'icon', href: '/code-logo.ico', sizes: 'any' },
       { rel: 'stylesheet', href: appCssUrl },
       { rel: 'stylesheet', href: themeOverridesUrl },
     ],
   }),
   beforeLoad: async ({ context }) => {
-    const { userId, token } = await fetchWorkosAuth();
+    const { initialAuth, token } = await fetchWorkosAuth();
     setConvexQueryClientAuthForSsr(context.convexQueryClient, token);
-    return { userId, token };
+    return { initialAuth };
   },
   loader: async () => {
     const { user } = await getAuth();
@@ -56,12 +57,21 @@ export const Route = createRootRouteWithContext<Context>()({
 });
 
 function RootComponent() {
+  const { convexQueryClient, initialAuth } = Route.useRouteContext();
+
   return (
-    <RootDocument>
-      <LayoutComponent>
-        <Outlet />
-      </LayoutComponent>
-    </RootDocument>
+    <WorkosConvexProvider convexQueryClient={convexQueryClient} initialAuth={initialAuth}>
+      <RootDocument>
+        <AuthLoading>
+          <LoadingView />
+        </AuthLoading>
+        <Authenticated>
+          <LayoutComponent>
+            <Outlet />
+          </LayoutComponent>
+        </Authenticated>
+      </RootDocument>
+    </WorkosConvexProvider>
   );
 }
 
@@ -87,12 +97,9 @@ function LayoutComponent({ children }: PropsWithChildren) {
       <AppSidebar user={user} />
       <SidebarInset>
         <div className='flex min-h-svh flex-1 flex-col'>
-          <div className='@container/main flex min-h-svh flex-1 flex-col gap-2'>
-            {children}
-          </div>
+          <div className='@container/main flex min-h-svh flex-1 flex-col gap-2'>{children}</div>
         </div>
       </SidebarInset>
     </SidebarProvider>
   );
 }
-

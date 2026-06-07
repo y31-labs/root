@@ -7,9 +7,10 @@ export default defineConfig(
     defineWebFoundationViteConfig({
       rootDir: import.meta.dirname,
       port: 3000,
-      convexAlias: { name: '#convex', path: 'convex' },
+      convexAlias: { name: '#convex', path: '../../convex' },
+      spa: false,
       extraPlugins: [devtools()],
     }),
-    {},
+    { envDir: '../..' },
   ),
 );

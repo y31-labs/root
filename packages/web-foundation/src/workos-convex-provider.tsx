@@ -4,8 +4,21 @@ import {
   useAccessToken,
   useAuth,
 } from '@workos/authkit-tanstack-react-start/client';
+import type { AuthKitProviderProps } from '@workos/authkit-tanstack-react-start/client';
 import { ConvexProviderWithAuth } from 'convex/react';
 import { type ReactNode, useCallback, useMemo } from 'react';
+
+export function getConvexAuthState(
+  loading: boolean,
+  user: unknown,
+  fetchAccessToken: (options: { forceRefreshToken: boolean }) => Promise<string | null>,
+) {
+  return {
+    isLoading: loading,
+    isAuthenticated: !!user,
+    fetchAccessToken,
+  };
+}
 
 function useAuthFromAuthKit() {
   const { loading, user } = useAuth();
@@ -23,11 +36,7 @@ function useAuthFromAuthKit() {
   );
 
   return useMemo(
-    () => ({
-      isLoading: loading,
-      isAuthenticated: !!user,
-      fetchAccessToken,
-    }),
+    () => getConvexAuthState(loading, user, fetchAccessToken),
     [loading, user, fetchAccessToken],
   );
 }
@@ -35,16 +44,15 @@ function useAuthFromAuthKit() {
 export function WorkosConvexProvider({
   children,
   convexQueryClient,
+  initialAuth,
 }: {
   children: ReactNode;
   convexQueryClient: ConvexQueryClient;
+  initialAuth?: AuthKitProviderProps['initialAuth'];
 }) {
   return (
-    <AuthKitProvider>
-      <ConvexProviderWithAuth
-        client={convexQueryClient.convexClient}
-        useAuth={useAuthFromAuthKit}
-      >
+    <AuthKitProvider initialAuth={initialAuth}>
+      <ConvexProviderWithAuth client={convexQueryClient.convexClient} useAuth={useAuthFromAuthKit}>
         {children}
       </ConvexProviderWithAuth>
     </AuthKitProvider>

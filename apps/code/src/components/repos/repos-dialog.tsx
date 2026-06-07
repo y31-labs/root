@@ -1,4 +1,5 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { LoadingView } from '@workspace/ui/components/app/loading-view';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,13 +17,12 @@ import {
   CommandGroup,
   CommandInput,
   CommandList,
-  CommandSeparator,
 } from '@workspace/ui/components/ui/command';
 import { Spinner } from '@workspace/ui/components/ui/spinner';
 import { useMutation } from 'convex/react';
 import { Trash2 } from 'lucide-react';
 import type { MouseEvent } from 'react';
-import { useEffect, useState, useTransition } from 'react';
+import { Suspense, useEffect, useState, useTransition } from 'react';
 
 import { SearchGroup } from '#/components/repos/search-group';
 import { repoQueries } from '#/queries';
@@ -58,6 +58,7 @@ export function ReposDialog({ open, onOpenChange }: ReposDialogProps) {
         defaultBranch: repo.defaultBranch,
         selected: repos.length === 0,
         publicId: repo.publicId,
+        private: repo.private,
         installationId: repo.installationId,
       });
       await queryClient.invalidateQueries({ queryKey: ['githubActions.searchRepos'] });
@@ -100,34 +101,43 @@ export function ReposDialog({ open, onOpenChange }: ReposDialogProps) {
             disabled={isDisabled}
           />
           <CommandList>
-            {repos.length > 0 && (
-              <>
-                <CommandGroup heading='Synced'>
-                  {repos.map((repo) => (
-                    <div
-                      key={repo._id}
-                      className='flex items-center justify-between gap-2 rounded-sm px-2 py-1.5'
-                    >
-                      <span className='min-w-0 truncate text-sm'>
-                        {repo.owner}/{repo.name}
-                      </span>
-                      <Button
-                        type='button'
-                        variant='ghost'
-                        size='icon-sm'
-                        aria-label={`Remove ${repo.owner}/${repo.name}`}
-                        disabled={isDisabled}
-                        onClick={() => setConfirmRepo(repo)}
+            <Suspense fallback={<LoadingView />}>
+              {repos.length > 0 && (
+                <>
+                  <CommandGroup heading='Synced'>
+                    {repos.map((repo) => (
+                      <div
+                        key={repo._id}
+                        className='group flex items-center justify-between gap-2 rounded-sm px-2 py-1.5'
                       >
-                        <Trash2 className='text-destructive' />
-                      </Button>
-                    </div>
-                  ))}
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-            <SearchGroup query={query} enabled={open} disabled={isDisabled} onSelect={onSelect} />
+                        <span className='min-w-0 truncate text-sm'>
+                          {repo.owner}/{repo.name}
+                        </span>
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='icon-sm'
+                          aria-label={`Remove ${repo.owner}/${repo.name}`}
+                          disabled={isDisabled}
+                          onClick={() => setConfirmRepo(repo)}
+                          className='opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+                        >
+                          <Trash2 className='text-destructive' />
+                        </Button>
+                      </div>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
+              {open ? (
+                <SearchGroup
+                  query={query}
+                  enabled={open}
+                  disabled={isDisabled}
+                  onSelect={onSelect}
+                />
+              ) : null}
+            </Suspense>
           </CommandList>
         </Command>
       </CommandDialog>

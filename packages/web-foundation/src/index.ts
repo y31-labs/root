@@ -3,3 +3,4 @@ export { setConvexQueryClientAuthForSsr } from './convex-ssr-auth.ts';
 export { startInstance } from './start.ts';
 export { WorkosConvexProvider } from './workos-convex-provider.tsx';
 export { fetchWorkosAuth } from './workos-auth-server-fn.ts';
+export { useAuth as useWorkosAuth } from '@workos/authkit-tanstack-react-start/client';
