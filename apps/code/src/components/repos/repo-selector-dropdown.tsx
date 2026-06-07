@@ -68,7 +68,7 @@ const getButtonLabel = (repos: Doc<'repos'>[]) => {
   if (selectedRepos.length > 1) return 'Multiple selected';
 
   const firstSelected = selectedRepos[0];
-  if (!firstSelected) return 'Sync repository';
+  if (!firstSelected) return 'Select repository';
 
   return getLabel(firstSelected);
 };

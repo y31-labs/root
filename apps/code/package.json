@@ -3,22 +3,23 @@
   "private": true,
   "type": "module",
   "imports": {
-    "#/*": "src/*",
-    "#convex/*": "convex/*"
+    "#/*": "src/*"
   },
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
-    "convex": "convex dev"
+    "test": "vitest run"
   },
   "dependencies": {
     "@convex-dev/react-query": "^0.1.0",
     "@tailwindcss/vite": "^4.2.4",
     "@tanstack/react-query": "^5.100.9",
-    "@tanstack/react-router": "^1.169.2",
-    "@tanstack/react-start": "^1.167.64",
+    "@tanstack/react-router": "1.169.2",
+    "@tanstack/react-start": "1.167.64",
     "@workos/authkit-tanstack-react-start": "^0.8.2",
+    "@workspace/code-agent-contracts": "workspace:*",
+    "@workspace/code-workbench": "workspace:*",
     "@workspace/ui": "workspace:*",
     "@workspace/web-foundation": "workspace:*",
     "class-variance-authority": "^0.7.1",
@@ -34,11 +35,15 @@
   },
   "devDependencies": {
     "@tanstack/devtools-vite": "^0.6.0",
+    "@tanstack/react-router-ssr-query": "1.167.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^29.1.1",
     "typescript": "^6.0.3",
-    "vite": "^8.0.10"
+    "vite": "^8.0.10",
+    "vitest": "^4.1.5"
   }
 }

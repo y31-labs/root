@@ -1,14 +1,14 @@
-import { Route as IndexRoute } from '#/routes/index';
-import { Link, useMatchRoute, type AnyRoute } from '@tanstack/react-router';
+import type { AnyRoute } from '@tanstack/react-router';
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from '@workspace/ui/components/ui/sidebar';
-import { File } from 'lucide-react';
+import { SquareCheck } from 'lucide-react';
 import type { FC } from 'react';
+
+import { SidebarLinkButton } from '#/components/navigation/sidebar-link-button';
+import { Route as TasksRoute } from '#/routes/index';
 
 interface NavItem {
   title: string;
@@ -18,30 +18,21 @@ interface NavItem {
 
 const items: NavItem[] = [
   {
-    title: 'Inbox',
-    route: IndexRoute,
-    icon: File,
+    title: 'Tasks',
+    route: TasksRoute,
+    icon: SquareCheck,
   },
 ];
 
 export function NavMain() {
-  const matchRoute = useMatchRoute();
-
   return (
     <SidebarGroup>
       <SidebarGroupContent className='flex flex-col gap-2'>
         <SidebarMenu>
-          {items.map(({ title, route: { to }, icon: Icon }) => (
-            <SidebarMenuItem key={title}>
-              <SidebarMenuButton
-                tooltip={title}
-                isActive={!!matchRoute({ to, fuzzy: true })}
-              >
-                <Link to={to}>
-                  <Icon />
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+          {items.map(({ title, route, icon: Icon }) => (
+            <SidebarLinkButton key={title} title={title} route={route}>
+              <Icon />
+            </SidebarLinkButton>
           ))}
         </SidebarMenu>
       </SidebarGroupContent>

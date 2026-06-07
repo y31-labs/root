@@ -10,7 +10,6 @@ export function createConvexReactQueryStack(getConvexUrl: () => string) {
       queries: {
         queryKeyHashFn: convexQueryClient.hashFn(),
         queryFn: convexQueryClient.queryFn(),
-        experimental_prefetchInRender: true,
       },
     },
   });

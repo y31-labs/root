@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./convex-react-query": "./src/convex-react-query.ts",
     "./vite": "./src/vite.ts",
     "./start": "./src/start.ts"
   },
@@ -26,4 +27,3 @@
     "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
   }
 }
-

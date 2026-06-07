@@ -1,14 +1,13 @@
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
+
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
-import { createRequire } from 'node:module';
-import { dirname, resolve } from 'node:path';
 import type { PluginOption, UserConfig } from 'vite';
 
 const requireFromPkg = createRequire(import.meta.url);
-const eventemitter3PkgDir = dirname(
-  requireFromPkg.resolve('eventemitter3/package.json'),
-);
+const eventemitter3PkgDir = dirname(requireFromPkg.resolve('eventemitter3/package.json'));
 const eventemitter3Esm = resolve(eventemitter3PkgDir, 'dist/eventemitter3.esm.js');
 
 export interface WebFoundationViteOptions {
@@ -19,18 +18,19 @@ export interface WebFoundationViteOptions {
   appSrcAlias?: { name: string; path: string };
   /** Optional Convex folder alias, e.g. `{ name: '#convex', path: 'convex' }`. */
   convexAlias?: { name: string; path: string };
+  /** Whether TanStack Start should emit an SPA shell instead of request-time SSR. */
+  spa?: boolean;
   /** Extra Vite plugins (e.g. TanStack Devtools) inserted after shared plugins. */
   extraPlugins?: PluginOption[];
 }
 
-export function defineWebFoundationViteConfig(
-  options: WebFoundationViteOptions,
-): UserConfig {
+export function defineWebFoundationViteConfig(options: WebFoundationViteOptions): UserConfig {
   const {
     rootDir,
     port,
     appSrcAlias = { name: '#', path: 'src' },
     convexAlias,
+    spa = true,
     extraPlugins = [],
   } = options;
 
@@ -47,7 +47,7 @@ export function defineWebFoundationViteConfig(
     server: { port },
     plugins: [
       tailwindcss(),
-      tanstackStart({ spa: { enabled: true } }),
+      tanstackStart(spa ? { spa: { enabled: true } } : {}),
       viteReact(),
       ...extraPlugins,
     ],
@@ -57,4 +57,3 @@ export function defineWebFoundationViteConfig(
     },
   };
 }
-

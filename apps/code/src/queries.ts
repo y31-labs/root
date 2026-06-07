@@ -12,6 +12,7 @@ export const repoQueries = {
 
 export const githubInstallationsQueries = {
   count: convexQuery(api.githubInstallations.count, {}),
+  list: convexQuery(api.githubInstallations.list, {}),
 };
 
 export const useSearchRepos = (query: string, enabled = true, minQueryLength: number) => {

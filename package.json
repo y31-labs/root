@@ -1,6 +1,13 @@
 {
   "name": "root-monorepo",
   "private": true,
+  "type": "module",
+  "imports": {
+    "#convex/_generated/api": "./convex/_generated/api.js",
+    "#convex/_generated/dataModel": "./convex/_generated/dataModel.d.ts",
+    "#convex/_generated/server": "./convex/_generated/server.js",
+    "#convex/*": "./convex/*.ts"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -14,14 +21,23 @@
     "trading:preview": "bun run --elide-lines=0 --filter trading preview",
     "trading:test": "bun run --elide-lines=0 --filter trading test",
     "trading:convex": "bun run --elide-lines=0 --filter trading convex",
-    "code:dev": "bun run --elide-lines=0 --filter code dev",
-    "code:build": "bun run --elide-lines=0 --filter code build",
-    "code:preview": "bun run --elide-lines=0 --filter code preview",
-    "code:convex": "bun run --elide-lines=0 --filter code convex",
+    "code:dev": "bun run --filter code dev",
+    "code:build": "bun run --filter code build",
+    "code:preview": "bun run --filter code preview",
+    "code:convex": "bunx convex dev",
+    "desktop:dev": "bun run --filter code-desktop tauri dev",
+    "desktop:build": "bun run --filter code-desktop tauri build",
+    "desktop:test": "bun run --filter code-desktop test",
+    "desktop:image": "docker build -t code-agent-verifier:1 -f apps/code-desktop/verification.Dockerfile apps/code-desktop",
     "ui:add": "bun run --cwd packages/ui ui:add",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "lint:typecheck": "oxlint --type-aware --type-check"
+  },
+  "dependencies": {
+    "@workspace/code-agent-contracts": "workspace:*",
+    "convex": "^1.37.0",
+    "convex-helpers": "^0.1.118"
   },
   "devDependencies": {
     "oxfmt": "^0.50.0",
