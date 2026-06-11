@@ -22,9 +22,9 @@ export function DesktopShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={false}>
       <AppSidebar />
-      <SidebarInset className='min-w-0 overflow-x-hidden'>
-        <div className='flex min-h-svh min-w-0 flex-1 flex-col'>
-          <div className='@container/main flex min-h-svh min-w-0 flex-1 flex-col gap-2'>
+      <SidebarInset className='h-svh min-w-0 overflow-x-hidden pt-10'>
+        <div className='flex min-h-0 min-w-0 flex-1 flex-col'>
+          <div className='@container/main flex min-h-0 min-w-0 flex-1 flex-col gap-2'>
             {children}
           </div>
         </div>

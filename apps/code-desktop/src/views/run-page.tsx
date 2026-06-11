@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 import { listen } from '@tauri-apps/api/event';
 import { GateTimeline } from '@workspace/code-workbench/gate-timeline';
+import { PageHeader } from '@workspace/code-workbench/page-header';
 import { RunStatusBadge } from '@workspace/code-workbench/run-status-badge';
 import { Button } from '@workspace/ui/components/ui/button';
 import {
@@ -45,26 +46,25 @@ export function RunPage() {
 
   return (
     <div className='min-w-0 space-y-6 p-6'>
-      <header className='flex items-start justify-between gap-4'>
-        <div>
-          <div className='flex items-center gap-2'>
-            <h1 className='text-2xl font-semibold'>Run {runId.slice(-8)}</h1>
-            <RunStatusBadge status={data.run.status} />
-          </div>
-          <p className='text-muted-foreground text-sm'>
-            {data.run.baseCommitSha.slice(0, 12)} · {data.run.codexVersion}
-          </p>
-        </div>
-        {!terminal ? (
-          <Button variant='destructive' onClick={() => localApi.cancelRun(runId)}>
-            <Square data-icon='inline-start' />Cancel
-          </Button>
-        ) : null}
-      </header>
+      <PageHeader
+        title={`Run ${runId.slice(-8)}`}
+        description={`${data.run.baseCommitSha.slice(0, 12)} · ${data.run.codexVersion}`}
+        meta={<RunStatusBadge status={data.run.status} />}
+        actions={
+          !terminal ? (
+            <Button variant='destructive' onClick={() => localApi.cancelRun(runId)}>
+              <Square data-icon='inline-start' />
+              Cancel
+            </Button>
+          ) : undefined
+        }
+      />
 
       <div className='grid min-w-0 gap-6 xl:grid-cols-2'>
         <Card className='min-w-0'>
-          <CardHeader><CardTitle>Verification</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Verification</CardTitle>
+          </CardHeader>
           <CardContent>
             <GateTimeline
               summary={data.run.verificationSummary}
@@ -102,7 +102,9 @@ export function RunPage() {
       </div>
 
       <Card className='min-w-0'>
-        <CardHeader><CardTitle>Timeline</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Timeline</CardTitle>
+        </CardHeader>
         <CardContent className='space-y-2'>
           {localRun?.events.map((event) => (
             <div key={event.id} className='border-l-2 pl-3 text-sm'>
@@ -115,9 +117,13 @@ export function RunPage() {
 
       {patch ? (
         <Card className='min-w-0'>
-          <CardHeader><CardTitle>Patch</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Patch</CardTitle>
+          </CardHeader>
           <CardContent>
-            <pre className='bg-muted max-h-[40rem] overflow-auto rounded-lg p-4 text-xs'>{patch}</pre>
+            <pre className='bg-muted max-h-[40rem] overflow-auto rounded-lg p-4 text-xs'>
+              {patch}
+            </pre>
           </CardContent>
         </Card>
       ) : null}

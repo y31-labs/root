@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router';
-
-import { SetupPage } from '#/views/setup-page';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/')({
-  component: SetupPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/tasks' });
+  },
 });

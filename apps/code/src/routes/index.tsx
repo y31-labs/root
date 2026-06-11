@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { PageHeader } from '@workspace/code-workbench/page-header';
 import { LoadingView } from '@workspace/ui/components/app/loading-view';
 import { useBoolean } from '@workspace/ui/hooks/use-boolean';
 import { useMutation } from 'convex/react';
@@ -28,10 +29,10 @@ function HomePage() {
   return (
     <>
       <div className='flex flex-1 flex-col gap-6 p-4 md:p-6'>
-        <header className='flex flex-wrap items-center justify-between gap-3'>
-          <h1 className='text-2xl font-semibold'>Code</h1>
-          <RepoSelectorDropdown onSelectRepo={onSelectRepo} onManageRepos={setTrue} />
-        </header>
+        <PageHeader
+          title='Code'
+          actions={<RepoSelectorDropdown onSelectRepo={onSelectRepo} onManageRepos={setTrue} />}
+        />
       </div>
       <ReposDialog open={open} onOpenChange={setOpen} />
     </>
