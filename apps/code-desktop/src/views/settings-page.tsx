@@ -2,24 +2,18 @@ import { useQuery } from '@tanstack/react-query';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { EngineHealthCard } from '@workspace/code-workbench/engine-health-card';
 import { ManifestEditor } from '@workspace/code-workbench/manifest-editor';
+import { PageHeader } from '@workspace/code-workbench/page-header';
 import { RepositoryPolicyCard } from '@workspace/code-workbench/repository-policy-card';
 import { Button } from '@workspace/ui/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@workspace/ui/components/ui/card';
 import { useAction, useMutation } from 'convex/react';
-import { ExternalLink, LogOut, RefreshCw } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { useEffect, useState, useTransition } from 'react';
 
 import { localApi } from '#/lib/local-api';
 import { desktopQueries } from '#/lib/queries';
 import { api } from '#convex/_generated/api';
 
-export function SetupPage() {
+export function SettingsPage() {
   const [health, setHealth] = useState({
     available: false,
     authenticated: false,
@@ -63,32 +57,8 @@ export function SetupPage() {
   };
 
   return (
-    <div className='grid min-w-0 gap-6 p-6 xl:grid-cols-2'>
-      <Card className='min-w-0'>
-        <CardHeader>
-          <CardTitle>Account</CardTitle>
-          <CardDescription>WorkOS identity is shared with the web setup app.</CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-4'>
-          <p className='text-muted-foreground text-sm'>
-            Desktop is authenticated. Refresh credentials are stored in macOS Keychain.
-          </p>
-          <div className='flex flex-wrap gap-2'>
-            <Button
-              variant='outline'
-              disabled={isPending}
-              onClick={() => startTransition(() => localApi.logout())}
-            >
-              <LogOut data-icon='inline-start' />
-              Sign out
-            </Button>
-            <Button variant='ghost' onClick={refresh}>
-              <RefreshCw data-icon='inline-start' />
-              Refresh
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className='flex min-w-0 flex-1 flex-col gap-8 p-4 md:p-6'>
+      <PageHeader title='Settings' />
 
       <EngineHealthCard
         health={health}
@@ -106,21 +76,22 @@ export function SetupPage() {
         }
       />
 
-      <Card className='min-w-0'>
-        <CardHeader>
-          <CardTitle>GitHub repositories</CardTitle>
-          <CardDescription>
+      <section className='min-w-0 space-y-4'>
+        <div>
+          <h2 className='font-medium'>GitHub repositories</h2>
+          <p className='text-muted-foreground text-sm'>
             Repository connections are shared with the web setup app.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-3'>
+          </p>
+        </div>
+
+        <div className='divide-y border-y'>
           {reposQuery.data?.length ? (
             reposQuery.data.map((repo) => (
               <div
                 key={repo._id}
-                className='flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3 text-sm'
+                className='flex min-w-0 items-center justify-between gap-3 py-3 text-sm'
               >
-                <span className='min-w-0 truncate'>
+                <span className='min-w-0 truncate font-medium'>
                   {repo.owner}/{repo.name}
                 </span>
                 <Button
@@ -138,21 +109,29 @@ export function SetupPage() {
               </div>
             ))
           ) : (
-            <p className='text-muted-foreground text-sm'>No connected repositories.</p>
+            <p className='text-muted-foreground py-3 text-sm'>No connected repositories.</p>
           )}
-          <Button
-            variant='outline'
-            onClick={() =>
-              openUrl(
-                `${import.meta.env.VITE_CODE_WEB_URL ?? 'http://localhost:3000'}/api/github/install`,
-              )
-            }
-          >
-            <ExternalLink data-icon='inline-start' />
-            Manage in browser
-          </Button>
-        </CardContent>
-      </Card>
+          <div className='flex items-center justify-between gap-3 py-3'>
+            <div>
+              <p className='text-sm font-medium'>GitHub connections</p>
+              <p className='text-muted-foreground text-sm'>
+                Add or remove repositories in the web app.
+              </p>
+            </div>
+            <Button
+              variant='outline'
+              onClick={() =>
+                openUrl(
+                  `${import.meta.env.VITE_CODE_WEB_URL ?? 'http://localhost:3000'}/api/github/install`,
+                )
+              }
+            >
+              Manage
+              <ExternalLink data-icon='inline-end' />
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {selectedRepo ? (
         <RepositoryPolicyCard

@@ -1,5 +1,7 @@
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
+    env,
+    ffi::OsStr,
     fs::OpenOptions,
     io::Write,
     path::{Path, PathBuf},
@@ -22,9 +24,10 @@ use tauri::{
 };
 use tokio::{
     fs,
-    io::{AsyncBufReadExt, AsyncReadExt, BufReader},
-    process::Command,
-    time::sleep,
+    io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
+    process::{Child, ChildStdin, Command},
+    sync::{oneshot, Mutex as AsyncMutex},
+    time::{sleep, timeout},
 };
 use uuid::Uuid;
 use walkdir::WalkDir;
@@ -35,6 +38,7 @@ const REFRESH_TOKEN_FILE: &str = "workos-refresh-token";
 const VERIFICATION_IMAGE: &str = "code-agent-verifier:1";
 const MAX_ATTEMPTS: u32 = 5;
 const MAX_RUN_TIME: Duration = Duration::from_secs(30 * 60);
+const CODEX_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 struct AppState {
     data_dir: PathBuf,
@@ -42,6 +46,14 @@ struct AppState {
     refresh_token: Mutex<Option<String>>,
     cancelled: Mutex<HashSet<String>>,
     active: Mutex<HashSet<String>>,
+    codex: AsyncMutex<Option<CodexClient>>,
+}
+
+struct CodexClient {
+    _child: Child,
+    stdin: ChildStdin,
+    pending: std::sync::Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
+    next_id: u64,
 }
 
 struct CachedToken {
@@ -192,6 +204,22 @@ enum SyncEvent {
     },
 }
 
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum PostHogLogLevel {
+    Info,
+    Warn,
+    Error,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PostHogLogEvent {
+    level: PostHogLogLevel,
+    message: &'static str,
+    attributes: BTreeMap<String, Value>,
+}
+
 struct ProcessResult {
     exit_code: Option<i32>,
     output: String,
@@ -199,12 +227,42 @@ struct ProcessResult {
     cancelled: bool,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ChatThread {
+    id: String,
+    provider: String,
+    provider_thread_id: String,
+    cwd: String,
+    title: String,
+    created_at: i64,
+    updated_at: i64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateChatThreadInput {
+    provider: String,
+    cwd: String,
+}
+
 #[tauri::command]
 async fn engine_health() -> EngineHealth {
-    let version = command_text("codex", &["--version"]).await.ok();
-    let login = command_text("codex", &["login", "status"]).await;
-    let docker = command_ok("docker", &["info"]).await
-        && command_ok("docker", &["image", "inspect", VERIFICATION_IMAGE]).await;
+    let codex = codex_executable();
+    let version = match &codex {
+        Ok(codex) => command_text(codex, &["--version"]).await.ok(),
+        Err(_) => None,
+    };
+    let login = match &codex {
+        Ok(codex) => command_text(codex, &["login", "status"]).await,
+        Err(error) => Err(error.clone()),
+    };
+    let docker = command_ok(Path::new("docker"), &["info"]).await
+        && command_ok(
+            Path::new("docker"),
+            &["image", "inspect", VERIFICATION_IMAGE],
+        )
+        .await;
     let authenticated = login.as_ref().is_ok_and(|text| {
         let text = text.to_ascii_lowercase();
         text.contains("logged in") && text.contains("chatgpt")
@@ -231,7 +289,7 @@ async fn engine_health() -> EngineHealth {
 
 #[tauri::command]
 fn start_codex_login() -> Result<(), String> {
-    std::process::Command::new("codex")
+    std::process::Command::new(codex_executable()?)
         .arg("login")
         .spawn()
         .map_err(display_error)?;
@@ -377,10 +435,36 @@ async fn start_local_run(
         .insert(input.run_id.clone());
     let data_dir = state.data_dir.clone();
     let run_id = input.run_id.clone();
+    emit_posthog_log(
+        &app,
+        PostHogLogLevel::Info,
+        "local run started",
+        [
+            ("operation", json!("start")),
+            ("runId", json!(input.run_id)),
+            ("status", json!("queued")),
+        ],
+    );
     tauri::async_runtime::spawn(async move {
+        let started = Instant::now();
         if let Err(error) = execute_run(&app, &data_dir, &input).await {
             let cancelled = is_cancelled(&app, &run_id);
             let status = if cancelled { "cancelled" } else { "failed" };
+            emit_posthog_log(
+                &app,
+                if cancelled {
+                    PostHogLogLevel::Warn
+                } else {
+                    PostHogLogLevel::Error
+                },
+                "local run completed",
+                [
+                    ("runId", json!(run_id)),
+                    ("status", json!(status)),
+                    ("durationMs", json!(started.elapsed().as_millis() as u64)),
+                    ("errorCategory", json!(error_category(&error))),
+                ],
+            );
             let _ = update_run(&data_dir, &run_id, status, Some(&error), None);
             let _ = app.emit(
                 "local-run-sync",
@@ -405,7 +489,17 @@ async fn start_local_run(
 }
 
 #[tauri::command]
-fn cancel_local_run(state: State<'_, AppState>, run_id: String) -> Result<(), String> {
+fn cancel_local_run(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    run_id: String,
+) -> Result<(), String> {
+    emit_posthog_log(
+        &app,
+        PostHogLogLevel::Warn,
+        "local run cancellation requested",
+        [("operation", json!("cancel")), ("runId", json!(run_id))],
+    );
     state
         .cancelled
         .lock()
@@ -446,6 +540,399 @@ fn quit_application(app: AppHandle, state: State<'_, AppState>, force: bool) -> 
     }
     app.exit(0);
     Ok(())
+}
+
+#[tauri::command]
+fn list_chat_threads(state: State<'_, AppState>) -> Result<Vec<ChatThread>, String> {
+    load_chat_threads(&state.data_dir)
+}
+
+#[tauri::command]
+async fn create_chat_thread(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    input: CreateChatThreadInput,
+) -> Result<ChatThread, String> {
+    if input.provider != "codex" {
+        return Err(format!("Unsupported chat provider: {}", input.provider));
+    }
+    let cwd = PathBuf::from(&input.cwd)
+        .canonicalize()
+        .map_err(display_error)?;
+    if !cwd.is_dir() {
+        return Err("Chat workspace must be a directory".to_string());
+    }
+    let response = codex_request(
+        &app,
+        &state,
+        "thread/start",
+        json!({
+            "cwd": cwd,
+            "approvalPolicy": "on-request",
+            "approvalsReviewer": "user",
+            "sandbox": "workspace-write",
+            "serviceName": "code-desktop",
+            "threadSource": "user"
+        }),
+    )
+    .await?;
+    let provider_thread_id = response
+        .pointer("/thread/id")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "Codex did not return a thread id".to_string())?
+        .to_string();
+    let now = now_ms();
+    let thread = ChatThread {
+        id: Uuid::new_v4().to_string(),
+        provider: input.provider,
+        provider_thread_id,
+        cwd: cwd.to_string_lossy().into_owned(),
+        title: "New chat".to_string(),
+        created_at: now,
+        updated_at: now,
+    };
+    insert_chat_thread(&state.data_dir, &thread)?;
+    Ok(thread)
+}
+
+#[tauri::command]
+async fn read_chat_thread(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    thread_id: String,
+) -> Result<Value, String> {
+    let thread = load_chat_thread(&state.data_dir, &thread_id)?
+        .ok_or_else(|| "Chat thread not found".to_string())?;
+    codex_request(
+        &app,
+        &state,
+        "thread/resume",
+        json!({
+            "threadId": thread.provider_thread_id,
+            "cwd": thread.cwd,
+            "approvalPolicy": "on-request",
+            "approvalsReviewer": "user",
+            "sandbox": "workspace-write"
+        }),
+    )
+    .await?;
+    codex_request(
+        &app,
+        &state,
+        "thread/read",
+        json!({ "threadId": thread.provider_thread_id, "includeTurns": true }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn send_chat_message(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    thread_id: String,
+    text: String,
+) -> Result<Value, String> {
+    let text = text.trim();
+    if text.is_empty() {
+        return Err("Message cannot be empty".to_string());
+    }
+    let mut thread = load_chat_thread(&state.data_dir, &thread_id)?
+        .ok_or_else(|| "Chat thread not found".to_string())?;
+    if thread.title == "New chat" {
+        thread.title = chat_title(text);
+        update_chat_thread_title(&state.data_dir, &thread.id, &thread.title)?;
+        let _ = codex_request(
+            &app,
+            &state,
+            "thread/name/set",
+            json!({ "threadId": thread.provider_thread_id, "name": thread.title }),
+        )
+        .await;
+    } else {
+        touch_chat_thread(&state.data_dir, &thread.id)?;
+    }
+    codex_request(
+        &app,
+        &state,
+        "turn/start",
+        json!({
+            "threadId": thread.provider_thread_id,
+            "input": [{ "type": "text", "text": text, "text_elements": [] }],
+            "cwd": thread.cwd,
+            "approvalPolicy": "on-request",
+            "approvalsReviewer": "user"
+        }),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn interrupt_chat_turn(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    thread_id: String,
+    turn_id: String,
+) -> Result<(), String> {
+    let thread = load_chat_thread(&state.data_dir, &thread_id)?
+        .ok_or_else(|| "Chat thread not found".to_string())?;
+    codex_request(
+        &app,
+        &state,
+        "turn/interrupt",
+        json!({ "threadId": thread.provider_thread_id, "turnId": turn_id }),
+    )
+    .await?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn resolve_chat_approval(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request_id: Value,
+    method: String,
+    decision: String,
+) -> Result<(), String> {
+    let result = match method.as_str() {
+        "item/commandExecution/requestApproval" => json!({ "decision": decision }),
+        "item/fileChange/requestApproval" => json!({ "decision": decision }),
+        _ => return Err(format!("Unsupported approval request: {method}")),
+    };
+    codex_respond(&app, &state, request_id, result).await
+}
+
+#[tauri::command]
+async fn archive_chat_thread(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    thread_id: String,
+) -> Result<(), String> {
+    let thread = load_chat_thread(&state.data_dir, &thread_id)?
+        .ok_or_else(|| "Chat thread not found".to_string())?;
+    codex_request(
+        &app,
+        &state,
+        "thread/archive",
+        json!({ "threadId": thread.provider_thread_id }),
+    )
+    .await?;
+    database(&state.data_dir)?
+        .execute("DELETE FROM chat_threads WHERE id = ?1", [&thread_id])
+        .map_err(display_error)?;
+    Ok(())
+}
+
+async fn codex_request(
+    app: &AppHandle,
+    state: &AppState,
+    method: &str,
+    params: Value,
+) -> Result<Value, String> {
+    let mut guard = state.codex.lock().await;
+    if guard.is_none() {
+        *guard = Some(start_codex_client(app).await?);
+    }
+    let client = guard.as_mut().expect("Codex client initialized");
+    match client.request(method, params).await {
+        Ok(value) => Ok(value),
+        Err(error) => {
+            emit_posthog_log(
+                app,
+                PostHogLogLevel::Error,
+                "codex request failed",
+                [
+                    ("operation", json!(method)),
+                    ("errorCategory", json!(error_category(&error))),
+                ],
+            );
+            *guard = None;
+            Err(error)
+        }
+    }
+}
+
+async fn codex_respond(
+    app: &AppHandle,
+    state: &AppState,
+    request_id: Value,
+    result: Value,
+) -> Result<(), String> {
+    let mut guard = state.codex.lock().await;
+    if guard.is_none() {
+        *guard = Some(start_codex_client(app).await?);
+    }
+    let result = guard
+        .as_mut()
+        .expect("Codex client initialized")
+        .write(&json!({ "id": request_id, "result": result }))
+        .await;
+    if result.is_err() {
+        emit_posthog_log(
+            app,
+            PostHogLogLevel::Error,
+            "codex request failed",
+            [
+                ("operation", json!("approval-response")),
+                ("errorCategory", json!("operation_failed")),
+            ],
+        );
+        *guard = None;
+    }
+    result
+}
+
+async fn start_codex_client(app: &AppHandle) -> Result<CodexClient, String> {
+    let mut child = Command::new(codex_executable()?)
+        .args(["app-server", "--listen", "stdio://"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .map_err(display_error)?;
+    let stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| "Codex app-server stdin unavailable".to_string())?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| "Codex app-server stdout unavailable".to_string())?;
+    let pending: std::sync::Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>> =
+        std::sync::Arc::new(Mutex::new(HashMap::new()));
+    let reader_pending = pending.clone();
+    let reader_app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut lines = BufReader::new(stdout).lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            let Ok(message) = serde_json::from_str::<Value>(&line) else {
+                continue;
+            };
+            let response_id = message.get("id").and_then(Value::as_u64);
+            let is_response = message.get("result").is_some() || message.get("error").is_some();
+            if is_response {
+                if let Some(id) = response_id {
+                    let sender = reader_pending
+                        .lock()
+                        .ok()
+                        .and_then(|mut pending| pending.remove(&id));
+                    if let Some(sender) = sender {
+                        let result = if let Some(error) = message.get("error") {
+                            Err(error
+                                .get("message")
+                                .and_then(Value::as_str)
+                                .unwrap_or("Codex request failed")
+                                .to_string())
+                        } else {
+                            Ok(message.get("result").cloned().unwrap_or(Value::Null))
+                        };
+                        let _ = sender.send(result);
+                        continue;
+                    }
+                }
+            }
+            let _ = reader_app.emit("chat-event", message);
+        }
+        if let Ok(mut pending) = reader_pending.lock() {
+            for (_, sender) in pending.drain() {
+                let _ = sender.send(Err("Codex app-server stopped".to_string()));
+            }
+        }
+        let _ = reader_app.emit(
+            "chat-event",
+            json!({ "method": "error", "params": { "message": "Codex app-server stopped" } }),
+        );
+        emit_posthog_log(
+            &reader_app,
+            PostHogLogLevel::Error,
+            "codex app server stopped",
+            [
+                ("operation", json!("read-loop")),
+                ("status", json!("stopped")),
+            ],
+        );
+    });
+    let mut client = CodexClient {
+        _child: child,
+        stdin,
+        pending,
+        next_id: 1,
+    };
+    client
+        .request(
+            "initialize",
+            json!({
+                "clientInfo": {
+                    "name": "code_desktop",
+                    "title": "Code Desktop",
+                    "version": env!("CARGO_PKG_VERSION")
+                }
+            }),
+        )
+        .await?;
+    client
+        .write(&json!({ "method": "initialized", "params": {} }))
+        .await?;
+    emit_posthog_log(
+        app,
+        PostHogLogLevel::Info,
+        "codex app server started",
+        [
+            ("operation", json!("initialize")),
+            ("status", json!("ready")),
+        ],
+    );
+    Ok(client)
+}
+
+impl CodexClient {
+    async fn request(&mut self, method: &str, params: Value) -> Result<Value, String> {
+        let id = self.next_id;
+        self.next_id += 1;
+        let (sender, receiver) = oneshot::channel();
+        self.pending
+            .lock()
+            .map_err(display_error)?
+            .insert(id, sender);
+        if let Err(error) = self
+            .write(&json!({ "method": method, "id": id, "params": params }))
+            .await
+        {
+            if let Ok(mut pending) = self.pending.lock() {
+                pending.remove(&id);
+            }
+            return Err(error);
+        }
+        let result = await_codex_response(receiver, method, CODEX_REQUEST_TIMEOUT).await;
+        if let Ok(mut pending) = self.pending.lock() {
+            pending.remove(&id);
+        }
+        result
+    }
+
+    async fn write(&mut self, message: &Value) -> Result<(), String> {
+        self.stdin
+            .write_all(format!("{message}\n").as_bytes())
+            .await
+            .map_err(display_error)?;
+        self.stdin.flush().await.map_err(display_error)
+    }
+}
+
+async fn await_codex_response(
+    receiver: oneshot::Receiver<Result<Value, String>>,
+    method: &str,
+    request_timeout: Duration,
+) -> Result<Value, String> {
+    timeout(request_timeout, receiver)
+        .await
+        .map_err(|_| {
+            format!(
+                "Codex request `{method}` timed out after {} seconds",
+                request_timeout.as_secs()
+            )
+        })?
+        .map_err(|_| "Codex response channel closed".to_string())?
 }
 
 async fn execute_run(
@@ -513,6 +1000,22 @@ async fn execute_run(
         },
     )
     .map_err(display_error)?;
+    emit_posthog_log(
+        app,
+        if status == "verified" {
+            PostHogLogLevel::Info
+        } else {
+            PostHogLogLevel::Warn
+        },
+        "local run completed",
+        [
+            ("runId", json!(input.run_id)),
+            ("status", json!(status)),
+            ("durationMs", json!(started.elapsed().as_millis() as u64)),
+            ("changedFileCount", json!(changed_file_count)),
+            ("hasLocalPatch", json!(has_patch)),
+        ],
+    );
     Ok(())
 }
 
@@ -571,7 +1074,7 @@ async fn run_codex(
     let remaining = MAX_RUN_TIME
         .checked_sub(started.elapsed())
         .ok_or_else(|| "Run exceeded the wall-time limit".to_string())?;
-    let mut child = Command::new("codex");
+    let mut child = Command::new(codex_executable()?);
     child
         .args([
             "exec",
@@ -720,6 +1223,24 @@ async fn run_gates(
         let passed = result.exit_code == Some(0) && !result.timed_out && !result.cancelled;
         let status = if passed { "passed" } else { "failed" };
         let duration_ms = gate_started.elapsed().as_millis() as u64;
+        emit_posthog_log(
+            app,
+            if passed {
+                PostHogLogLevel::Info
+            } else {
+                PostHogLogLevel::Warn
+            },
+            "local run gate completed",
+            [
+                ("runId", json!(input.run_id)),
+                ("gate", json!(kind)),
+                ("status", json!(status)),
+                ("required", json!(gate.required)),
+                ("attempt", json!(attempt)),
+                ("durationMs", json!(duration_ms)),
+                ("exitCode", json!(result.exit_code)),
+            ],
+        );
         append_event(
             data_dir,
             &input.run_id,
@@ -1060,6 +1581,16 @@ fn transition(
     status: &str,
     attempt: Option<u32>,
 ) -> Result<(), String> {
+    emit_posthog_log(
+        app,
+        PostHogLogLevel::Info,
+        "local run transitioned",
+        [
+            ("runId", json!(run_id)),
+            ("status", json!(status)),
+            ("attempt", json!(attempt)),
+        ],
+    );
     update_run(data_dir, run_id, status, None, None)?;
     append_event(
         data_dir,
@@ -1244,10 +1775,116 @@ fn database(data_dir: &Path) -> Result<Connection, String> {
                created_at INTEGER NOT NULL
              );
              CREATE INDEX IF NOT EXISTS local_events_by_run
-               ON local_events(run_id, id);",
+               ON local_events(run_id, id);
+             CREATE TABLE IF NOT EXISTS chat_threads (
+               id TEXT PRIMARY KEY,
+               provider TEXT NOT NULL,
+               provider_thread_id TEXT NOT NULL UNIQUE,
+               cwd TEXT NOT NULL,
+               title TEXT NOT NULL,
+               created_at INTEGER NOT NULL,
+               updated_at INTEGER NOT NULL
+             );
+             CREATE INDEX IF NOT EXISTS chat_threads_by_updated
+               ON chat_threads(updated_at DESC);",
         )
         .map_err(display_error)?;
     Ok(connection)
+}
+
+fn insert_chat_thread(data_dir: &Path, thread: &ChatThread) -> Result<(), String> {
+    database(data_dir)?
+        .execute(
+            "INSERT INTO chat_threads
+             (id, provider, provider_thread_id, cwd, title, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                thread.id,
+                thread.provider,
+                thread.provider_thread_id,
+                thread.cwd,
+                thread.title,
+                thread.created_at,
+                thread.updated_at
+            ],
+        )
+        .map_err(display_error)?;
+    Ok(())
+}
+
+fn load_chat_threads(data_dir: &Path) -> Result<Vec<ChatThread>, String> {
+    let connection = database(data_dir)?;
+    let mut statement = connection
+        .prepare(
+            "SELECT id, provider, provider_thread_id, cwd, title, created_at, updated_at
+             FROM chat_threads ORDER BY updated_at DESC",
+        )
+        .map_err(display_error)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok(ChatThread {
+                id: row.get(0)?,
+                provider: row.get(1)?,
+                provider_thread_id: row.get(2)?,
+                cwd: row.get(3)?,
+                title: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })
+        .map_err(display_error)?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(display_error)
+}
+
+fn load_chat_thread(data_dir: &Path, id: &str) -> Result<Option<ChatThread>, String> {
+    database(data_dir)?
+        .query_row(
+            "SELECT id, provider, provider_thread_id, cwd, title, created_at, updated_at
+             FROM chat_threads WHERE id = ?1",
+            [id],
+            |row| {
+                Ok(ChatThread {
+                    id: row.get(0)?,
+                    provider: row.get(1)?,
+                    provider_thread_id: row.get(2)?,
+                    cwd: row.get(3)?,
+                    title: row.get(4)?,
+                    created_at: row.get(5)?,
+                    updated_at: row.get(6)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(display_error)
+}
+
+fn update_chat_thread_title(data_dir: &Path, id: &str, title: &str) -> Result<(), String> {
+    database(data_dir)?
+        .execute(
+            "UPDATE chat_threads SET title = ?2, updated_at = ?3 WHERE id = ?1",
+            params![id, title, now_ms()],
+        )
+        .map_err(display_error)?;
+    Ok(())
+}
+
+fn touch_chat_thread(data_dir: &Path, id: &str) -> Result<(), String> {
+    database(data_dir)?
+        .execute(
+            "UPDATE chat_threads SET updated_at = ?2 WHERE id = ?1",
+            params![id, now_ms()],
+        )
+        .map_err(display_error)?;
+    Ok(())
+}
+
+fn chat_title(text: &str) -> String {
+    const LIMIT: usize = 60;
+    let mut title = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if title.chars().count() > LIMIT {
+        title = title.chars().take(LIMIT - 3).collect::<String>() + "...";
+    }
+    title
 }
 
 fn mark_interrupted(data_dir: &Path) -> Result<(), String> {
@@ -1417,7 +2054,84 @@ fn trim_output(value: &str) -> String {
     text[start..].to_string()
 }
 
-async fn command_text(program: &str, args: &[&str]) -> Result<String, String> {
+fn codex_executable() -> Result<PathBuf, String> {
+    resolve_codex_executable(env::var_os("PATH").as_deref(), env::var_os("HOME").as_deref())
+        .ok_or_else(|| {
+            "Codex executable was not found. Install the Codex CLI or the OpenAI Codex editor extension."
+                .to_string()
+        })
+}
+
+fn resolve_codex_executable(path: Option<&OsStr>, home: Option<&OsStr>) -> Option<PathBuf> {
+    if let Some(path) = path {
+        for directory in env::split_paths(path) {
+            let candidate = directory.join("codex");
+            if is_executable(&candidate) {
+                return Some(candidate);
+            }
+        }
+    }
+
+    let home = home.map(PathBuf::from)?;
+    for relative in [".local/bin/codex", ".bun/bin/codex"] {
+        let candidate = home.join(relative);
+        if is_executable(&candidate) {
+            return Some(candidate);
+        }
+    }
+
+    let mut extension_candidates = Vec::new();
+    for relative in [
+        ".cursor/extensions",
+        ".vscode/extensions",
+        ".vscode-insiders/extensions",
+    ] {
+        let root = home.join(relative);
+        if !root.is_dir() {
+            continue;
+        }
+        for entry in WalkDir::new(root)
+            .min_depth(1)
+            .max_depth(6)
+            .into_iter()
+            .filter_map(Result::ok)
+        {
+            let candidate = entry.path();
+            if candidate.file_name() == Some(OsStr::new("codex"))
+                && candidate.components().any(|component| {
+                    component
+                        .as_os_str()
+                        .to_string_lossy()
+                        .starts_with("openai.chatgpt-")
+                })
+                && is_executable(candidate)
+            {
+                extension_candidates.push(candidate.to_path_buf());
+            }
+        }
+    }
+    extension_candidates.sort();
+    extension_candidates.pop()
+}
+
+fn is_executable(path: &Path) -> bool {
+    let Ok(metadata) = path.metadata() else {
+        return false;
+    };
+    if !metadata.is_file() {
+        return false;
+    }
+    #[cfg(unix)]
+    {
+        metadata.permissions().mode() & 0o111 != 0
+    }
+    #[cfg(not(unix))]
+    {
+        true
+    }
+}
+
+async fn command_text(program: &Path, args: &[&str]) -> Result<String, String> {
     let output = Command::new(program)
         .args(args)
         .output()
@@ -1426,10 +2140,19 @@ async fn command_text(program: &str, args: &[&str]) -> Result<String, String> {
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
     }
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    Ok(successful_command_text(&output.stdout, &output.stderr))
 }
 
-async fn command_ok(program: &str, args: &[&str]) -> bool {
+fn successful_command_text(stdout: &[u8], stderr: &[u8]) -> String {
+    let stdout = String::from_utf8_lossy(stdout);
+    let stdout = stdout.trim();
+    if !stdout.is_empty() {
+        return stdout.to_string();
+    }
+    String::from_utf8_lossy(stderr).trim().to_string()
+}
+
+async fn command_ok(program: &Path, args: &[&str]) -> bool {
     command_text(program, args).await.is_ok()
 }
 
@@ -1444,11 +2167,69 @@ fn display_error(error: impl std::fmt::Display) -> String {
     error.to_string()
 }
 
+fn error_category(error: &str) -> &'static str {
+    let error = error.to_ascii_lowercase();
+    if error.contains("timed out") || error.contains("timeout") {
+        "timeout"
+    } else if error.contains("cancel") {
+        "cancelled"
+    } else if error.contains("auth") || error.contains("token") {
+        "authentication"
+    } else if error.contains("not found") {
+        "not_found"
+    } else if error.contains("unavailable") || error.contains("stopped") {
+        "unavailable"
+    } else {
+        "operation_failed"
+    }
+}
+
+fn emit_posthog_log<const N: usize>(
+    app: &AppHandle,
+    level: PostHogLogLevel,
+    message: &'static str,
+    attributes: [(&str, Value); N],
+) {
+    let event = posthog_log_event(level, message, attributes);
+    let _ = app.emit("posthog-log", event);
+}
+
+fn posthog_log_event<const N: usize>(
+    level: PostHogLogLevel,
+    message: &'static str,
+    attributes: [(&str, Value); N],
+) -> PostHogLogEvent {
+    const ALLOWED_ATTRIBUTES: [&str; 11] = [
+        "attempt",
+        "changedFileCount",
+        "durationMs",
+        "errorCategory",
+        "exitCode",
+        "gate",
+        "hasLocalPatch",
+        "operation",
+        "required",
+        "runId",
+        "status",
+    ];
+    let attributes = attributes
+        .into_iter()
+        .filter(|(key, value)| ALLOWED_ATTRIBUTES.contains(key) && !value.is_null())
+        .map(|(key, value)| (key.to_string(), value))
+        .collect();
+    PostHogLogEvent {
+        level,
+        message,
+        attributes,
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(data_dir.join("runs"))?;
@@ -1459,6 +2240,7 @@ pub fn run() {
                 refresh_token: Mutex::new(None),
                 cancelled: Mutex::new(HashSet::new()),
                 active: Mutex::new(HashSet::new()),
+                codex: AsyncMutex::new(None),
             });
             let show = MenuItem::with_id(app, "show", "Show Code", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -1526,6 +2308,13 @@ pub fn run() {
             start_local_run,
             cancel_local_run,
             get_local_run,
+            list_chat_threads,
+            create_chat_thread,
+            read_chat_thread,
+            send_chat_message,
+            interrupt_chat_turn,
+            resolve_chat_approval,
+            archive_chat_thread,
             read_artifact,
             reveal_artifact,
             quit_application
@@ -1540,6 +2329,118 @@ mod tests {
 
     fn temporary_data_dir() -> PathBuf {
         std::env::temp_dir().join(format!("code-desktop-test-{}", Uuid::new_v4()))
+    }
+
+    #[test]
+    fn posthog_log_payloads_only_include_allowlisted_metadata() {
+        let event = posthog_log_event(
+            PostHogLogLevel::Error,
+            "codex request failed",
+            [
+                ("operation", json!("turn/start")),
+                ("errorCategory", json!("timeout")),
+                ("prompt", json!("private prompt")),
+                ("path", json!("/private/repository")),
+                ("output", json!("private command output")),
+            ],
+        );
+        let value = serde_json::to_value(event).unwrap();
+
+        assert_eq!(value["message"], "codex request failed");
+        assert_eq!(value["attributes"]["operation"], "turn/start");
+        assert_eq!(value["attributes"]["errorCategory"], "timeout");
+        assert!(value["attributes"].get("prompt").is_none());
+        assert!(value["attributes"].get("path").is_none());
+        assert!(value["attributes"].get("output").is_none());
+    }
+
+    #[test]
+    fn chat_threads_are_app_owned_and_sorted_by_recent_activity() {
+        let data_dir = temporary_data_dir();
+        std::fs::create_dir_all(&data_dir).unwrap();
+        let first = ChatThread {
+            id: "chat-1".to_string(),
+            provider: "codex".to_string(),
+            provider_thread_id: "provider-1".to_string(),
+            cwd: "/tmp/one".to_string(),
+            title: "First".to_string(),
+            created_at: 1,
+            updated_at: 1,
+        };
+        let second = ChatThread {
+            id: "chat-2".to_string(),
+            provider: "codex".to_string(),
+            provider_thread_id: "provider-2".to_string(),
+            cwd: "/tmp/two".to_string(),
+            title: "Second".to_string(),
+            created_at: 2,
+            updated_at: 2,
+        };
+        insert_chat_thread(&data_dir, &first).unwrap();
+        insert_chat_thread(&data_dir, &second).unwrap();
+
+        let threads = load_chat_threads(&data_dir).unwrap();
+        assert_eq!(threads[0].id, "chat-2");
+        assert_eq!(threads[1].id, "chat-1");
+        assert!(load_chat_thread(&data_dir, "missing").unwrap().is_none());
+        std::fs::remove_dir_all(data_dir).unwrap();
+    }
+
+    #[test]
+    fn chat_titles_are_compact() {
+        let title = chat_title(
+            "Please inspect the repository and explain every important architectural decision in detail",
+        );
+        assert!(title.chars().count() <= 60);
+        assert!(title.ends_with("..."));
+    }
+
+    #[test]
+    fn stalled_codex_requests_time_out() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let (_sender, receiver) = oneshot::channel();
+        let error = runtime
+            .block_on(await_codex_response(
+                receiver,
+                "thread/start",
+                Duration::from_millis(1),
+            ))
+            .unwrap_err();
+
+        assert_eq!(
+            error,
+            "Codex request `thread/start` timed out after 0 seconds"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn codex_executable_falls_back_to_editor_extensions() {
+        let home = temporary_data_dir();
+        let codex = home.join(".cursor/extensions/openai.chatgpt-1.2.3/bin/macos-aarch64/codex");
+        std::fs::create_dir_all(codex.parent().unwrap()).unwrap();
+        std::fs::write(&codex, "").unwrap();
+        let mut permissions = std::fs::metadata(&codex).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&codex, permissions).unwrap();
+
+        assert_eq!(
+            resolve_codex_executable(Some(OsStr::new("")), Some(home.as_os_str())),
+            Some(codex)
+        );
+        std::fs::remove_dir_all(home).unwrap();
+    }
+
+    #[test]
+    fn successful_command_text_falls_back_to_stderr() {
+        assert_eq!(
+            successful_command_text(b"", b"Logged in using ChatGPT\n"),
+            "Logged in using ChatGPT"
+        );
+        assert_eq!(
+            successful_command_text(b"codex-cli 0.136.0\n", b"warning\n"),
+            "codex-cli 0.136.0"
+        );
     }
 
     #[test]

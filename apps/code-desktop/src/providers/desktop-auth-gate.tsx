@@ -5,6 +5,7 @@ import { ArrowRight } from 'lucide-react';
 import { useState, useTransition, type ReactNode } from 'react';
 
 import { localApi, type DeviceAuthorization } from '#/lib/local-api';
+import { desktopLogger, errorCategory } from '#/lib/logging';
 
 export function DesktopAuthGate({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -26,8 +27,16 @@ export function DesktopAuthGate({ children }: { children: ReactNode }) {
           authorization.interval,
           authorization.expiresIn,
         );
+        desktopLogger.info('authentication completed', {
+          operation: 'device-authorization',
+          status: 'authenticated',
+        });
         setDeviceAuth(undefined);
       } catch (cause) {
+        desktopLogger.error('authentication failed', {
+          operation: 'device-authorization',
+          errorCategory: errorCategory(cause),
+        });
         setError(cause instanceof Error ? cause.message : String(cause));
       }
     });

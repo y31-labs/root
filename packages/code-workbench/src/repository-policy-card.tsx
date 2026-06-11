@@ -1,12 +1,5 @@
 import { Badge } from '@workspace/ui/components/ui/badge';
 import { Button } from '@workspace/ui/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@workspace/ui/components/ui/card';
 import { Settings2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -24,26 +17,35 @@ export function RepositoryPolicyCard({
   onPropose: () => void;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <div className='flex items-start justify-between gap-4'>
-          <div>
-            <CardTitle>{fullName}</CardTitle>
-            <CardDescription>Required verification policy for this repository.</CardDescription>
+    <section className='min-w-0 space-y-4'>
+      <div>
+        <h2 className='font-medium'>Repository policy</h2>
+        <p className='text-muted-foreground text-sm'>
+          Required verification policy for the selected repository.
+        </p>
+      </div>
+
+      <div className='divide-y border-y'>
+        <div className='flex min-w-0 items-center justify-between gap-4 py-3'>
+          <div className='flex min-w-0 items-center gap-2'>
+            <span className='truncate text-sm font-medium'>{fullName}</span>
+            <Badge variant={approved ? 'default' : 'secondary'}>
+              {approved ? 'Approved' : 'Approval required'}
+            </Badge>
           </div>
-          <Badge variant={approved ? 'default' : 'secondary'}>
-            {approved ? 'Approved' : 'Approval required'}
-          </Badge>
+          {!children ? (
+            <Button
+              variant={approved ? 'outline' : 'default'}
+              disabled={disabled}
+              onClick={onPropose}
+            >
+              <Settings2 data-icon='inline-start' />
+              {approved ? 'Review new base commit' : 'Generate manifest proposal'}
+            </Button>
+          ) : null}
         </div>
-      </CardHeader>
-      <CardContent>
-        {children ?? (
-          <Button variant={approved ? 'outline' : 'default'} disabled={disabled} onClick={onPropose}>
-            <Settings2 data-icon='inline-start' />
-            {approved ? 'Review new base commit' : 'Generate manifest proposal'}
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+        {children ? <div className='py-4'>{children}</div> : null}
+      </div>
+    </section>
   );
 }

@@ -1,5 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { PageHeader } from '@workspace/code-workbench/page-header';
 import { LoadingView } from '@workspace/ui/components/app/loading-view';
 import { Button } from '@workspace/ui/components/ui/button';
 import { ExternalLink } from 'lucide-react';
@@ -18,9 +19,7 @@ function SettingsPage() {
 
   return (
     <div className='flex flex-1 flex-col gap-6 p-4 md:p-6'>
-      <header>
-        <h1 className='text-2xl font-semibold'>Settings</h1>
-      </header>
+      <PageHeader title='Settings' />
 
       <section>
         {installations.length ? (

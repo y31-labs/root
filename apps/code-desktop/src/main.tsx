@@ -5,11 +5,15 @@ import { createConvexReactQueryStack } from '@workspace/web-foundation/convex-re
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { initializeLogging, registerGlobalLogging } from '#/lib/logging';
 import { DesktopConvexProvider } from '#/providers/desktop-convex-provider';
 import { router } from '#/router';
 
 import '@workspace/ui/globals.css';
 import '#/theme-overrides.css';
+
+initializeLogging();
+registerGlobalLogging();
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL;
 if (!convexUrl) throw new Error('VITE_CONVEX_URL is not configured');
