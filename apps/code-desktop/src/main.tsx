@@ -1,12 +1,11 @@
-import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { createConvexReactQueryStack } from '@workspace/web-foundation/convex-react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { initializeLogging, registerGlobalLogging } from '#/lib/logging';
-import { DesktopConvexProvider } from '#/providers/desktop-convex-provider';
+import { createLocalApi, localApi } from '#/lib/local-api';
+import { LocalApiProvider } from '#/providers/local-api-provider';
 import { router } from '#/router';
 
 import '@workspace/ui/globals.css';
@@ -15,9 +14,9 @@ import '#/theme-overrides.css';
 initializeLogging();
 registerGlobalLogging();
 
-const convexUrl = import.meta.env.VITE_CONVEX_URL;
-if (!convexUrl) throw new Error('VITE_CONVEX_URL is not configured');
-const { queryClient, convexQueryClient } = createConvexReactQueryStack(() => convexUrl);
+const api = window.__CODE_TEST_INVOKE__
+  ? createLocalApi((command, args) => window.__CODE_TEST_INVOKE__!(command, args))
+  : localApi;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -27,10 +26,18 @@ createRoot(document.getElementById('root')!).render(
       aria-hidden='true'
       onMouseDown={() => void getCurrentWindow().startDragging()}
     />
-    <DesktopConvexProvider convexQueryClient={convexQueryClient}>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} context={{ queryClient }} />
-      </QueryClientProvider>
-    </DesktopConvexProvider>
+    <LocalApiProvider api={api}>
+      <RouterProvider router={router} />
+    </LocalApiProvider>
   </StrictMode>,
 );
+
+declare global {
+  interface Window {
+    __CODE_TEST_INVOKE__?: (
+      command: string,
+      args?: Record<string, unknown>,
+    ) => Promise<unknown>;
+    __CODE_TEST_SELECT_DIRECTORY__?: () => Promise<string | null>;
+  }
+}

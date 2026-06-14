@@ -40,3 +40,10 @@ Assume Convex codegen stays in sync while `bun run code:convex` or `bun run trad
 Do not introduce raw Tailwind color classes (e.g. `emerald-500`, `red-500`, `green-400`) in app code under `src/`. Use semantic tokens from the theme: `background`, `foreground`, `primary`, `muted`, `success`, `warning`, `danger`, `destructive`, etc.
 
 See [.docs/ui-theming.md](.docs/ui-theming.md) for the full token reference, signal-to-token mapping (bullish→success, bearish→danger), radius scale, and the recipe for adding new tokens.
+
+Code desktop runtime storage, cleanup, verifier image, and distribution rules are documented in
+[.docs/code-desktop-runtime.md](.docs/code-desktop-runtime.md).
+
+For the Code desktop app and shared workbench surfaces, follow
+[.docs/code-ui-style.md](.docs/code-ui-style.md). The default visual direction is minimal and
+flat: do not use cards for page layout.

@@ -5,17 +5,22 @@ export const verificationGateKinds = [
   'build',
   'unit',
   'integration',
-  'authSetup',
-  'browser',
+  'coverage',
+  'accessibility',
+  'e2e',
+  'visual',
 ] as const;
 
 export type VerificationGateKind = (typeof verificationGateKinds)[number];
+export type VerificationNetworkPolicy = 'enabled' | 'disabled';
+export const verifierBunVersion = '1.3.5';
 
 export interface VerificationCommand {
   command: string;
   args: string[];
   timeoutMs: number;
   required: boolean;
+  network: VerificationNetworkPolicy;
   env?: Record<string, string>;
 }
 
@@ -25,11 +30,12 @@ export interface AppServerConfig {
   timeoutMs: number;
   healthUrl: string;
   healthTimeoutMs: number;
+  browserBaseUrl: string;
   env?: Record<string, string>;
 }
 
 export interface VerificationManifest {
-  version: 1;
+  version: 2;
   runtime: {
     packageManager: 'bun';
     bunVersion: string;
@@ -38,14 +44,22 @@ export interface VerificationManifest {
   appServer?: AppServerConfig;
 }
 
-const commandKeys = new Set(['command', 'args', 'timeoutMs', 'required', 'env']);
-const serverKeys = new Set(['command', 'args', 'timeoutMs', 'healthUrl', 'healthTimeoutMs', 'env']);
+const commandKeys = new Set(['command', 'args', 'timeoutMs', 'required', 'network', 'env']);
+const serverKeys = new Set([
+  'command',
+  'args',
+  'timeoutMs',
+  'healthUrl',
+  'healthTimeoutMs',
+  'browserBaseUrl',
+  'env',
+]);
 const rootKeys = new Set(['version', 'runtime', 'gates', 'appServer']);
 
 export function parseVerificationManifest(value: unknown): VerificationManifest {
   const root = object(value, 'manifest');
   rejectUnknown(root, rootKeys, 'manifest');
-  if (root.version !== 1) throw new Error('manifest.version must be 1');
+  if (root.version !== 2) throw new Error('manifest.version must be 2');
 
   const runtime = object(root.runtime, 'manifest.runtime');
   rejectUnknown(runtime, new Set(['packageManager', 'bunVersion']), 'manifest.runtime');
@@ -54,6 +68,11 @@ export function parseVerificationManifest(value: unknown): VerificationManifest 
   }
 
   const bunVersion = nonEmptyString(runtime.bunVersion, 'manifest.runtime.bunVersion');
+  if (bunVersion !== verifierBunVersion) {
+    throw new Error(
+      `manifest.runtime.bunVersion must match the pinned verifier (${verifierBunVersion})`,
+    );
+  }
   const rawGates = object(root.gates, 'manifest.gates');
   const gates: Partial<Record<VerificationGateKind, VerificationCommand>> = {};
 
@@ -61,7 +80,11 @@ export function parseVerificationManifest(value: unknown): VerificationManifest 
     if (!verificationGateKinds.includes(kind as VerificationGateKind)) {
       throw new Error(`Unsupported verification gate: ${kind}`);
     }
-    gates[kind as VerificationGateKind] = parseCommand(command, `manifest.gates.${kind}`);
+    gates[kind as VerificationGateKind] = parseCommand(
+      command,
+      kind as VerificationGateKind,
+      `manifest.gates.${kind}`,
+    );
   }
 
   if (!Object.values(gates).some((gate) => gate?.required)) {
@@ -69,7 +92,7 @@ export function parseVerificationManifest(value: unknown): VerificationManifest 
   }
 
   return {
-    version: 1,
+    version: 2,
     runtime: { packageManager: 'bun', bunVersion },
     gates,
     appServer:
@@ -80,13 +103,23 @@ export function parseVerificationManifest(value: unknown): VerificationManifest 
 }
 
 export function defaultManifest(bunVersion: string, scripts: Record<string, string>) {
-  const gate = (script: string, timeoutMs: number): VerificationCommand | undefined =>
-    scripts[script]
-      ? { command: 'bun', args: ['run', script], timeoutMs, required: true }
+  if (bunVersion !== verifierBunVersion) {
+    throw new Error(`Bun ${bunVersion} does not match the pinned verifier (${verifierBunVersion})`);
+  }
+  const gate = (script: string | undefined, timeoutMs: number): VerificationCommand | undefined =>
+    script
+      ? {
+          command: 'bun',
+          args: ['run', script],
+          timeoutMs,
+          required: true,
+          network: 'disabled',
+        }
       : undefined;
+  const unitScript = scripts['test:unit'] ? 'test:unit' : scripts.test ? 'test' : undefined;
 
   return parseVerificationManifest({
-    version: 1,
+    version: 2,
     runtime: { packageManager: 'bun', bunVersion },
     gates: Object.fromEntries(
       Object.entries({
@@ -95,38 +128,73 @@ export function defaultManifest(bunVersion: string, scripts: Record<string, stri
           args: ['install', '--frozen-lockfile'],
           timeoutMs: 300_000,
           required: true,
+          network: 'enabled',
         },
-        typecheck: gate('typecheck', 180_000),
-        lint: gate('lint', 180_000),
-        build: gate('build', 300_000),
-        unit: gate('test', 300_000),
-        integration: gate('test:integration', 600_000),
-        browser: gate('test:e2e', 600_000),
+        typecheck: gate(scripts.typecheck ? 'typecheck' : undefined, 180_000),
+        lint: gate(scripts.lint ? 'lint' : undefined, 180_000),
+        build: gate(scripts.build ? 'build' : undefined, 300_000),
+        unit: gate(unitScript, 300_000),
+        integration: gate(scripts['test:integration'] ? 'test:integration' : undefined, 600_000),
+        coverage: gate(scripts['test:coverage'] ? 'test:coverage' : undefined, 600_000),
+        accessibility: gate(
+          scripts['test:accessibility'] ? 'test:accessibility' : undefined,
+          600_000,
+        ),
+        e2e: gate(scripts['test:e2e'] ? 'test:e2e' : undefined, 600_000),
+        visual: gate(scripts['test:visual'] ? 'test:visual' : undefined, 600_000),
       }).filter((entry) => entry[1] !== undefined),
     ),
   });
 }
 
-function parseCommand(value: unknown, path: string): VerificationCommand {
+export function manifestFingerprintPaths(packagePaths: readonly string[] = []) {
+  return [
+    'bun.lock',
+    'package.json',
+    'bunfig.toml',
+    ...packagePaths.map((path) => `${path.replace(/\/+$/, '')}/package.json`),
+  ];
+}
+
+function parseCommand(
+  value: unknown,
+  kind: VerificationGateKind,
+  path: string,
+): VerificationCommand {
   const command = object(value, path);
   rejectUnknown(command, commandKeys, path);
-
-  return {
+  const parsed = {
     command: executable(command.command, `${path}.command`),
     args: stringArray(command.args, `${path}.args`),
     timeoutMs: timeout(command.timeoutMs, `${path}.timeoutMs`),
     required: boolean(command.required, `${path}.required`),
+    network: network(command.network, `${path}.network`),
     env: command.env === undefined ? undefined : environment(command.env, `${path}.env`),
   };
+
+  if (parsed.network === 'enabled') {
+    const validInstall =
+      kind === 'install' &&
+      parsed.command === 'bun' &&
+      parsed.args.length === 2 &&
+      parsed.args[0] === 'install' &&
+      parsed.args[1] === '--frozen-lockfile';
+    if (!validInstall) {
+      throw new Error('Only `bun install --frozen-lockfile` may enable network access');
+    }
+  }
+
+  return parsed;
 }
 
 function parseAppServer(value: unknown, path: string): AppServerConfig {
   const server = object(value, path);
   rejectUnknown(server, serverKeys, path);
-  const healthUrl = nonEmptyString(server.healthUrl, `${path}.healthUrl`);
-  const url = new URL(healthUrl);
-  if (!['http:', 'https:'].includes(url.protocol)) {
-    throw new Error(`${path}.healthUrl must use http or https`);
+  const healthUrl = localhostUrl(server.healthUrl, `${path}.healthUrl`);
+  const browserBaseUrl = localhostUrl(server.browserBaseUrl, `${path}.browserBaseUrl`);
+
+  if (new URL(healthUrl).origin !== new URL(browserBaseUrl).origin) {
+    throw new Error(`${path}.healthUrl and browserBaseUrl must use the same origin`);
   }
 
   return {
@@ -135,8 +203,18 @@ function parseAppServer(value: unknown, path: string): AppServerConfig {
     timeoutMs: timeout(server.timeoutMs, `${path}.timeoutMs`),
     healthUrl,
     healthTimeoutMs: timeout(server.healthTimeoutMs, `${path}.healthTimeoutMs`),
+    browserBaseUrl,
     env: server.env === undefined ? undefined : environment(server.env, `${path}.env`),
   };
+}
+
+function localhostUrl(value: unknown, path: string) {
+  const result = nonEmptyString(value, path);
+  const url = new URL(result);
+  if (url.protocol !== 'http:' || !['localhost', '127.0.0.1', '::1'].includes(url.hostname)) {
+    throw new Error(`${path} must use an http localhost origin`);
+  }
+  return result;
 }
 
 function executable(value: unknown, path: string) {
@@ -173,6 +251,13 @@ function timeout(value: unknown, path: string) {
 
 function boolean(value: unknown, path: string) {
   if (typeof value !== 'boolean') throw new Error(`${path} must be a boolean`);
+  return value;
+}
+
+function network(value: unknown, path: string): VerificationNetworkPolicy {
+  if (value !== 'enabled' && value !== 'disabled') {
+    throw new Error(`${path} must be enabled or disabled`);
+  }
   return value;
 }
 

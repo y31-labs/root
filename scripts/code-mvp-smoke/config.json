@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "verifierImageReference": "code-agent-verifier:1",
+  "maximumReportAgeDays": 7,
+  "scenarioTimeoutSeconds": 3600,
+  "cleanupTimeoutSeconds": 120,
+  "requiredScenarios": [
+    {
+      "id": "clean-first-pass",
+      "terminalStates": ["accepted"],
+      "requiredChecks": ["accepted_digest_matches_verified", "source_state_unchanged"],
+      "requiredArtifactKinds": []
+    },
+    {
+      "id": "dirty-repair",
+      "terminalStates": ["accepted"],
+      "requiredChecks": [
+        "accepted_digest_matches_verified",
+        "dirty_source_preserved",
+        "persistent_thread",
+        "source_state_unchanged"
+      ],
+      "requiredArtifactKinds": []
+    },
+    {
+      "id": "browser-e2e",
+      "terminalStates": ["accepted"],
+      "requiredChecks": [
+        "accepted_digest_matches_verified",
+        "authoritative_e2e",
+        "persistent_thread",
+        "screenshot_response",
+        "source_state_unchanged"
+      ],
+      "requiredArtifactKinds": ["screenshot"]
+    },
+    {
+      "id": "cancel-active-process",
+      "terminalStates": ["accepted", "discarded"],
+      "requiredChecks": [
+        "cancellation_observed",
+        "continuation_or_discard_completed",
+        "source_state_unchanged"
+      ],
+      "acceptedChecks": ["accepted_digest_matches_verified"],
+      "requiredArtifactKinds": []
+    },
+    {
+      "id": "post-verification-edit",
+      "terminalStates": ["accepted"],
+      "requiredChecks": [
+        "accepted_digest_matches_verified",
+        "reverified",
+        "source_state_unchanged",
+        "stale_acceptance_blocked"
+      ],
+      "requiredArtifactKinds": []
+    }
+  ]
+}

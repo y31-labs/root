@@ -1,6 +1,10 @@
 {
   "name": "root-monorepo",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "type": "module",
   "imports": {
     "#convex/_generated/api": "./convex/_generated/api.js",
@@ -8,10 +12,6 @@
     "#convex/_generated/server": "./convex/_generated/server.js",
     "#convex/*": "./convex/*.ts"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "portfolio:dev": "bun run --elide-lines=0 --filter portfolio dev",
     "portfolio:build": "bun run --elide-lines=0 --filter portfolio build",
@@ -29,6 +29,20 @@
     "desktop:build": "bun run --filter code-desktop tauri build",
     "desktop:test": "bun run --filter code-desktop test",
     "desktop:image": "docker build -t code-agent-verifier:1 -f apps/code-desktop/verification.Dockerfile apps/code-desktop",
+    "code:check": "bun run --filter @workspace/code-agent-contracts typecheck && bun run --filter @workspace/code-agent-contracts test && bun run --filter @workspace/code-workbench typecheck && bun run --filter code-desktop typecheck && bun run --filter code-desktop test && bun run --filter code-desktop test:rust",
+    "code:verify": "bun run code:check && bun run desktop:image && bun run --filter code-desktop test:e2e && bun run --filter code-desktop test:fixtures",
+    "code:mvp:stage-1": "bun run --filter code-desktop test:session-harness",
+    "code:mvp:stage-2": "bun run --filter code-desktop test:verification-fixtures",
+    "code:mvp:stage-3": "bun run --filter code-desktop test:process-fixtures",
+    "code:mvp:stage-4": "bun run --filter code-desktop test:lifecycle-fixtures",
+    "code:mvp:stage-5": "bun run --filter code-desktop test:browser-fixtures",
+    "code:mvp:stage-6": "bun run --filter code-desktop test:product-e2e",
+    "code:mvp:runtime": "bun run desktop:image && bun run --filter code-desktop test:runtime-readiness",
+    "code:mvp:package": "bun run --filter code-desktop package:mvp",
+    "code:mvp:stage-7": "bun run code:mvp:runtime && bun run code:mvp:package",
+    "code:mvp:smoke": "bun scripts/code-mvp-smoke/run.mjs",
+    "code:mvp:smoke:verify": "bun scripts/code-mvp-smoke/verify.mjs",
+    "code:mvp:verify": "bun run code:verify && bun run code:mvp:stage-1 && bun run code:mvp:stage-2 && bun run code:mvp:stage-3 && bun run code:mvp:stage-4 && bun run code:mvp:stage-5 && bun run code:mvp:stage-6 && bun run code:mvp:stage-7 && bun run code:mvp:smoke:verify",
     "ui:add": "bun run --cwd packages/ui ui:add",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",

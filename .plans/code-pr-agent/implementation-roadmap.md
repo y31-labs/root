@@ -1,26 +1,39 @@
-# Local Code Agent Roadmap
+# Code Roadmap
 
-## Phase 1: Local Verification Workbench
+The actionable pre-MVP work packages, completion qualifiers, and automatic stage gates are defined
+in [mvp-completion-plan.md](./mvp-completion-plan.md).
 
-- Root Convex schema and ownership-checked setup/task/run APIs.
-- Shared manifest, lifecycle, engine, and workbench presentation contracts.
-- Tauri app with Keychain auth, SQLite persistence, Codex JSONL, Docker gates, and local evidence.
-- Setup-only web app and desktop onboarding.
+## Phase 1: Self-Hardening Local Foundation
 
-## Phase 2: Local Hardening
+- Rewrite the desktop runtime around local repositories, policies, and change sessions.
+- Add versioned SQLite persistence and app-managed Git worktrees.
+- Use persistent Codex app-server threads with explicit approvals.
+- Add localhost-only Playwright tools for agent inspection and interaction.
+- Add manifest v2, policy fingerprints, deterministic gates, worktree digests, and safety checks.
+- Add unified review, continuation, cancellation, verification, acceptance, and discard workflows.
+- Add contract tests, React tests, Rust integration tests, browser tests, and deterministic fixture
+  sessions.
 
-- Fixture repositories for passing, failing, flaky, authenticated-browser, console-error, and no-change runs.
-- Full app-server health orchestration, richer Playwright evidence, retention controls, and export.
-- Signed verification image, stricter Docker network policy, and deeper crash/cancellation tests.
+## Phase 2: Native And UX Hardening
 
-## Phase 3: GitHub Publishing
+- Add packaged macOS application automation after the layered E2E suite is stable.
+- Expand browser evidence, visual comparison ergonomics, retention, export, and diagnostics.
+- Add signed verification images, stronger process isolation, and deeper crash and cancellation tests.
+- Add performance budgets, flaky-test handling, and larger real-repository dogfooding.
 
-- Create a deterministic branch and commit from a verified patch.
-- Open or update a pull request linked to the task and verification summary.
-- Require explicit override records for any unverified publication.
+## Phase 3: Repository Profiles
+
+- Add additional package managers, languages, operating systems, and repository-specific adapters.
+- Preserve the same fresh-digest and deterministic-verification contract for every profile.
+
+## Phase 4: Team And Publishing
+
+- Add WorkOS identity, Convex coordination, GitHub Apps, shared repositories, and team queues.
+- Synchronize compact metadata while keeping private local evidence opt-in.
+- Publish verified branches and pull requests with attached verification summaries.
+- Require explicit auditable overrides for any unverified publication.
 
 ## Deferred Providers
 
-The platform-neutral engine interface may later support API-funded or hosted engines. Those providers
-must preserve the same Docker-authoritative verification contract and cannot reuse Codex subscription
-credentials outside the user's machine.
+Codex remains the only MVP implementation provider. Future local, API-funded, or hosted engines must
+implement the same session interface and cannot weaken verification, isolation, or approval rules.

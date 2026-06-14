@@ -9,25 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ChatRouteImport } from './routes/chat'
+import { Route as SessionsRouteRouteImport } from './routes/sessions/route'
+import { Route as RepositoriesRouteRouteImport } from './routes/repositories/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as RunsRunIdRouteImport } from './routes/runs/$runId'
+import { Route as SessionsIndexRouteImport } from './routes/sessions/index'
+import { Route as RepositoriesIndexRouteImport } from './routes/repositories/index'
+import { Route as SessionsSessionIdRouteImport } from './routes/sessions/$sessionId'
+import { Route as RepositoriesRepositoryIdRouteImport } from './routes/repositories/$repositoryId'
 
-const TasksRoute = TasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ChatRoute = ChatRouteImport.update({
-  id: '/chat',
-  path: '/chat',
+const SessionsRouteRoute = SessionsRouteRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepositoriesRouteRoute = RepositoriesRouteRouteImport.update({
+  id: '/repositories',
+  path: '/repositories',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -35,59 +38,97 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RunsRunIdRoute = RunsRunIdRouteImport.update({
-  id: '/runs/$runId',
-  path: '/runs/$runId',
-  getParentRoute: () => rootRouteImport,
+const SessionsIndexRoute = SessionsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SessionsRouteRoute,
 } as any)
+const RepositoriesIndexRoute = RepositoriesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RepositoriesRouteRoute,
+} as any)
+const SessionsSessionIdRoute = SessionsSessionIdRouteImport.update({
+  id: '/$sessionId',
+  path: '/$sessionId',
+  getParentRoute: () => SessionsRouteRoute,
+} as any)
+const RepositoriesRepositoryIdRoute =
+  RepositoriesRepositoryIdRouteImport.update({
+    id: '/$repositoryId',
+    path: '/$repositoryId',
+    getParentRoute: () => RepositoriesRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/chat': typeof ChatRoute
+  '/repositories': typeof RepositoriesRouteRouteWithChildren
+  '/sessions': typeof SessionsRouteRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/tasks': typeof TasksRoute
-  '/runs/$runId': typeof RunsRunIdRoute
+  '/repositories/$repositoryId': typeof RepositoriesRepositoryIdRoute
+  '/sessions/$sessionId': typeof SessionsSessionIdRoute
+  '/repositories/': typeof RepositoriesIndexRoute
+  '/sessions/': typeof SessionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/chat': typeof ChatRoute
   '/settings': typeof SettingsRoute
-  '/tasks': typeof TasksRoute
-  '/runs/$runId': typeof RunsRunIdRoute
+  '/repositories/$repositoryId': typeof RepositoriesRepositoryIdRoute
+  '/sessions/$sessionId': typeof SessionsSessionIdRoute
+  '/repositories': typeof RepositoriesIndexRoute
+  '/sessions': typeof SessionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/chat': typeof ChatRoute
+  '/repositories': typeof RepositoriesRouteRouteWithChildren
+  '/sessions': typeof SessionsRouteRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/tasks': typeof TasksRoute
-  '/runs/$runId': typeof RunsRunIdRoute
+  '/repositories/$repositoryId': typeof RepositoriesRepositoryIdRoute
+  '/sessions/$sessionId': typeof SessionsSessionIdRoute
+  '/repositories/': typeof RepositoriesIndexRoute
+  '/sessions/': typeof SessionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat' | '/settings' | '/tasks' | '/runs/$runId'
+  fullPaths:
+    | '/'
+    | '/repositories'
+    | '/sessions'
+    | '/settings'
+    | '/repositories/$repositoryId'
+    | '/sessions/$sessionId'
+    | '/repositories/'
+    | '/sessions/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chat' | '/settings' | '/tasks' | '/runs/$runId'
-  id: '__root__' | '/' | '/chat' | '/settings' | '/tasks' | '/runs/$runId'
+  to:
+    | '/'
+    | '/settings'
+    | '/repositories/$repositoryId'
+    | '/sessions/$sessionId'
+    | '/repositories'
+    | '/sessions'
+  id:
+    | '__root__'
+    | '/'
+    | '/repositories'
+    | '/sessions'
+    | '/settings'
+    | '/repositories/$repositoryId'
+    | '/sessions/$sessionId'
+    | '/repositories/'
+    | '/sessions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ChatRoute: typeof ChatRoute
+  RepositoriesRouteRoute: typeof RepositoriesRouteRouteWithChildren
+  SessionsRouteRoute: typeof SessionsRouteRouteWithChildren
   SettingsRoute: typeof SettingsRoute
-  TasksRoute: typeof TasksRoute
-  RunsRunIdRoute: typeof RunsRunIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tasks': {
-      id: '/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof TasksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -95,11 +136,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/chat': {
-      id: '/chat'
-      path: '/chat'
-      fullPath: '/chat'
-      preLoaderRoute: typeof ChatRouteImport
+    '/sessions': {
+      id: '/sessions'
+      path: '/sessions'
+      fullPath: '/sessions'
+      preLoaderRoute: typeof SessionsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repositories': {
+      id: '/repositories'
+      path: '/repositories'
+      fullPath: '/repositories'
+      preLoaderRoute: typeof RepositoriesRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -109,22 +157,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/runs/$runId': {
-      id: '/runs/$runId'
-      path: '/runs/$runId'
-      fullPath: '/runs/$runId'
-      preLoaderRoute: typeof RunsRunIdRouteImport
-      parentRoute: typeof rootRouteImport
+    '/sessions/': {
+      id: '/sessions/'
+      path: '/'
+      fullPath: '/sessions/'
+      preLoaderRoute: typeof SessionsIndexRouteImport
+      parentRoute: typeof SessionsRouteRoute
+    }
+    '/repositories/': {
+      id: '/repositories/'
+      path: '/'
+      fullPath: '/repositories/'
+      preLoaderRoute: typeof RepositoriesIndexRouteImport
+      parentRoute: typeof RepositoriesRouteRoute
+    }
+    '/sessions/$sessionId': {
+      id: '/sessions/$sessionId'
+      path: '/$sessionId'
+      fullPath: '/sessions/$sessionId'
+      preLoaderRoute: typeof SessionsSessionIdRouteImport
+      parentRoute: typeof SessionsRouteRoute
+    }
+    '/repositories/$repositoryId': {
+      id: '/repositories/$repositoryId'
+      path: '/$repositoryId'
+      fullPath: '/repositories/$repositoryId'
+      preLoaderRoute: typeof RepositoriesRepositoryIdRouteImport
+      parentRoute: typeof RepositoriesRouteRoute
     }
   }
 }
 
+interface RepositoriesRouteRouteChildren {
+  RepositoriesRepositoryIdRoute: typeof RepositoriesRepositoryIdRoute
+  RepositoriesIndexRoute: typeof RepositoriesIndexRoute
+}
+
+const RepositoriesRouteRouteChildren: RepositoriesRouteRouteChildren = {
+  RepositoriesRepositoryIdRoute: RepositoriesRepositoryIdRoute,
+  RepositoriesIndexRoute: RepositoriesIndexRoute,
+}
+
+const RepositoriesRouteRouteWithChildren =
+  RepositoriesRouteRoute._addFileChildren(RepositoriesRouteRouteChildren)
+
+interface SessionsRouteRouteChildren {
+  SessionsSessionIdRoute: typeof SessionsSessionIdRoute
+  SessionsIndexRoute: typeof SessionsIndexRoute
+}
+
+const SessionsRouteRouteChildren: SessionsRouteRouteChildren = {
+  SessionsSessionIdRoute: SessionsSessionIdRoute,
+  SessionsIndexRoute: SessionsIndexRoute,
+}
+
+const SessionsRouteRouteWithChildren = SessionsRouteRoute._addFileChildren(
+  SessionsRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ChatRoute: ChatRoute,
+  RepositoriesRouteRoute: RepositoriesRouteRouteWithChildren,
+  SessionsRouteRoute: SessionsRouteRouteWithChildren,
   SettingsRoute: SettingsRoute,
-  TasksRoute: TasksRoute,
-  RunsRunIdRoute: RunsRunIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
