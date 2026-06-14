@@ -5,7 +5,10 @@ export interface EngineHealth {
   available: boolean;
   version?: string;
   authenticated: boolean;
+  gitAvailable: boolean;
   dockerAvailable: boolean;
+  appServerAvailable: boolean;
+  browserToolsAvailable: boolean;
   detail?: string;
 }
 

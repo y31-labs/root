@@ -1,37 +1,71 @@
-# Local Code Agent Contracts
+# Code MVP Contracts
 
-## Synced Entities
+## Local Entities
 
 | Entity | Purpose |
 | --- | --- |
-| `Repo` | GitHub repository, selected state, approved manifest, and base SHA. |
-| `Ticket` | User task title, body, repository, status, and timestamps. |
-| `DesktopRegistration` | Installation ID, app version, and last-seen timestamp. |
-| `Run` | Engine, Codex version, exact SHA, lifecycle, attempt, and compact summary. |
-| `GateResult` | Gate kind, attempt, required flag, status, duration, and exit code. |
+| `Repository` | Canonical local path, display name, current `HEAD`, dirty state, and compatibility. |
+| `RepositoryPolicy` | Approved manifest v2, configuration fingerprint, and approval timestamps. |
+| `ChangeSession` | Request, base SHA, worktree, branch, Codex thread, lifecycle, and verification state. |
+| `SessionEvent` | Ordered lifecycle, agent, command, file, approval, browser, and system activity. |
+| `GateResult` | Gate, attempt, status, duration, exit code, digest, and artifact references. |
+| `VerificationSnapshot` | Required results and safety checks tied to one worktree digest. |
+| `Artifact` | Local patch, log, screenshot, trace, assertion, or report metadata. |
 
-Local SQLite stores run timelines, crash-recovery state, and artifact indexes. App-data folders store
-patches, logs, screenshots, assertions, and Playwright traces.
-
-## Run Lifecycle
+## Session Lifecycle
 
 ```text
-queued -> preparing -> implementing -> verifying -> repairing
-       -> verified | failed | cancelled | needs_input
+preparing -> implementing -> verifying -> repairing
+          -> verified -> accepted
+          -> needs_input | failed | cancelled
+
+needs_input | failed | cancelled -> implementing | verifying | discarded
+verified -> verifying | accepted | discarded
 ```
 
-Terminal states do not transition back to active states. A retry creates a new run from the original
-approved SHA. `verified` requires a local patch and a passing latest result for every required gate.
+Any worktree change after verification removes the effective `verified` state. `accepted` and
+`discarded` are final.
 
-## Engine Contract
+## Verification Manifest V2
 
-The MVP snapshots `engine: "codex-local"`. Future engines implement the shared `ImplementationEngine`
-interface without changing manifest or verification semantics.
+- Runtime is Bun with an exact version.
+- Gate kinds are `install`, `typecheck`, `lint`, `build`, `unit`, `integration`, `coverage`,
+  `accessibility`, `e2e`, and `visual`.
+- Each command has executable, argument array, timeout, required flag, environment, and network
+  policy.
+- Only `install` may specify enabled network access and it must be
+  `bun install --frozen-lockfile`.
+- Optional app-server configuration defines command, arguments, health URL, timeout, environment,
+  and browser base URL.
+- Fingerprint inputs include `bun.lock`, root `package.json`, optional `bunfig.toml`, and package
+  manifests referenced by approved gates.
 
-## Security Boundaries
+## Verification Invariants
 
-- Desktop invokes `codex login status` but never reads or copies `~/.codex/auth.json`.
-- WorkOS refresh credentials live in macOS Keychain.
-- GitHub clone credentials are passed only to the clone operation.
-- Artifact reads and reveal operations are confined to app-managed run storage.
-- Convex mutations verify ownership and recompute terminal verification summaries.
+- Required gates must all have a latest passing result.
+- Every required result and safety check must reference the current worktree digest.
+- The diff must be non-empty.
+- Secret scan, symlink confinement, and added-file-size checks must pass.
+- Browser verification fails on external navigation, uncaught page errors, or unexpected
+  `console.error`.
+- Missing, failed, skipped, stale, or empty verification is never verified.
+
+## Agent And Browser Interfaces
+
+- The production implementation engine is `codex-local`; tests can provide a deterministic fake.
+- Session turns accept text plus local screenshot inputs.
+- App-owned dynamic browser tools return structured text and optional image content.
+- Browser tools are limited to the session's localhost origin and do not expose arbitrary
+  JavaScript evaluation.
+- Agent exploration results are evidence, not gate results.
+
+## Acceptance Contract
+
+Acceptance:
+
+1. Recomputes the worktree digest.
+2. Requires it to match the passing verification snapshot.
+3. Requires a non-empty diff and every safety check and required gate to pass.
+4. Creates `code/<slug>-<id>` from the captured base SHA.
+5. Creates one commit containing the verified tree.
+6. Removes the worktree while leaving the local branch available.

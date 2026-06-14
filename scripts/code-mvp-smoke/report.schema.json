@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://code.local/schemas/mvp-smoke-report-v1.json",
+  "title": "Code MVP authenticated smoke report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "producer",
+    "commitSha",
+    "verifierImage",
+    "startedAt",
+    "completedAt",
+    "privacy",
+    "source",
+    "scenarios",
+    "artifacts",
+    "cleanup"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "producer": {
+      "const": "code-mvp-smoke-runner/1"
+    },
+    "commitSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40,64}$"
+    },
+    "verifierImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "id"],
+      "properties": {
+        "reference": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._/:@-]{0,127}$"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "promptsIncluded",
+        "repositoryContentsIncluded",
+        "credentialsIncluded",
+        "secretValuesIncluded"
+      ],
+      "properties": {
+        "promptsIncluded": {
+          "const": false
+        },
+        "repositoryContentsIncluded": {
+          "const": false
+        },
+        "credentialsIncluded": {
+          "const": false
+        },
+        "secretValuesIncluded": {
+          "const": false
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cleanAtStart", "unchanged"],
+      "properties": {
+        "cleanAtStart": {
+          "const": true
+        },
+        "unchanged": {
+          "const": true
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/scenario"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "cleanup": {
+      "$ref": "#/$defs/cleanup"
+    }
+  },
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "durationMs",
+        "terminalState",
+        "verifiedDigest",
+        "acceptedDigest",
+        "checks",
+        "artifactIds"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "clean-first-pass",
+            "dirty-repair",
+            "browser-e2e",
+            "cancel-active-process",
+            "post-verification-edit"
+          ]
+        },
+        "status": {
+          "const": "passed"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "terminalState": {
+          "enum": ["accepted", "discarded"]
+        },
+        "verifiedDigest": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "acceptedDigest": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "checks": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "accepted_digest_matches_verified",
+              "authoritative_e2e",
+              "cancellation_observed",
+              "continuation_or_discard_completed",
+              "dirty_source_preserved",
+              "persistent_thread",
+              "reverified",
+              "screenshot_response",
+              "source_state_unchanged",
+              "stale_acceptance_blocked"
+            ]
+          }
+        },
+        "artifactIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "relativePath", "sha256", "sizeBytes"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "kind": {
+          "enum": ["screenshot", "trace", "verification-evidence"]
+        },
+        "relativePath": {
+          "type": "string",
+          "pattern": "^artifacts/[a-z0-9][a-z0-9-]{0,63}\\.bin$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "durationMs", "remaining"],
+      "properties": {
+        "status": {
+          "const": "passed"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "remaining": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["worktrees", "childProcesses", "labeledContainers", "temporaryBranches"],
+          "properties": {
+            "worktrees": {
+              "const": 0
+            },
+            "childProcesses": {
+              "const": 0
+            },
+            "labeledContainers": {
+              "const": 0
+            },
+            "temporaryBranches": {
+              "const": 0
+            }
+          }
+        }
+      }
+    }
+  }
+}

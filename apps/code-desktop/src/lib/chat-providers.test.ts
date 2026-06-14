@@ -11,7 +11,10 @@ import {
 const health = (overrides: Partial<EngineHealth> = {}): EngineHealth => ({
   available: false,
   authenticated: false,
+  gitAvailable: false,
   dockerAvailable: false,
+  appServerAvailable: false,
+  browserToolsAvailable: false,
   ...overrides,
 });
 

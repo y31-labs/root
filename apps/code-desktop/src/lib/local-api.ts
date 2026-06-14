@@ -1,70 +1,92 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { EngineHealth, LocalArtifactIndex } from '@workspace/code-agent-contracts/engine';
+import type { EngineHealth } from '@workspace/code-agent-contracts/engine';
 import type { VerificationManifest } from '@workspace/code-agent-contracts/manifest';
+import type {
+  Artifact,
+  ChangeSession,
+  GateResult,
+  Repository,
+  RepositoryPolicy,
+  SessionEvent,
+  VerificationSnapshot,
+} from '@workspace/code-agent-contracts/sessions';
 
-import type { ChatProvider, ChatThread } from '#/lib/chat';
-
-export interface DeviceAuthorization {
-  deviceCode: string;
-  userCode: string;
-  verificationUri: string;
-  verificationUriComplete: string;
-  expiresIn: number;
-  interval: number;
-}
-
-export interface CloneSource {
-  owner: string;
-  name: string;
-  cloneUrl: string;
-  token?: string;
-}
-
-export interface StartLocalRunInput {
-  runId: string;
-  task: string;
-  baseCommitSha: string;
+export interface PolicyProposal {
   manifest: VerificationManifest;
-  repo: CloneSource;
+  fingerprint: string;
+  fingerprintPaths: string[];
+  detectedScripts: string[];
 }
 
-export interface LocalRunRecord {
-  runId: string;
-  status: string;
-  baseCommitSha: string;
-  codexThreadId?: string;
-  terminalReason?: string;
-  artifacts: LocalArtifactIndex;
-  events: Array<{ id: number; kind: string; message: string; createdAt: number }>;
+export interface SessionDetail {
+  session: ChangeSession & { repositoryName: string };
+  repository: Repository;
+  policy: RepositoryPolicy;
+  events: SessionEvent[];
+  gateResults: GateResult[];
+  approvals: Array<{
+    requestId: string | number;
+    method: string;
+    detail: string;
+    status: 'pending' | 'accept' | 'acceptForSession' | 'decline';
+    createdAt: number;
+  }>;
+  artifacts: Artifact[];
+  snapshot?: VerificationSnapshot;
+  diff: string;
+  currentDigest: string;
+  verificationStale: boolean;
 }
 
-export const localApi = {
-  accessToken: (forceRefresh = false) => invoke<string>('get_access_token', { forceRefresh }),
-  engineHealth: () => invoke<EngineHealth>('engine_health'),
-  startCodexLogin: () => invoke<void>('start_codex_login'),
-  beginAuth: () => invoke<DeviceAuthorization>('begin_auth'),
-  pollAuth: (deviceCode: string, interval: number, expiresIn: number) =>
-    invoke<void>('poll_auth', { deviceCode, interval, expiresIn }),
-  logout: () => invoke<void>('logout'),
-  installationId: () => invoke<string>('installation_id'),
-  startRun: (input: StartLocalRunInput) => invoke<void>('start_local_run', { input }),
-  cancelRun: (runId: string) => invoke<void>('cancel_local_run', { runId }),
-  getRun: (runId: string) => invoke<LocalRunRecord | null>('get_local_run', { runId }),
-  listChatThreads: () => invoke<ChatThread[]>('list_chat_threads'),
-  createChatThread: (provider: ChatProvider, cwd: string) =>
-    invoke<ChatThread>('create_chat_thread', { input: { provider, cwd } }),
-  readChatThread: (threadId: string) => invoke<unknown>('read_chat_thread', { threadId }),
-  sendChatMessage: (threadId: string, text: string) =>
-    invoke<unknown>('send_chat_message', { threadId, text }),
-  interruptChatTurn: (threadId: string, turnId: string) =>
-    invoke<void>('interrupt_chat_turn', { threadId, turnId }),
-  resolveChatApproval: (
-    requestId: string | number,
-    method: string,
-    decision: 'accept' | 'acceptForSession' | 'decline',
-  ) => invoke<void>('resolve_chat_approval', { requestId, method, decision }),
-  archiveChatThread: (threadId: string) => invoke<void>('archive_chat_thread', { threadId }),
-  readArtifact: (path: string) => invoke<string>('read_artifact', { path }),
-  revealArtifact: (path: string) => invoke<void>('reveal_artifact', { path }),
-  quit: (force = false) => invoke<void>('quit_application', { force }),
-};
+type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+
+export function createLocalApi(call: Invoke = invoke) {
+  const request = <T>(command: string, args?: Record<string, unknown>) =>
+    call(command, args) as Promise<T>;
+  return {
+    engineHealth: () => request<EngineHealth>('engine_health'),
+    startCodexLogin: () => request<void>('start_codex_login'),
+    installVerifierRuntime: () => request<void>('install_verifier_runtime'),
+    listRepositories: () => request<Repository[]>('list_repositories'),
+    registerRepository: (path: string) => request<Repository>('register_repository', { path }),
+    refreshRepository: (repositoryId: string) =>
+      request<Repository>('refresh_repository', { repositoryId }),
+    proposeRepositoryPolicy: (repositoryId: string) =>
+      request<PolicyProposal>('propose_repository_policy', { repositoryId }),
+    approveRepositoryPolicy: (repositoryId: string, manifest: VerificationManifest) =>
+      request<Repository>('approve_repository_policy', {
+        input: { repositoryId, manifest },
+      }),
+    listChangeSessions: (repositoryId?: string) =>
+      request<Array<ChangeSession & { repositoryName: string }>>('list_change_sessions', {
+        repositoryId,
+      }),
+    getChangeSession: (sessionId: string) =>
+      request<SessionDetail | null>('get_change_session', { sessionId }),
+    startChangeSession: (repositoryId: string, changeRequest: string) =>
+      request<string>('start_change_session', {
+        input: { repositoryId, request: changeRequest },
+      }),
+    continueChangeSession: (sessionId: string, message: string) =>
+      request<void>('continue_change_session', { input: { sessionId, message } }),
+    verifyChangeSession: (sessionId: string) =>
+      request<void>('verify_change_session', { sessionId }),
+    cancelChangeSession: (sessionId: string) =>
+      request<void>('cancel_change_session', { sessionId }),
+    acceptChangeSession: (sessionId: string) =>
+      request<string>('accept_change_session', { sessionId }),
+    discardChangeSession: (sessionId: string) =>
+      request<void>('discard_change_session', { sessionId }),
+    resolveSessionApproval: (
+      requestId: string | number,
+      method: string,
+      decision: 'accept' | 'acceptForSession' | 'decline',
+    ) => request<void>('resolve_session_approval', { requestId, method, decision }),
+    readArtifact: (path: string) => request<string>('read_artifact', { path }),
+    revealArtifact: (path: string) => request<void>('reveal_artifact', { path }),
+    quit: (force = false) => request<void>('quit_application', { force }),
+  };
+}
+
+export type LocalApi = ReturnType<typeof createLocalApi>;
+export const localApi = createLocalApi();

@@ -24,8 +24,11 @@ export function EngineHealthCard({
       </div>
 
       <div className='divide-y border-y text-sm'>
+        <Status label='Git' ready={health.gitAvailable} />
         <Status label='ChatGPT login' ready={health.authenticated} />
+        <Status label='Codex app-server' ready={health.appServerAvailable} />
         <Status label='Docker Desktop' ready={health.dockerAvailable} />
+        <Status label='Agent browser tools' ready={health.browserToolsAvailable} />
         {health.detail ? <p className='text-muted-foreground py-3'>{health.detail}</p> : null}
         {actions ? <div className='py-3'>{actions}</div> : null}
       </div>

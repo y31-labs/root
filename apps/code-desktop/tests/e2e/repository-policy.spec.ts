@@ -1,0 +1,221 @@
+import { expect, test } from '@playwright/test';
+
+const now = Date.now();
+
+function manifest() {
+  return {
+    version: 2,
+    runtime: { packageManager: 'bun', bunVersion: '1.3.5' },
+    gates: {
+      install: {
+        command: 'bun',
+        args: ['install', '--frozen-lockfile'],
+        timeoutMs: 300000,
+        required: true,
+        network: 'enabled',
+      },
+      unit: {
+        command: 'bun',
+        args: ['run', 'test:unit'],
+        timeoutMs: 300000,
+        required: true,
+        network: 'disabled',
+      },
+    },
+  };
+}
+
+test('registers a dirty repository without importing working-tree edits', async ({ page }) => {
+  await page.addInitScript(
+    ({ timestamp }) => {
+      let repositories: Array<Record<string, unknown>> = [];
+      window.__CODE_TEST_SELECT_DIRECTORY__ = async () => '/fixtures/new-repository';
+      window.__CODE_TEST_INVOKE__ = async (command) => {
+        if (command === 'list_repositories') return structuredClone(repositories);
+        if (command === 'list_change_sessions') return [];
+        if (command === 'register_repository') {
+          const repository = {
+            id: 'repo-new',
+            path: '/fixtures/new-repository',
+            name: 'new-repository',
+            headSha: 'abcdef0123456789',
+            branch: 'main',
+            dirty: true,
+            compatible: true,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          };
+          repositories = [repository];
+          return structuredClone(repository);
+        }
+        throw new Error(`Unhandled test command: ${command}`);
+      };
+    },
+    { timestamp: now },
+  );
+
+  await page.goto('/repositories');
+  await page.getByRole('button', { name: 'Open repository' }).click();
+
+  await expect(page.getByRole('heading', { name: 'new-repository' })).toBeVisible();
+  await expect(page.getByText(/current edits remain untouched and are excluded/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start isolated session' })).toBeDisabled();
+});
+
+test('proposes, edits, approves, and invalidates repository policy', async ({ page }) => {
+  await page.addInitScript(
+    ({ timestamp, proposedManifest }) => {
+      const repository: Record<string, any> = {
+        id: 'repo-1',
+        path: '/fixtures/code',
+        name: 'code',
+        headSha: '0123456789abcdef',
+        branch: 'main',
+        dirty: false,
+        compatible: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      window.__CODE_TEST_INVOKE__ = async (command, args) => {
+        if (command === 'list_repositories') return [structuredClone(repository)];
+        if (command === 'list_change_sessions') return [];
+        if (command === 'propose_repository_policy') {
+          return {
+            manifest: structuredClone(proposedManifest),
+            fingerprint: 'proposal-fingerprint',
+            fingerprintPaths: ['bun.lock', 'package.json'],
+            detectedScripts: ['test:unit'],
+          };
+        }
+        if (command === 'approve_repository_policy') {
+          repository.policy = {
+            repositoryId: 'repo-1',
+            manifest: structuredClone((args as any).input.manifest),
+            fingerprint: 'approved-fingerprint',
+            fingerprintPaths: ['bun.lock', 'package.json'],
+            approvedAt: timestamp,
+            valid: true,
+          };
+          return structuredClone(repository);
+        }
+        if (command === 'refresh_repository') {
+          repository.policy.valid = false;
+          return structuredClone(repository);
+        }
+        throw new Error(`Unhandled test command: ${command}`);
+      };
+    },
+    { timestamp: now, proposedManifest: manifest() },
+  );
+
+  await page.goto('/repositories/repo-1');
+  await page.getByRole('button', { name: 'Propose policy' }).click();
+  await page
+    .locator('textarea')
+    .first()
+    .fill(JSON.stringify(manifest(), null, 2));
+  await page.getByRole('button', { name: 'Approve policy' }).click();
+
+  await expect(page.getByText('Approved and current')).toBeVisible();
+  await page.getByRole('button', { name: 'Refresh' }).click();
+  await expect(page.getByText('Review required')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start isolated session' })).toBeDisabled();
+});
+
+test('creates an active isolated session and exposes cancellation', async ({ page }) => {
+  await page.addInitScript(
+    ({ timestamp, approvedManifest }) => {
+      const repository = {
+        id: 'repo-1',
+        path: '/fixtures/code',
+        name: 'code',
+        headSha: '0123456789abcdef',
+        branch: 'main',
+        dirty: false,
+        compatible: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        policy: {
+          repositoryId: 'repo-1',
+          manifest: approvedManifest,
+          fingerprint: 'approved',
+          fingerprintPaths: ['bun.lock', 'package.json'],
+          approvedAt: timestamp,
+          valid: true,
+        },
+      };
+      const session = {
+        id: 'session-active',
+        repositoryId: 'repo-1',
+        repositoryName: 'code',
+        request: 'Add checkout recovery',
+        baseSha: repository.headSha,
+        worktreePath: '/app-data/worktrees/session-active',
+        status: 'implementing',
+        attempt: 1,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      window.__CODE_TEST_INVOKE__ = async (command) => {
+        if (command === 'list_repositories') return [repository];
+        if (command === 'list_change_sessions') return [];
+        if (command === 'start_change_session') return session.id;
+        if (command === 'get_change_session') {
+          return {
+            session,
+            repository,
+            policy: repository.policy,
+            events: [],
+            gateResults: [],
+            approvals: [],
+            artifacts: [],
+            diff: '',
+            currentDigest: '',
+            verificationStale: false,
+          };
+        }
+        if (command === 'cancel_change_session') {
+          session.status = 'cancelled';
+          return;
+        }
+        throw new Error(`Unhandled test command: ${command}`);
+      };
+    },
+    { timestamp: now, approvedManifest: manifest() },
+  );
+
+  await page.goto('/repositories/repo-1');
+  await page
+    .getByPlaceholder('Describe the change and the behavior that should be verified.')
+    .fill('Add checkout recovery');
+  await page.getByRole('button', { name: 'Start isolated session' }).click();
+
+  await expect(page.getByText('implementing', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+});
+
+test('shows distinct setup guidance when the local runtime is unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__CODE_TEST_INVOKE__ = async (command) => {
+      if (command === 'engine_health') {
+        return {
+          available: false,
+          authenticated: false,
+          gitAvailable: true,
+          dockerAvailable: false,
+          appServerAvailable: false,
+          browserToolsAvailable: false,
+          detail: 'Docker is stopped. Start Docker Desktop, then check again.',
+        };
+      }
+      if (command === 'list_repositories') return [];
+      if (command === 'list_change_sessions') return [];
+      throw new Error(`Unhandled test command: ${command}`);
+    };
+  });
+
+  await page.goto('/settings');
+  await expect(page.getByText(/Docker is stopped/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Check again' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open Codex login' })).toBeVisible();
+});

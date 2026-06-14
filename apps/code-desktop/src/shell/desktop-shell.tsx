@@ -3,14 +3,13 @@ import { SidebarInset, SidebarProvider } from '@workspace/ui/components/ui/sideb
 import { useEffect, type ReactNode } from 'react';
 
 import { AppSidebar } from '#/components/navigation/app-sidebar';
-import { useRunSync } from '#/hooks/use-run-sync';
 import { localApi } from '#/lib/local-api';
 
 export function DesktopShell({ children }: { children: ReactNode }) {
-  useRunSync();
   useEffect(() => {
+    if (!('__TAURI_INTERNALS__' in window)) return;
     const unlisten = listen('quit-confirmation-required', () => {
-      if (window.confirm('A local run is active. Quit immediately?')) {
+      if (window.confirm('A change session is active. Quit immediately?')) {
         void localApi.quit(true);
       }
     });
