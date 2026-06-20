@@ -1,25 +1,70 @@
 ---
-import CosmicWavesShaders from "@workspace/ui/components/ui/cosmic-waves";
 import Layout from "../layouts/Layout.astro";
+import { formatPublishedDate, getPublishedPosts, getReadingTime } from "../lib/posts";
+import { AUTHOR, SITE_DESCRIPTION, SITE_TITLE } from "../lib/site";
+
+const posts = await getPublishedPosts();
 ---
 
-<Layout>
-	<main class="relative h-screen w-screen overflow-hidden">
-		<div class="absolute inset-0">
-			<CosmicWavesShaders client:only="react" className="h-full w-full" speed={0.5} amplitude={0.1} colorShift={0.5} />
-		</div>
+<Layout title={SITE_TITLE} description={SITE_DESCRIPTION}>
+	<main class="page-shell home-page" id="main-content">
+		<section class="intro" aria-labelledby="intro-title">
+			<h1 id="intro-title">
+				<a
+					href={AUTHOR.linkedin}
+					data-profile-link="linkedin"
+					rel="me noreferrer"
+					target="_blank"
+				>
+					{AUTHOR.name}
+				</a>
+				<span aria-hidden="true"> / </span>
+				<a
+					href={AUTHOR.github}
+					data-profile-link="github"
+					rel="me noreferrer"
+					target="_blank"
+				>
+					@{AUTHOR.username}
+				</a>
+			</h1>
+			<p>Putting thoughts somewhere they can wander.</p>
+		</section>
 
-		<div class="relative z-10 flex h-full w-full items-center justify-center">
-			<div class="flex items-center gap-3 rounded-full bg-black/30 px-6 py-3 text-lg font-medium text-white backdrop-blur-sm">
-				<span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
-				<span>Loading...</span>
-			</div>
-		</div>
+		<section class="writing-index" id="writing" aria-labelledby="writing-title">
+			<header class="section-heading">
+				<h2 id="writing-title">Writing</h2>
+			</header>
+
+			{
+				posts.length > 0 ? (
+					<ol class="post-list">
+						{posts.map((post) => (
+							<li>
+								<article class="post-row">
+									<a href={`/writing/${post.id}/`}>
+										<div class="post-row-copy">
+											<h3>{post.data.title}</h3>
+											<p>{post.data.description}</p>
+										</div>
+										<p class="post-meta">
+											<time datetime={post.data.publishedAt.toISOString()}>
+												{formatPublishedDate(post.data.publishedAt)}
+											</time>
+											<span aria-hidden="true">&middot;</span>
+											<span>{getReadingTime(post.body)} min read</span>
+										</p>
+									</a>
+								</article>
+							</li>
+						))}
+					</ol>
+				) : (
+					<p class="empty-state">
+						No writing here yet. The first piece is still taking shape.
+					</p>
+				)
+			}
+		</section>
 	</main>
 </Layout>
-
-<script is:inline>
-  document.addEventListener('DOMContentLoaded', function () {
-    window.posthog?.capture('portfolio_viewed');
-  });
-</script>

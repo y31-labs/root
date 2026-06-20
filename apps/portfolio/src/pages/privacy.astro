@@ -1,0 +1,64 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { AUTHOR } from "../lib/site";
+
+const title = `Privacy | ${AUTHOR.name}`;
+const description =
+	"How analytics and session replay are used on Andrius Gvalda's website.";
+---
+
+<Layout title={title} description={description} canonical="/privacy/">
+	<header class="site-header">
+		<a href="/">{AUTHOR.name}</a>
+		<a href="/#writing">Writing</a>
+	</header>
+
+	<main class="post-shell" id="main-content">
+		<article>
+			<header class="post-header">
+				<h1>Privacy</h1>
+				<p class="post-description">
+					A short explanation of what this site measures.
+				</p>
+			</header>
+
+			<div class="prose">
+				<h2>Analytics</h2>
+				<p>
+					This site uses PostHog to understand traffic and how people interact
+					with the writing. It collects page views, referral and campaign
+					information, clicks, reading progress, engagement time, device
+					information, heatmaps, and anonymous session recordings.
+				</p>
+				<p>
+					PostHog stores an anonymous visitor identifier in cookies and local
+					storage so visits can be understood across sessions. This site's
+					PostHog project is hosted in the United States, so analytics data is
+					processed there. No account or named visitor profile is created by
+					this website.
+				</p>
+
+				<h2>Session replay</h2>
+				<p>
+					Session replay records interactions with the page. Input values are
+					masked, and future content marked as private is masked before it is
+					sent. Avoid entering sensitive information into any website unless it
+					is necessary.
+				</p>
+
+				<h2>Your choice</h2>
+				<p>
+					Analytics starts by default. Use the analytics control in the footer
+					to disable future collection on this browser. The same control can
+					enable it again later.
+				</p>
+				<p>
+					You can read more in the
+					<a href="https://posthog.com/privacy" rel="noreferrer" target="_blank">
+						PostHog privacy policy
+					</a>.
+				</p>
+			</div>
+		</article>
+	</main>
+</Layout>
