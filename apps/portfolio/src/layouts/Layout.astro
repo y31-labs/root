@@ -1,29 +1,131 @@
 ---
-import "../styles/global.css";
 import PostHog from "../components/posthog.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import { AUTHOR, SITE_DESCRIPTION, SITE_TITLE } from "../lib/site";
+import "../styles/global.css";
+
+interface ArticleMetadata {
+	headline: string;
+	publishedAt: Date;
+	updatedAt?: Date;
+}
+
+interface Props {
+	title?: string;
+	description?: string;
+	canonical?: URL | string;
+	pageType?: "website" | "article";
+	article?: ArticleMetadata;
+}
+
+const {
+	title = SITE_TITLE,
+	description = SITE_DESCRIPTION,
+	canonical,
+	pageType = "website",
+	article,
+} = Astro.props;
+
+const siteUrl = Astro.site ?? new URL(Astro.url.origin);
+const canonicalUrl =
+	canonical instanceof URL
+		? canonical
+		: new URL(canonical ?? Astro.url.pathname, siteUrl);
+const homeUrl = new URL("/", siteUrl);
+const personId = new URL("/#person", siteUrl).href;
+const websiteId = new URL("/#website", siteUrl).href;
+
+const graph: Record<string, unknown>[] = [
+	{
+		"@type": "Person",
+		"@id": personId,
+		name: AUTHOR.name,
+		alternateName: `@${AUTHOR.username}`,
+		url: homeUrl.href,
+		sameAs: [AUTHOR.github, AUTHOR.linkedin],
+	},
+	{
+		"@type": "WebSite",
+		"@id": websiteId,
+		url: homeUrl.href,
+		name: SITE_TITLE,
+		description: SITE_DESCRIPTION,
+		inLanguage: "en",
+		publisher: { "@id": personId },
+	},
+];
+
+if (pageType === "article" && article) {
+	graph.push({
+		"@type": "BlogPosting",
+		"@id": `${canonicalUrl.href}#article`,
+		headline: article.headline,
+		description,
+		url: canonicalUrl.href,
+		mainEntityOfPage: canonicalUrl.href,
+		datePublished: article.publishedAt.toISOString(),
+		dateModified: (article.updatedAt ?? article.publishedAt).toISOString(),
+		inLanguage: "en",
+		author: { "@id": personId },
+		publisher: { "@id": personId },
+		isPartOf: { "@id": websiteId },
+	});
+}
+
+const structuredData = JSON.stringify({
+	"@context": "https://schema.org",
+	"@graph": graph,
+}).replaceAll("<", "\\u003c");
 ---
 
 <!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="generator" content={Astro.generator} />
+		<meta name="description" content={description} />
+		<meta name="color-scheme" content="light dark" />
+
+		<title>{title}</title>
+		<link rel="canonical" href={canonicalUrl} />
+		<link rel="alternate" type="application/rss+xml" title={`${SITE_TITLE} RSS`} href="/rss.xml" />
+		<link rel="sitemap" href="/sitemap-index.xml" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Loading...</title>
+
+		<meta property="og:type" content={pageType} />
+		<meta property="og:site_name" content={SITE_TITLE} />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonicalUrl} />
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:title" content={title} />
+		<meta name="twitter:description" content={description} />
+
+		{
+			article && (
+				<>
+					<meta
+						property="article:published_time"
+						content={article.publishedAt.toISOString()}
+					/>
+					<meta
+						property="article:modified_time"
+						content={(article.updatedAt ?? article.publishedAt).toISOString()}
+					/>
+				</>
+			)
+		}
+
+		<script is:inline type="application/ld+json" set:html={structuredData} />
 		<PostHog />
 	</head>
 	<body>
-		<slot />
+		<a class="skip-link" href="#main-content">Skip to content</a>
+		<div class="site-frame">
+			<slot />
+			<SiteFooter />
+		</div>
 	</body>
 </html>
-
-<style>
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
-	}
-</style>

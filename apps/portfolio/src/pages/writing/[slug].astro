@@ -1,0 +1,70 @@
+---
+import { render, type CollectionEntry } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+import {
+	formatPublishedDate,
+	getPublishedPosts,
+	getReadingTime,
+} from "../../lib/posts";
+import { AUTHOR } from "../../lib/site";
+
+interface Props {
+	post: CollectionEntry<"writing">;
+}
+
+export async function getStaticPaths() {
+	const posts = await getPublishedPosts();
+
+	return posts.map((post) => ({
+		params: { slug: post.id },
+		props: { post },
+	}));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const readingTime = getReadingTime(post.body);
+const pageTitle = `${post.data.title} | ${AUTHOR.name}`;
+---
+
+<Layout
+	title={pageTitle}
+	description={post.data.description}
+	canonical={`/writing/${post.id}/`}
+	pageType="article"
+	article={{
+		headline: post.data.title,
+		publishedAt: post.data.publishedAt,
+		updatedAt: post.data.updatedAt,
+	}}
+>
+	<header class="site-header">
+		<a href="/">{AUTHOR.name}</a>
+		<a href="/#writing">Writing</a>
+	</header>
+
+	<main class="post-shell" id="main-content">
+		<article
+			data-post
+			data-post-slug={post.id}
+			data-post-title={post.data.title}
+			data-reading-time={readingTime}
+		>
+			<header class="post-header">
+				<p class="post-meta">
+					<time datetime={post.data.publishedAt.toISOString()}>
+						{formatPublishedDate(post.data.publishedAt)}
+					</time>
+					<span aria-hidden="true">&middot;</span>
+					<span>{readingTime} min read</span>
+				</p>
+				<h1>{post.data.title}</h1>
+				<p class="post-description">{post.data.description}</p>
+			</header>
+
+			<div class="prose">
+				<Content />
+			</div>
+		</article>
+	</main>
+</Layout>

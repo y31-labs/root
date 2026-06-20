@@ -1,0 +1,168 @@
+---
+import { AUTHOR } from "../lib/site";
+---
+
+<footer class="site-footer">
+	<nav aria-label="Footer">
+		<a
+			href={AUTHOR.github}
+			data-profile-link="github"
+			rel="me noreferrer"
+			target="_blank">GitHub</a
+		>
+		<a
+			href={AUTHOR.linkedin}
+			data-profile-link="linkedin"
+			rel="me noreferrer"
+			target="_blank">LinkedIn</a
+		>
+		<a href="/rss.xml" data-rss-link>RSS</a>
+		<a href="/privacy/">Privacy</a>
+		<button type="button" data-analytics-toggle>Analytics off</button>
+	</nav>
+	<p>&copy; {new Date().getFullYear()} {AUTHOR.name}</p>
+</footer>
+
+<script is:inline>
+	(function () {
+		const posthog = window.posthog;
+		const toggle = document.querySelector("[data-analytics-toggle]");
+
+		function analyticsAvailable() {
+			return Boolean(
+				posthog &&
+					typeof posthog.capture === "function" &&
+					typeof posthog.has_opted_out_capturing === "function",
+			);
+		}
+
+		function updateToggle() {
+			if (!(toggle instanceof HTMLButtonElement)) return;
+
+			if (!analyticsAvailable()) {
+				toggle.textContent = "Analytics off";
+				toggle.disabled = true;
+				toggle.setAttribute("aria-pressed", "false");
+				return;
+			}
+
+			const isEnabled = !posthog.has_opted_out_capturing();
+			toggle.disabled = false;
+			toggle.textContent = isEnabled ? "Disable analytics" : "Enable analytics";
+			toggle.setAttribute("aria-pressed", String(isEnabled));
+		}
+
+		function postProperties() {
+			const article = document.querySelector("[data-post]");
+			if (!(article instanceof HTMLElement)) return {};
+
+			return {
+				post_slug: article.dataset.postSlug,
+				post_title: article.dataset.postTitle,
+				reading_time_minutes: Number(article.dataset.readingTime),
+			};
+		}
+
+		function capture(event, properties) {
+			if (!analyticsAvailable() || posthog.has_opted_out_capturing()) return;
+			posthog.capture(event, {
+				...properties,
+				page_path: window.location.pathname,
+			});
+		}
+
+		if (toggle instanceof HTMLButtonElement) {
+			toggle.addEventListener("click", function () {
+				if (!analyticsAvailable()) return;
+
+				if (posthog.has_opted_out_capturing()) {
+					posthog.opt_in_capturing();
+					posthog.startSessionRecording();
+				} else {
+					posthog.stopSessionRecording();
+					posthog.opt_out_capturing();
+				}
+
+				updateToggle();
+			});
+		}
+
+		document.addEventListener("click", function (event) {
+			const target = event.target;
+			if (!(target instanceof Element)) return;
+
+			const link = target.closest("a");
+			if (!(link instanceof HTMLAnchorElement)) return;
+
+			const profile = link.dataset.profileLink;
+			const isRss = link.hasAttribute("data-rss-link");
+			const destination = new URL(link.href, window.location.href);
+			const properties = {
+				...postProperties(),
+				destination_type: profile ?? (isRss ? "rss" : "external"),
+				destination_domain: destination.hostname,
+			};
+
+			if (profile) {
+				capture("profile_link_clicked", properties);
+			}
+
+			if (isRss) {
+				capture("rss_link_clicked", properties);
+			}
+
+			if (destination.origin !== window.location.origin) {
+				capture("outbound_link_clicked", properties);
+			}
+		});
+
+		const article = document.querySelector("[data-post]");
+		if (article instanceof HTMLElement) {
+			const baseProperties = postProperties();
+			const reached = new Set();
+			const thresholds = [25, 50, 75, 100];
+
+			capture("post_viewed", baseProperties);
+
+			function captureProgress() {
+				const articleTop = article.getBoundingClientRect().top + window.scrollY;
+				const visibleBottom = window.scrollY + window.innerHeight;
+				const progress = Math.max(
+					0,
+					Math.min(100, ((visibleBottom - articleTop) / article.offsetHeight) * 100),
+				);
+
+				for (const threshold of thresholds) {
+					if (progress >= threshold && !reached.has(threshold)) {
+						reached.add(threshold);
+						capture("post_read_progress", {
+							...baseProperties,
+							percent: threshold,
+						});
+					}
+				}
+			}
+
+			let visibleFor = 0;
+			const engagementTimer = window.setInterval(function () {
+				if (document.visibilityState !== "visible") return;
+				visibleFor += 1;
+
+				if (visibleFor >= 30) {
+					window.clearInterval(engagementTimer);
+					capture("post_engaged", {
+						...baseProperties,
+						engaged_seconds: 30,
+					});
+				}
+			}, 1000);
+
+			window.addEventListener("scroll", captureProgress, { passive: true });
+			window.addEventListener("resize", captureProgress);
+			captureProgress();
+		}
+
+		updateToggle();
+		window.addEventListener("posthog:loaded", updateToggle);
+	})();
+</script>
