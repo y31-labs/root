@@ -1,0 +1,25 @@
+{
+  "name": "flowguard-codex",
+  "version": "0.1.0",
+  "description": "Maintain Flowguard workflow contracts from Codex.",
+  "author": {
+    "name": "Workspace"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Flowguard",
+    "shortDescription": "Harden user workflows against regressions.",
+    "longDescription": "Adds a Flowguard maintenance skill and local MCP tools for reading approved workflow contracts and writing proposal files only.",
+    "developerName": "Workspace",
+    "category": "Productivity",
+    "capabilities": ["MCP", "Write"],
+    "defaultPrompt": [
+      "Review this change against Flowguard contracts.",
+      "Create a Flowguard proposal for this feature."
+    ],
+    "brandColor": "#0F172A",
+    "composerIcon": "./assets/code-logo.svg",
+    "logo": "./assets/code-logo.svg"
+  },
+  "mcpServers": "./.mcp.json"
+}

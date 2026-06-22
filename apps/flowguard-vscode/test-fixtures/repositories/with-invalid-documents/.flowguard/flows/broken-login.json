@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "broken-login",
+  "name": "Broken login",
+  "goal": "This fixture keeps diagnostics deterministic",
+  "entryStateId": "missing-state",
+  "states": [
+    {
+      "id": "login-form",
+      "name": "Login form",
+      "kind": "page",
+      "route": "/login",
+      "sources": ["src/routes/login.tsx"]
+    }
+  ],
+  "transitions": []
+}

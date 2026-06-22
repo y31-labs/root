@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "id": "login",
+  "name": "Sign in",
+  "goal": "An existing user reaches their account",
+  "entryStateId": "login-form",
+  "states": [
+    {
+      "id": "login-form",
+      "name": "Login form",
+      "kind": "page",
+      "route": "/login",
+      "description": "Email and password fields are visible",
+      "sources": ["src/routes/login.tsx"]
+    },
+    {
+      "id": "account-home",
+      "name": "Account home",
+      "kind": "page",
+      "route": "/account",
+      "sources": ["src/routes/account.tsx"]
+    }
+  ],
+  "transitions": [
+    {
+      "id": "submit-valid-credentials",
+      "from": "login-form",
+      "to": "account-home",
+      "actor": "user",
+      "action": "Submit valid credentials",
+      "outcome": "The user is authenticated",
+      "sources": ["src/server/auth.ts"]
+    }
+  ]
+}

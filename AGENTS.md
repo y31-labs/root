@@ -17,6 +17,15 @@ When adding a workspace package under `packages/`, follow [.docs/package-creatio
 
 For import aliases and related rules (`#` inside packages, `@workspace/`, third-party imports), see [.docs/code-conventions.md](.docs/code-conventions.md).
 
+## Code Style
+
+Prefer arrow functions over function expressions and function declarations.
+
+For React function components, use function declarations and named exports:
+`export function MyComponent() { ... }`.
+
+Always try to DRY repeating code.
+
 ## UI Components
 
 All shared UI primitives and shadcn-generated components live in [`packages/ui`](packages/ui) and are consumed as `@workspace/ui`. Do not add or maintain parallel design-system trees (for example `apps/*/src/components/ui/`) for the same role—extend or compose the shared package instead.
