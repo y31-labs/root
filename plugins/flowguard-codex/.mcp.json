@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "flowguard": {
+      "command": "bun",
+      "args": ["./scripts/flowguard-mcp.mjs"]
+    }
+  }
+}

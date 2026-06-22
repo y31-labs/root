@@ -1,0 +1,94 @@
+{
+  "name": "flowguard-vscode",
+  "displayName": "Flowguard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Workflow hardening for VS Code.",
+  "type": "module",
+  "main": "./dist/extension.cjs",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "build": "bun build src/extension.ts --target=node --format=cjs --external vscode --outfile dist/extension.cjs",
+    "test": "bun test --pass-with-no-tests",
+    "typecheck": "bunx tsc --noEmit"
+  },
+  "dependencies": {
+    "@workspace/flowguard-contracts": "workspace:*",
+    "@workspace/flowguard-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.5",
+    "@types/vscode": "^1.101.0",
+    "typescript": "^6.0.3"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "flowguard.initializeRepository",
+        "title": "Initialize Repository",
+        "category": "Flowguard"
+      },
+      {
+        "command": "flowguard.openFlow",
+        "title": "Open Flow",
+        "category": "Flowguard"
+      },
+      {
+        "command": "flowguard.refresh",
+        "title": "Refresh",
+        "category": "Flowguard"
+      },
+      {
+        "command": "flowguard.showAffectedFlows",
+        "title": "Show Affected Flows",
+        "category": "Flowguard"
+      },
+      {
+        "command": "flowguard.reviewProposal",
+        "title": "Review Proposal",
+        "category": "Flowguard"
+      },
+      {
+        "command": "flowguard.acceptProposal",
+        "title": "Accept Proposal",
+        "category": "Flowguard"
+      },
+      {
+        "command": "flowguard.rejectProposal",
+        "title": "Reject Proposal",
+        "category": "Flowguard"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "flowguard.flows",
+          "name": "Flowguard"
+        },
+        {
+          "id": "flowguard.proposals",
+          "name": "Flowguard Proposals"
+        }
+      ]
+    }
+  },
+  "activationEvents": [
+    "onCommand:flowguard.acceptProposal",
+    "onCommand:flowguard.initializeRepository",
+    "onCommand:flowguard.openFlow",
+    "onCommand:flowguard.refresh",
+    "onCommand:flowguard.rejectProposal",
+    "onCommand:flowguard.reviewProposal",
+    "onCommand:flowguard.showAffectedFlows",
+    "onView:flowguard.flows",
+    "onView:flowguard.proposals",
+    "workspaceContains:.flowguard/config.json",
+    "workspaceContains:.flowguard/flows/*.json",
+    "workspaceContains:.flowguard/proposals/*.json"
+  ],
+  "engines": {
+    "vscode": "^1.100.0"
+  }
+}

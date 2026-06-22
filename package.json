@@ -43,6 +43,7 @@
     "code:mvp:smoke": "bun scripts/code-mvp-smoke/run.mjs",
     "code:mvp:smoke:verify": "bun scripts/code-mvp-smoke/verify.mjs",
     "code:mvp:verify": "bun run code:verify && bun run code:mvp:stage-1 && bun run code:mvp:stage-2 && bun run code:mvp:stage-3 && bun run code:mvp:stage-4 && bun run code:mvp:stage-5 && bun run code:mvp:stage-6 && bun run code:mvp:stage-7 && bun run code:mvp:smoke:verify",
+    "flowguard:check": "bun run --filter @workspace/flowguard-contracts typecheck && bun run --filter @workspace/flowguard-contracts build && bun run --filter @workspace/flowguard-contracts test && bun run --filter @workspace/flowguard-engine typecheck && bun run --filter @workspace/flowguard-engine build && bun run --filter @workspace/flowguard-engine test && bun run --filter flowguard-vscode typecheck && bun run --filter flowguard-vscode build && bun run --filter flowguard-vscode test",
     "ui:add": "bun run --cwd packages/ui ui:add",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",

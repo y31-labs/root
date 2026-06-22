@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "module": "esnext",
+    "target": "esnext",
+    "paths": {
+      "#/*": ["./src/*"]
+    },
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["bun"]
+  },
+  "include": ["src/**/*.ts"]
+}

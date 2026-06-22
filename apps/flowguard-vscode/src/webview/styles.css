@@ -1,0 +1,331 @@
+.bf-webview {
+  --bf-bg: var(--vscode-editor-background);
+  --bf-fg: var(--vscode-foreground);
+  --bf-muted: var(--vscode-descriptionForeground);
+  --bf-border: var(--vscode-panel-border);
+  --bf-focus: var(--vscode-focusBorder);
+  --bf-selection: var(--vscode-list-activeSelectionBackground);
+  --bf-selection-fg: var(--vscode-list-activeSelectionForeground);
+  --bf-added: var(
+    --vscode-gitDecoration-addedResourceForeground,
+    var(--vscode-editorInfo-foreground)
+  );
+  --bf-modified: var(
+    --vscode-gitDecoration-modifiedResourceForeground,
+    var(--vscode-editorWarning-foreground)
+  );
+  --bf-removed: var(
+    --vscode-gitDecoration-deletedResourceForeground,
+    var(--vscode-editorError-foreground)
+  );
+  --bf-uncertain: var(--vscode-editorWarning-foreground);
+  --bf-invalid: var(--vscode-editorError-foreground);
+  --bf-warning: var(--vscode-editorWarning-foreground);
+
+  background: var(--bf-bg);
+  color: var(--bf-fg);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+  min-height: 0;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.bf-header {
+  align-items: center;
+  border-bottom: 1px solid var(--bf-border);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.bf-title {
+  min-width: 0;
+}
+
+.bf-title h1,
+.bf-list-section h2,
+.bf-inspector h2,
+.bf-inspector h3,
+.bf-sources h3 {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.bf-meta,
+.bf-proposal,
+.bf-empty,
+.bf-banner {
+  color: var(--bf-muted);
+  margin: 4px 0 0;
+}
+
+.bf-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bf-toolbar button,
+.bf-search input,
+.bf-list-item,
+.bf-source-link {
+  background: var(--vscode-button-secondaryBackground);
+  border: 1px solid var(--bf-border);
+  border-radius: 4px;
+  color: var(--vscode-button-secondaryForeground);
+  font: inherit;
+}
+
+.bf-toolbar button,
+.bf-source-link {
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.bf-search input {
+  min-width: 160px;
+  padding: 4px 6px;
+}
+
+.bf-toolbar button:focus-visible,
+.bf-search input:focus-visible,
+.bf-list-item:focus-visible,
+.bf-source-link:focus-visible,
+.bf-node:focus,
+.bf-edge:focus {
+  outline: 1px solid var(--bf-focus);
+  outline-offset: 2px;
+}
+
+.bf-body {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  min-height: 0;
+}
+
+.bf-banner {
+  border-bottom: 1px solid var(--bf-border);
+  padding: 8px 12px;
+}
+
+.bf-banner-error {
+  color: var(--bf-invalid);
+}
+
+.bf-banner-warning {
+  color: var(--bf-warning);
+}
+
+.bf-global-issues {
+  color: var(--bf-invalid);
+  list-style: none;
+  padding: 8px 12px;
+}
+
+.bf-proposal {
+  border-bottom: 1px solid var(--bf-border);
+  padding: 8px 12px;
+}
+
+.bf-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 34vw);
+  min-height: 0;
+}
+
+.bf-graph-panel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bf-graph {
+  display: block;
+  height: 100%;
+  min-height: 320px;
+  width: 100%;
+}
+
+.bf-edge,
+.bf-node {
+  color: var(--bf-fg);
+}
+
+.bf-edge-path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.bf-line-dashed {
+  stroke-dasharray: 6 4;
+}
+
+.bf-edge-label,
+.bf-node-title,
+.bf-node-meta,
+.bf-node-id {
+  fill: currentColor;
+  font-size: 12px;
+  paint-order: stroke;
+  stroke: var(--bf-bg);
+  stroke-width: 3px;
+}
+
+.bf-node-shape {
+  fill: var(--bf-bg);
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.bf-node-title {
+  font-weight: 600;
+}
+
+.bf-node-meta,
+.bf-node-id {
+  fill: var(--bf-muted);
+}
+
+.bf-status-added {
+  color: var(--bf-added);
+}
+
+.bf-status-modified {
+  color: var(--bf-modified);
+}
+
+.bf-status-removed {
+  color: var(--bf-removed);
+}
+
+.bf-status-uncertain {
+  color: var(--bf-uncertain);
+}
+
+.bf-status-invalid {
+  color: var(--bf-invalid);
+}
+
+.bf-status-warning {
+  color: var(--bf-warning);
+}
+
+.is-dimmed {
+  opacity: 0.58;
+}
+
+.is-selected .bf-node-shape,
+.is-selected .bf-edge-path {
+  stroke-width: 2.6;
+}
+
+.is-match .bf-node-shape,
+.is-match .bf-edge-path {
+  outline: 1px solid var(--bf-focus);
+}
+
+.bf-side {
+  border-left: 1px solid var(--bf-border);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.bf-list-section,
+.bf-inspector {
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.bf-list-section {
+  border-bottom: 1px solid var(--bf-border);
+}
+
+.bf-item-list,
+.bf-sources ul,
+.bf-issues {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.bf-list-item {
+  background: transparent;
+  color: var(--bf-fg);
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 6px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.bf-list-item.is-selected {
+  background: var(--bf-selection);
+  color: var(--bf-selection-fg);
+}
+
+.bf-list-title {
+  font-weight: 600;
+}
+
+.bf-list-meta {
+  color: var(--bf-muted);
+  font-size: 12px;
+}
+
+.bf-details {
+  display: grid;
+  gap: 4px 10px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 10px 0;
+}
+
+.bf-details dt {
+  color: var(--bf-muted);
+}
+
+.bf-details dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bf-source-link {
+  background: transparent;
+  color: var(--vscode-textLink-foreground);
+  margin: 2px 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.bf-sr-only {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+}
+
+@media (max-width: 760px) {
+  .bf-header,
+  .bf-main {
+    display: block;
+  }
+
+  .bf-side {
+    border-left: 0;
+    border-top: 1px solid var(--bf-border);
+  }
+}
