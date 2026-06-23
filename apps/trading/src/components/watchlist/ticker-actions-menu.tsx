@@ -1,3 +1,4 @@
+import { IconDotsVertical, IconExternalLink, IconTrash } from '@tabler/icons-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +18,6 @@ import {
   DropdownMenuTrigger,
 } from '@workspace/ui/components/ui/dropdown-menu';
 import { Spinner } from '@workspace/ui/components/ui/spinner';
-import { IconDotsVertical, IconExternalLink, IconTrash } from '@tabler/icons-react';
 import type { MouseEvent } from 'react';
 import { useState, useTransition } from 'react';
 
@@ -50,31 +50,31 @@ export function TickerActionsMenu({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            aria-label={`${displayName} actions`}
-          >
-            <IconDotsVertical className="size-4" />
-          </Button>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              className='shrink-0'
+              aria-label={`${displayName} actions`}
+            />
+          }
+        >
+          <IconDotsVertical className='size-4' />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[12rem]">
+        <DropdownMenuContent align='end' className='min-w-[12rem]'>
           {homepageUrl ? (
             <>
-              <DropdownMenuItem asChild>
-                <a href={homepageUrl} target="_blank" rel="noreferrer">
-                  <IconExternalLink />
-                  Visit site
-                </a>
+              <DropdownMenuItem render={<a href={homepageUrl} target='_blank' rel='noreferrer' />}>
+                <IconExternalLink />
+                Visit site
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
           ) : null}
           <DropdownMenuItem
-            variant="destructive"
+            variant='destructive'
             onSelect={(event) => {
               event.preventDefault();
               setConfirmOpen(true);
@@ -96,8 +96,8 @@ export function TickerActionsMenu({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" disabled={isRemoving} onClick={handleConfirm}>
-              {isRemoving ? <Spinner data-icon="inline-start" /> : null}
+            <AlertDialogAction variant='destructive' disabled={isRemoving} onClick={handleConfirm}>
+              {isRemoving ? <Spinner data-icon='inline-start' /> : null}
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>
