@@ -54,7 +54,9 @@ export function SessionsPage() {
               <span className='min-w-0'>
                 <span className='block truncate font-medium'>{session.request}</span>
                 <span className='text-muted-foreground text-xs'>
-                  {session.repositoryName} · {session.baseSha.slice(0, 12)}
+                  {session.targetName
+                    ? `${session.repositoryName} / ${session.targetName}`
+                    : session.repositoryName}
                 </span>
               </span>
               <ChangeSessionStatusBadge status={session.status} />

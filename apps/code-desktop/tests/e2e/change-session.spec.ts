@@ -115,7 +115,7 @@ test.beforeEach(async ({ page }) => {
       verificationStale: false,
     };
 
-    window.__CODE_TEST_INVOKE__ = async (command) => {
+    window.__CODE_TEST_INVOKE__ = async (command, args) => {
       if (command === 'list_repositories') return [repository];
       if (command === 'list_change_sessions') return [session];
       if (command === 'get_change_session') return structuredClone(detail);
@@ -149,11 +149,62 @@ test.beforeEach(async ({ page }) => {
         detail.session.branchName = 'code/repair-checkout-session1';
         return detail.session.branchName;
       }
+      if (command === 'export_evidence_report') {
+        const timestamp = Date.now();
+        const jsonArtifact = {
+          id: 'artifact-report-json',
+          sessionId: session.id,
+          kind: 'report',
+          path: '/app-data/sessions/session-1/artifacts/evidence-report.json',
+          label: 'Evidence report (JSON)',
+          createdAt: timestamp,
+        };
+        const markdownArtifact = {
+          id: 'artifact-report-markdown',
+          sessionId: session.id,
+          kind: 'report',
+          path: '/app-data/sessions/session-1/artifacts/evidence-report.md',
+          label: 'Evidence report (Markdown)',
+          createdAt: timestamp,
+        };
+        detail.artifacts = [
+          ...detail.artifacts.filter((artifact) => artifact.kind !== 'report'),
+          jsonArtifact,
+          markdownArtifact,
+        ];
+        return {
+          report: {
+            version: 1,
+            sessionId: session.id,
+            repository: { name: 'code', path: '/fixtures/code', branch: 'main' },
+            task: { requestSummary: session.request },
+            baseCommit: session.baseSha,
+            verification: detail.snapshot,
+            gates: [],
+            safetyChecks: [],
+            artifacts: [],
+            privacy: {
+              sourceContentsIncluded: false,
+              redactionNotes: [],
+              notes: [],
+            },
+            createdAt: timestamp,
+            exportedAt: timestamp,
+          },
+          jsonArtifact,
+          markdownArtifact,
+        };
+      }
       if (command === 'discard_change_session') {
         detail.session.status = 'discarded';
         return;
       }
-      if (command === 'read_artifact') return 'redacted command output';
+      if (command === 'read_artifact') {
+        if ((args as { path?: string } | undefined)?.path?.endsWith('evidence-report.md')) {
+          return '# Evidence Report\n\n## Verification Gates';
+        }
+        return 'redacted command output';
+      }
       if (command === 'reveal_artifact') return;
       throw new Error(`Unhandled test command: ${command}`);
     };
@@ -182,6 +233,20 @@ test('re-verifies a recoverable session and accepts the fresh branch', async ({ 
   await expect(page.getByText('verified', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Accept branch' }).click();
   await expect(page.getByText('accepted', { exact: true })).toBeVisible();
+});
+
+test('exports evidence reports for a verified session', async ({ page }) => {
+  await page.goto('/sessions/session-1');
+
+  await page.getByRole('button', { name: 'Verify again' }).click();
+  await page.getByRole('button', { name: 'Export report' }).click();
+  await page.getByRole('tab', { name: 'Artifacts' }).click();
+
+  await expect(page.getByText('Evidence report (JSON)')).toBeVisible();
+  await expect(page.getByText('Evidence report (Markdown)')).toBeVisible();
+  await page.getByRole('button', { name: 'Preview' }).nth(2).click();
+  await expect(page.getByText('# Evidence Report')).toBeVisible();
+  await expect(page.getByText('## Verification Gates')).toBeVisible();
 });
 
 test('shows stale verification and blocks acceptance', async ({ page }) => {

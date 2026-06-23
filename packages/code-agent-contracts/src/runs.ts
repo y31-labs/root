@@ -24,6 +24,7 @@ export const artifactKinds = [
   'screenshot',
   'playwrightTrace',
   'assertions',
+  'report',
 ] as const;
 
 export type ArtifactKind = (typeof artifactKinds)[number];

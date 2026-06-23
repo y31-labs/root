@@ -9,6 +9,9 @@
     "./vite": "./src/vite.ts",
     "./start": "./src/start.ts"
   },
+  "scripts": {
+    "typecheck": "bunx tsc --noEmit"
+  },
   "devDependencies": {
     "@types/react": "^19.2.14",
     "typescript": "^6.0.3"

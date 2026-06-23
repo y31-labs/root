@@ -1,4 +1,7 @@
-import { parseVerificationManifest, verificationGateKinds } from '@workspace/code-agent-contracts/manifest';
+import {
+  parseVerificationManifest,
+  verificationGateKinds,
+} from '@workspace/code-agent-contracts/manifest';
 import {
   canTransitionRun,
   isVerifiedResult,
@@ -24,16 +27,7 @@ const terminalStatus = v.union(
   v.literal('cancelled'),
   v.literal('needs_input'),
 );
-const gateKind = v.union(
-  v.literal('install'),
-  v.literal('typecheck'),
-  v.literal('lint'),
-  v.literal('build'),
-  v.literal('unit'),
-  v.literal('integration'),
-  v.literal('authSetup'),
-  v.literal('browser'),
-);
+const gateKind = v.union(...verificationGateKinds.map((kind) => v.literal(kind)));
 
 export const list = query({
   args: {},
@@ -159,7 +153,9 @@ export const complete = mutation({
       .collect();
     const summary = summarizeVerification(requiredKinds, results);
     if (args.status === 'verified' && !isVerifiedResult(summary, args.hasLocalPatch)) {
-      throw new Error('Run cannot be verified without a local patch and all required gates passing');
+      throw new Error(
+        'Run cannot be verified without a local patch and all required gates passing',
+      );
     }
     const now = Date.now();
     await ctx.db.patch(args.id, {

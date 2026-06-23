@@ -5,7 +5,7 @@ import { Badge } from '@workspace/ui/components/ui/badge';
 import { Button } from '@workspace/ui/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@workspace/ui/components/ui/tabs';
 import { Textarea } from '@workspace/ui/components/ui/textarea';
-import { Check, FolderOpen, Play, RotateCcw, Square, Trash2, X } from 'lucide-react';
+import { Check, Download, FolderOpen, Play, RotateCcw, Square, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChangeSessionStatusBadge } from '#/components/change-session-status';
@@ -61,6 +61,8 @@ export function ChangeSessionPage() {
   const recoverable = recoverableStatuses.includes(session.status);
   const canVerify = !active && !['accepted', 'discarded'].includes(session.status);
   const canDiscard = !active && session.status !== 'accepted' && session.status !== 'discarded';
+  const canExportReport =
+    !active && ['verified', 'accepted'].includes(session.status) && Boolean(snapshot);
   const canAccept =
     session.status === 'verified' &&
     !detail.verificationStale &&
@@ -86,7 +88,11 @@ export function ChangeSessionPage() {
     <div className='min-w-0 space-y-6 p-6'>
       <PageHeader
         title={session.request}
-        description={`${session.repositoryName} · ${session.baseSha.slice(0, 12)}`}
+        description={
+          session.targetName
+            ? `${session.repositoryName} / ${session.targetName}`
+            : session.repositoryName
+        }
         meta={<ChangeSessionStatusBadge status={session.status} />}
         actions={
           <>
@@ -117,6 +123,16 @@ export function ChangeSessionPage() {
               >
                 <Check data-icon='inline-start' />
                 Accept branch
+              </Button>
+            ) : null}
+            {canExportReport ? (
+              <Button
+                variant='outline'
+                disabled={pending}
+                onClick={() => perform(() => api.exportEvidenceReport(session.id))}
+              >
+                <Download data-icon='inline-start' />
+                Export report
               </Button>
             ) : null}
             {canDiscard ? (
@@ -269,7 +285,7 @@ export function ChangeSessionPage() {
               <h2 className='font-medium'>Verification snapshot</h2>
               <p className='text-muted-foreground text-sm'>
                 {snapshot
-                  ? `${snapshot.passed}/${snapshot.required} required checks passed for ${snapshot.worktreeDigest.slice(0, 12)}`
+                  ? `${snapshot.passed}/${snapshot.required} required checks passed`
                   : 'Verification has not completed.'}
               </p>
             </div>
@@ -288,6 +304,14 @@ export function ChangeSessionPage() {
                 </div>
               ))}
             </div>
+            {snapshot ? (
+              <details className='border-y py-3'>
+                <summary className='cursor-pointer text-sm font-medium'>Technical details</summary>
+                <p className='text-muted-foreground mt-2 font-mono text-xs'>
+                  Worktree digest {snapshot.worktreeDigest}
+                </p>
+              </details>
+            ) : null}
           </section>
         </TabsContent>
         <TabsContent value='diff'>

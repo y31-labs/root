@@ -38,9 +38,32 @@ export interface RepositoryPolicy {
   valid: boolean;
 }
 
+export const repositoryTargetKinds = ['app', 'package', 'manual'] as const;
+export type RepositoryTargetKind = (typeof repositoryTargetKinds)[number];
+
+export const repositoryTargetSources = ['detected', 'codex', 'manual'] as const;
+export type RepositoryTargetSource = (typeof repositoryTargetSources)[number];
+
+export interface RepositoryTarget {
+  id: string;
+  repositoryId: string;
+  name: string;
+  path: string;
+  kind: RepositoryTargetKind;
+  packageName?: string;
+  scripts: Record<string, string>;
+  source: RepositoryTargetSource;
+  selected: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface ChangeSession {
   id: string;
   repositoryId: string;
+  targetId?: string;
+  targetName?: string;
+  targetPath?: string;
   request: string;
   baseSha: string;
   worktreePath: string;
@@ -168,3 +191,84 @@ export function isFreshVerifiedSession(
     snapshot.hasDiff
   );
 }
+
+export const parseRepositoryTarget = (value: unknown): RepositoryTarget => {
+  const target = object(value, 'target');
+  const kind = stringEnum(target.kind, repositoryTargetKinds, 'target.kind');
+  const source = stringEnum(target.source, repositoryTargetSources, 'target.source');
+
+  return {
+    id: nonEmptyString(target.id, 'target.id'),
+    repositoryId: nonEmptyString(target.repositoryId, 'target.repositoryId'),
+    name: nonEmptyString(target.name, 'target.name'),
+    path: repositoryRelativePath(target.path, 'target.path'),
+    kind,
+    packageName:
+      target.packageName === undefined
+        ? undefined
+        : nonEmptyString(target.packageName, 'target.packageName'),
+    scripts: stringRecord(target.scripts, 'target.scripts'),
+    source,
+    selected: boolean(target.selected, 'target.selected'),
+    createdAt: timestamp(target.createdAt, 'target.createdAt'),
+    updatedAt: timestamp(target.updatedAt, 'target.updatedAt'),
+  };
+};
+
+const object = (value: unknown, path: string): Record<string, unknown> => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`${path} must be an object`);
+  }
+  return value as Record<string, unknown>;
+};
+
+const nonEmptyString = (value: unknown, path: string) => {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`${path} must be a non-empty string`);
+  }
+  return value;
+};
+
+const repositoryRelativePath = (value: unknown, path: string) => {
+  const text = nonEmptyString(value, path);
+  if (text === '.') return text;
+  if (
+    text.startsWith('/') ||
+    text.includes('\\') ||
+    text.split('/').some((segment) => !segment || segment === '.' || segment === '..')
+  ) {
+    throw new Error(`${path} must be repository-relative POSIX without dot segments`);
+  }
+  return text;
+};
+
+const stringRecord = (value: unknown, path: string) => {
+  const record = object(value, path);
+  if (Object.values(record).some((item) => typeof item !== 'string')) {
+    throw new Error(`${path} must be a string map`);
+  }
+  return record as Record<string, string>;
+};
+
+const stringEnum = <Value extends string>(
+  value: unknown,
+  values: readonly Value[],
+  path: string,
+) => {
+  if (!values.includes(value as Value)) {
+    throw new Error(`${path} is not supported`);
+  }
+  return value as Value;
+};
+
+const boolean = (value: unknown, path: string) => {
+  if (typeof value !== 'boolean') throw new Error(`${path} must be a boolean`);
+  return value;
+};
+
+const timestamp = (value: unknown, path: string) => {
+  if (!Number.isInteger(value) || Number(value) < 0) {
+    throw new Error(`${path} must be a non-negative integer`);
+  }
+  return Number(value);
+};
