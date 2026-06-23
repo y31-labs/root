@@ -123,6 +123,32 @@ struct RepositoryPolicy {
     valid: bool,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RepositoryTarget {
+    id: String,
+    repository_id: String,
+    name: String,
+    path: String,
+    kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    package_name: Option<String>,
+    scripts: BTreeMap<String, String>,
+    source: String,
+    selected: bool,
+    created_at: i64,
+    updated_at: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RepositoryTargetScan {
+    targets: Vec<RepositoryTarget>,
+    assisted: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    assistance_detail: Option<String>,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PolicyProposal {
@@ -138,6 +164,12 @@ pub(crate) struct ChangeSession {
     pub(crate) id: String,
     repository_id: String,
     repository_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target_path: Option<String>,
     request: String,
     base_sha: String,
     worktree_path: String,
@@ -212,6 +244,89 @@ struct VerificationSnapshot {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+struct EvidenceReportRepository {
+    name: String,
+    path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    branch: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EvidenceReportTask {
+    request_summary: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EvidenceReportTarget {
+    name: String,
+    path: String,
+    kind: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EvidenceReportCheck {
+    kind: String,
+    required: bool,
+    status: String,
+    attempt: u32,
+    duration_ms: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exit_code: Option<i32>,
+    artifact_ids: Vec<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EvidenceReportArtifactIndexEntry {
+    id: String,
+    kind: String,
+    path: String,
+    label: String,
+    created_at: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EvidenceReportPrivacy {
+    source_contents_included: bool,
+    redaction_notes: Vec<String>,
+    notes: Vec<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EvidenceReport {
+    version: u8,
+    session_id: String,
+    repository: EvidenceReportRepository,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target: Option<EvidenceReportTarget>,
+    task: EvidenceReportTask,
+    base_commit: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    accepted_branch: Option<String>,
+    verification: VerificationSnapshot,
+    gates: Vec<EvidenceReportCheck>,
+    safety_checks: Vec<EvidenceReportCheck>,
+    artifacts: Vec<EvidenceReportArtifactIndexEntry>,
+    privacy: EvidenceReportPrivacy,
+    created_at: i64,
+    exported_at: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct EvidenceReportExport {
+    report: EvidenceReport,
+    json_artifact: Artifact,
+    markdown_artifact: Artifact,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct SessionDetail {
     session: ChangeSession,
     repository: Repository,
@@ -237,7 +352,28 @@ pub(crate) struct ApprovePolicyInput {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct StartSessionInput {
     pub(crate) repository_id: String,
+    pub(crate) target_id: Option<String>,
     pub(crate) request: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SaveRepositoryTargetsInput {
+    pub(crate) repository_id: String,
+    pub(crate) targets: Vec<SaveRepositoryTarget>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SaveRepositoryTarget {
+    pub(crate) id: Option<String>,
+    pub(crate) name: String,
+    pub(crate) path: String,
+    pub(crate) kind: String,
+    pub(crate) package_name: Option<String>,
+    pub(crate) scripts: Option<BTreeMap<String, String>>,
+    pub(crate) source: String,
+    pub(crate) selected: bool,
 }
 
 #[derive(Deserialize)]
@@ -268,9 +404,25 @@ struct PolicyRow {
     approved_at: i64,
 }
 
+#[derive(Clone)]
+struct RepositoryTargetRow {
+    id: String,
+    repository_id: String,
+    name: String,
+    path: String,
+    kind: String,
+    package_name: Option<String>,
+    scripts: BTreeMap<String, String>,
+    source: String,
+    selected: bool,
+    created_at: i64,
+    updated_at: i64,
+}
+
 struct SessionRow {
     id: String,
     repository_id: String,
+    target_id: Option<String>,
     request: String,
     base_sha: String,
     worktree_path: PathBuf,
@@ -729,9 +881,26 @@ pub(crate) fn migrate(data_dir: &Path) -> Result<(), String> {
                fingerprint_paths_json TEXT NOT NULL,
                approved_at INTEGER NOT NULL
              );
+             CREATE TABLE IF NOT EXISTS repository_targets (
+               id TEXT PRIMARY KEY,
+               repository_id TEXT NOT NULL,
+               name TEXT NOT NULL,
+               path TEXT NOT NULL,
+               kind TEXT NOT NULL,
+               package_name TEXT,
+               scripts_json TEXT NOT NULL,
+               source TEXT NOT NULL,
+               selected INTEGER NOT NULL,
+               created_at INTEGER NOT NULL,
+               updated_at INTEGER NOT NULL,
+               UNIQUE(repository_id, path)
+             );
+             CREATE INDEX IF NOT EXISTS repository_targets_by_repository
+               ON repository_targets(repository_id, selected DESC, kind, name);
              CREATE TABLE IF NOT EXISTS change_sessions (
                id TEXT PRIMARY KEY,
                repository_id TEXT NOT NULL,
+               target_id TEXT,
                request TEXT NOT NULL,
                base_sha TEXT NOT NULL,
                worktree_path TEXT NOT NULL,
@@ -827,6 +996,30 @@ pub(crate) fn migrate(data_dir: &Path) -> Result<(), String> {
                VALUES (1, strftime('%s','now') * 1000);",
         )
         .map_err(display_error)?;
+    add_column_if_missing(&connection, "change_sessions", "target_id", "TEXT")?;
+    Ok(())
+}
+
+fn add_column_if_missing(
+    connection: &rusqlite::Connection,
+    table: &str,
+    column: &str,
+    definition: &str,
+) -> Result<(), String> {
+    let mut statement = connection
+        .prepare(&format!("PRAGMA table_info({table})"))
+        .map_err(display_error)?;
+    let columns = statement
+        .query_map([], |row| row.get::<_, String>(1))
+        .map_err(display_error)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(display_error)?;
+    drop(statement);
+    if !columns.iter().any(|name| name == column) {
+        connection
+            .execute(&format!("ALTER TABLE {table} ADD COLUMN {column} {definition}"), [])
+            .map_err(display_error)?;
+    }
     Ok(())
 }
 
@@ -991,9 +1184,107 @@ pub(crate) async fn refresh_repository(
 }
 
 #[tauri::command]
+pub(crate) async fn list_repository_targets(
+    state: State<'_, AppState>,
+    repository_id: String,
+) -> Result<Vec<RepositoryTarget>, String> {
+    migrate(&state.data_dir)?;
+    load_target_rows(&state.data_dir, &repository_id).map(|targets| {
+        targets
+            .into_iter()
+            .map(repository_target_view)
+            .collect::<Vec<_>>()
+    })
+}
+
+#[tauri::command]
+pub(crate) async fn scan_repository_targets(
+    state: State<'_, AppState>,
+    repository_id: String,
+) -> Result<RepositoryTargetScan, String> {
+    migrate(&state.data_dir)?;
+    let repository = load_repository_row(&state.data_dir, &repository_id)?
+        .ok_or_else(|| "Repository not found".to_string())?;
+    let existing = load_target_rows(&state.data_dir, &repository_id)?;
+    let mut targets = discover_repository_targets(&repository).await?;
+    for target in &mut targets {
+        if let Some(existing) = existing.iter().find(|item| item.path == target.path) {
+            target.id = existing.id.clone();
+            target.selected = existing.selected;
+            target.created_at = existing.created_at;
+        }
+    }
+    Ok(RepositoryTargetScan {
+        targets: targets
+            .into_iter()
+            .map(repository_target_view)
+            .collect::<Vec<_>>(),
+        assisted: false,
+        assistance_detail: Some(
+            "Local Codex assisted classification is unavailable for this scan; deterministic package metadata was used."
+                .to_string(),
+        ),
+    })
+}
+
+#[tauri::command]
+pub(crate) async fn save_repository_targets(
+    state: State<'_, AppState>,
+    input: SaveRepositoryTargetsInput,
+) -> Result<Vec<RepositoryTarget>, String> {
+    migrate(&state.data_dir)?;
+    let repository = load_repository_row(&state.data_dir, &input.repository_id)?
+        .ok_or_else(|| "Repository not found".to_string())?;
+    let mut seen = HashSet::new();
+    let timestamp = now_ms();
+    let rows = input
+        .targets
+        .into_iter()
+        .map(|target| {
+            let path = validate_target_path(&target.path)?;
+            if !seen.insert(path.clone()) {
+                return Err(format!("Duplicate target path: {path}"));
+            }
+            validate_target_kind(&target.kind)?;
+            validate_target_source(&target.source)?;
+            let name = target.name.trim();
+            if name.is_empty() {
+                return Err("Target name cannot be empty".to_string());
+            }
+            let scripts = target.scripts.unwrap_or_default();
+            Ok(RepositoryTargetRow {
+                id: target.id.unwrap_or_else(|| Uuid::new_v4().to_string()),
+                repository_id: repository.id.clone(),
+                name: name.to_string(),
+                path,
+                kind: target.kind,
+                package_name: target
+                    .package_name
+                    .map(|value| value.trim().to_string())
+                    .filter(|value| !value.is_empty()),
+                scripts,
+                source: target.source,
+                selected: target.selected,
+                created_at: timestamp,
+                updated_at: timestamp,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+
+    replace_targets(&state.data_dir, &repository.id, &rows)?;
+    load_target_rows(&state.data_dir, &repository.id).map(|targets| {
+        targets
+            .into_iter()
+            .map(repository_target_view)
+            .collect::<Vec<_>>()
+    })
+}
+
+#[tauri::command]
 pub(crate) async fn propose_repository_policy(
     state: State<'_, AppState>,
     repository_id: String,
+    target_id: Option<String>,
 ) -> Result<PolicyProposal, String> {
     let repository = load_repository_row(&state.data_dir, &repository_id)?
         .ok_or_else(|| "Repository not found".to_string())?;
@@ -1002,7 +1293,17 @@ pub(crate) async fn propose_repository_policy(
             .compatibility_detail
             .unwrap_or_else(|| "Repository is not compatible with this MVP".to_string()));
     }
-    propose_policy(&repository.path).await
+    let target = target_id
+        .as_deref()
+        .map(|target_id| load_target_row(&state.data_dir, target_id))
+        .transpose()?
+        .flatten();
+    if let Some(target) = &target {
+        if target.repository_id != repository.id {
+            return Err("Repository target does not belong to this repository".to_string());
+        }
+    }
+    propose_policy(&repository.path, target.as_ref()).await
 }
 
 #[tauri::command]
@@ -1013,7 +1314,7 @@ pub(crate) async fn approve_repository_policy(
     validate_manifest(&input.manifest)?;
     let repository = load_repository_row(&state.data_dir, &input.repository_id)?
         .ok_or_else(|| "Repository not found".to_string())?;
-    let proposal = propose_policy(&repository.path).await?;
+    let proposal = propose_policy(&repository.path, None).await?;
     let paths = proposal.fingerprint_paths;
     let fingerprint = proposal.fingerprint;
     super::database(&state.data_dir)?
@@ -1047,12 +1348,14 @@ pub(crate) async fn list_change_sessions(
 ) -> Result<Vec<ChangeSession>, String> {
     migrate(&state.data_dir)?;
     let connection = super::database(&state.data_dir)?;
-    let mut sql = "SELECT s.id, s.repository_id, r.name, s.request, s.base_sha,
+    let mut sql = "SELECT s.id, s.repository_id, r.name, s.target_id, t.name, t.path,
+                          s.request, s.base_sha,
                           s.worktree_path, s.branch_name, s.codex_thread_id, s.status,
                           s.attempt, s.verification_digest, s.terminal_reason,
                           s.created_at, s.updated_at
                    FROM change_sessions s
-                   JOIN repositories r ON r.id = s.repository_id"
+                   JOIN repositories r ON r.id = s.repository_id
+                   LEFT JOIN repository_targets t ON t.id = s.target_id"
         .to_string();
     if repository_id.is_some() {
         sql.push_str(" WHERE s.repository_id = ?1");
@@ -1064,17 +1367,20 @@ pub(crate) async fn list_change_sessions(
             id: row.get(0)?,
             repository_id: row.get(1)?,
             repository_name: row.get(2)?,
-            request: row.get(3)?,
-            base_sha: row.get(4)?,
-            worktree_path: row.get(5)?,
-            branch_name: row.get(6)?,
-            codex_thread_id: row.get(7)?,
-            status: row.get(8)?,
-            attempt: row.get(9)?,
-            verification_digest: row.get(10)?,
-            terminal_reason: row.get(11)?,
-            created_at: row.get(12)?,
-            updated_at: row.get(13)?,
+            target_id: row.get(3)?,
+            target_name: row.get(4)?,
+            target_path: row.get(5)?,
+            request: row.get(6)?,
+            base_sha: row.get(7)?,
+            worktree_path: row.get(8)?,
+            branch_name: row.get(9)?,
+            codex_thread_id: row.get(10)?,
+            status: row.get(11)?,
+            attempt: row.get(12)?,
+            verification_digest: row.get(13)?,
+            terminal_reason: row.get(14)?,
+            created_at: row.get(15)?,
+            updated_at: row.get(16)?,
         })
     };
     let rows = if let Some(repository_id) = repository_id {
@@ -1105,6 +1411,12 @@ pub(crate) async fn get_change_session(
         .ok_or_else(|| "Repository not found".to_string())?;
     let policy = load_policy_row(&state.data_dir, &repository.id)?
         .ok_or_else(|| "Repository policy not found".to_string())?;
+    let target = session
+        .target_id
+        .as_deref()
+        .map(|target_id| load_target_row(&state.data_dir, target_id))
+        .transpose()?
+        .flatten();
     let current_digest = if session.worktree_path.exists() {
         worktree_digest(&session.worktree_path).await?
     } else {
@@ -1121,7 +1433,7 @@ pub(crate) async fn get_change_session(
         String::new()
     };
     Ok(Some(SessionDetail {
-        session: session_view(&repository.name, session),
+        session: session_view(&repository.name, session, target.as_ref()),
         repository: repository_view(&state.data_dir, repository).await?,
         policy: policy_view(
             &repository_path(&state.data_dir, &policy.repository_id)?,
@@ -1153,6 +1465,13 @@ pub(crate) async fn start_change_session(
         .ok_or_else(|| "Repository not found".to_string())?;
     let policy = load_policy_row(&state.data_dir, &repository.id)?
         .ok_or_else(|| "Approve a repository policy before starting a change".to_string())?;
+    if let Some(target_id) = &input.target_id {
+        let target = load_target_row(&state.data_dir, target_id)?
+            .ok_or_else(|| "Repository target not found".to_string())?;
+        if target.repository_id != repository.id {
+            return Err("Repository target does not belong to this repository".to_string());
+        }
+    }
     ensure_policy_valid(&repository.path, &policy).await?;
     let head_sha = git_text(&repository.path, &["rev-parse", "HEAD"]).await?;
     let session_id = Uuid::new_v4().to_string();
@@ -1183,12 +1502,13 @@ pub(crate) async fn start_change_session(
     super::database(&state.data_dir)?
         .execute(
             "INSERT INTO change_sessions
-             (id, repository_id, request, base_sha, worktree_path, status, attempt,
+             (id, repository_id, target_id, request, base_sha, worktree_path, status, attempt,
               created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, 'preparing', 0, ?6, ?6)",
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'preparing', 0, ?7, ?7)",
             params![
                 session_id,
                 repository.id,
+                input.target_id,
                 request,
                 head_sha.trim(),
                 worktree.to_string_lossy(),
@@ -1327,6 +1647,19 @@ pub(crate) async fn accept_change_session(
     Ok(branch)
 }
 
+#[tauri::command]
+pub(crate) async fn export_evidence_report(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    session_id: String,
+) -> Result<EvidenceReportExport, String> {
+    ensure_session_inactive(&state, &session_id)?;
+    let export = export_evidence_report_for_session(&state.data_dir, &session_id).await?;
+    app.emit("change-session-event", json!({ "sessionId": session_id }))
+        .map_err(display_error)?;
+    Ok(export)
+}
+
 async fn accept_session(data_dir: &Path, session_id: &str) -> Result<String, String> {
     accept_session_inner(data_dir, session_id, false).await
 }
@@ -1449,6 +1782,377 @@ async fn acceptance_digest(data_dir: &Path, session: &SessionRow) -> Result<Stri
         return Err("Verification is stale or incomplete; verify the session again".to_string());
     }
     Ok(digest)
+}
+
+async fn export_evidence_report_for_session(
+    data_dir: &Path,
+    session_id: &str,
+) -> Result<EvidenceReportExport, String> {
+    let report = build_evidence_report(data_dir, session_id).await?;
+    let root = artifact_directory(data_dir, session_id);
+    fs::create_dir_all(&root).await.map_err(display_error)?;
+    let json_path = root.join("evidence-report.json");
+    let markdown_path = root.join("evidence-report.md");
+    fs::write(
+        &json_path,
+        serde_json::to_string_pretty(&report).map_err(display_error)?,
+    )
+    .await
+    .map_err(display_error)?;
+    fs::write(&markdown_path, render_evidence_report_markdown(&report))
+        .await
+        .map_err(display_error)?;
+    let (json_artifact, markdown_artifact) =
+        replace_report_artifacts(data_dir, session_id, &json_path, &markdown_path)?;
+
+    Ok(EvidenceReportExport {
+        report,
+        json_artifact,
+        markdown_artifact,
+    })
+}
+
+async fn build_evidence_report(data_dir: &Path, session_id: &str) -> Result<EvidenceReport, String> {
+    let session = load_session_row(data_dir, session_id)?
+        .ok_or_else(|| "Change session not found".to_string())?;
+    let repository = load_repository_row(data_dir, &session.repository_id)?
+        .ok_or_else(|| "Repository not found".to_string())?;
+    let target = session
+        .target_id
+        .as_deref()
+        .map(|target_id| load_target_row(data_dir, target_id))
+        .transpose()?
+        .flatten();
+    let snapshot = load_snapshot(data_dir, session_id)?
+        .ok_or_else(|| "Verification snapshot is missing".to_string())?;
+    ensure_reportable_session(data_dir, &session, &snapshot).await?;
+
+    let artifacts = report_artifact_index(
+        data_dir,
+        session_id,
+        &load_artifacts(data_dir, session_id)?,
+    )?;
+    let artifact_ids = artifacts
+        .iter()
+        .map(|artifact| artifact.id.clone())
+        .collect::<HashSet<_>>();
+    let mut gates = Vec::new();
+    let mut safety_checks = Vec::new();
+
+    for result in load_gate_results(data_dir, session_id)? {
+        let check = report_check(&result, &artifact_ids)?;
+        if GATE_ORDER.contains(&result.kind.as_str()) {
+            gates.push(check);
+        } else if SAFETY_CHECKS.contains(&result.kind.as_str()) {
+            safety_checks.push(check);
+        } else {
+            return Err(format!(
+                "Evidence report cannot include unsupported check `{}`",
+                result.kind
+            ));
+        }
+    }
+
+    let exported_at = now_ms();
+    Ok(EvidenceReport {
+        version: 1,
+        session_id: session.id,
+        repository: EvidenceReportRepository {
+            name: repository.name,
+            path: repository.path.to_string_lossy().into_owned(),
+            branch: repository.branch,
+        },
+        target: target.map(|target| EvidenceReportTarget {
+            name: target.name,
+            path: target.path,
+            kind: target.kind,
+        }),
+        task: EvidenceReportTask {
+            request_summary: session.request,
+        },
+        base_commit: session.base_sha,
+        accepted_branch: session.branch_name,
+        verification: snapshot,
+        gates,
+        safety_checks,
+        artifacts,
+        privacy: EvidenceReportPrivacy {
+            source_contents_included: false,
+            redaction_notes: vec![
+                "Repository source contents are not embedded in this report.".to_string(),
+                "Artifacts are indexed by metadata only; command logs are redacted before export."
+                    .to_string(),
+            ],
+            notes: vec![
+                "Artifact files remain local in app-managed session storage.".to_string(),
+            ],
+        },
+        created_at: exported_at,
+        exported_at,
+    })
+}
+
+async fn ensure_reportable_session(
+    data_dir: &Path,
+    session: &SessionRow,
+    snapshot: &VerificationSnapshot,
+) -> Result<(), String> {
+    ensure_complete_snapshot(session, snapshot)?;
+    match session.status.as_str() {
+        "verified" => {
+            acceptance_digest(data_dir, session).await?;
+            Ok(())
+        }
+        "accepted" => Ok(()),
+        _ => Err(
+            "Evidence reports can only be exported for verified or accepted sessions".to_string(),
+        ),
+    }
+}
+
+fn ensure_complete_snapshot(
+    session: &SessionRow,
+    snapshot: &VerificationSnapshot,
+) -> Result<(), String> {
+    if session.verification_digest.as_deref() != Some(snapshot.worktree_digest.as_str())
+        || snapshot.required == 0
+        || snapshot.passed != snapshot.required
+        || snapshot.failed != 0
+        || snapshot.missing != 0
+        || !snapshot.has_diff
+    {
+        return Err("Verification is stale or incomplete; verify the session again".to_string());
+    }
+    Ok(())
+}
+
+fn report_artifact_index(
+    data_dir: &Path,
+    session_id: &str,
+    artifacts: &[Artifact],
+) -> Result<Vec<EvidenceReportArtifactIndexEntry>, String> {
+    artifacts
+        .iter()
+        .filter(|artifact| artifact.kind != "report")
+        .map(|artifact| {
+            validate_artifact_kind(&artifact.kind)?;
+            ensure_artifact_path_confined(data_dir, session_id, Path::new(&artifact.path))?;
+            Ok(EvidenceReportArtifactIndexEntry {
+                id: artifact.id.clone(),
+                kind: artifact.kind.clone(),
+                path: artifact.path.clone(),
+                label: artifact.label.clone(),
+                created_at: artifact.created_at,
+            })
+        })
+        .collect()
+}
+
+fn report_check(
+    result: &GateResult,
+    artifact_ids: &HashSet<String>,
+) -> Result<EvidenceReportCheck, String> {
+    for artifact_id in &result.artifact_ids {
+        if !artifact_ids.contains(artifact_id) {
+            return Err(format!(
+                "Evidence report check `{}` references unknown artifact {}",
+                result.kind, artifact_id
+            ));
+        }
+    }
+    Ok(EvidenceReportCheck {
+        kind: result.kind.clone(),
+        required: result.required,
+        status: result.status.clone(),
+        attempt: result.attempt,
+        duration_ms: result.duration_ms,
+        exit_code: result.exit_code,
+        artifact_ids: result.artifact_ids.clone(),
+    })
+}
+
+fn render_evidence_report_markdown(report: &EvidenceReport) -> String {
+    let mut output = String::new();
+    output.push_str("# Evidence Report\n\n");
+    output.push_str("| Field | Value |\n| --- | --- |\n");
+    push_markdown_row(&mut output, "Session", &report.session_id);
+    push_markdown_row(&mut output, "Repository", &report.repository.name);
+    push_markdown_row(&mut output, "Repository path", &report.repository.path);
+    if let Some(branch) = &report.repository.branch {
+        push_markdown_row(&mut output, "Source branch", branch);
+    }
+    if let Some(target) = &report.target {
+        push_markdown_row(
+            &mut output,
+            "Target",
+            &format!("{} ({}, {})", target.name, target.kind, target.path),
+        );
+    }
+    push_markdown_row(&mut output, "Task", &report.task.request_summary);
+    push_markdown_row(&mut output, "Base commit", &report.base_commit);
+    if let Some(branch) = &report.accepted_branch {
+        push_markdown_row(&mut output, "Accepted branch", branch);
+    }
+    push_markdown_row(&mut output, "Report exported at", &format!("{} ms", report.exported_at));
+
+    output.push_str("\n## Verification\n\n");
+    output.push_str("| Field | Value |\n| --- | --- |\n");
+    push_markdown_row(
+        &mut output,
+        "Worktree digest",
+        &report.verification.worktree_digest,
+    );
+    push_markdown_row(
+        &mut output,
+        "Required checks",
+        &report.verification.required.to_string(),
+    );
+    push_markdown_row(
+        &mut output,
+        "Passed checks",
+        &report.verification.passed.to_string(),
+    );
+    push_markdown_row(
+        &mut output,
+        "Failed checks",
+        &report.verification.failed.to_string(),
+    );
+    push_markdown_row(
+        &mut output,
+        "Missing checks",
+        &report.verification.missing.to_string(),
+    );
+    push_markdown_row(
+        &mut output,
+        "Has diff",
+        if report.verification.has_diff { "yes" } else { "no" },
+    );
+    push_markdown_row(
+        &mut output,
+        "Verified at",
+        &format!("{} ms", report.verification.verified_at),
+    );
+
+    push_check_table(&mut output, "Verification Gates", &report.gates);
+    push_check_table(&mut output, "Safety Checks", &report.safety_checks);
+
+    output.push_str("\n## Artifacts\n\n");
+    output.push_str("| Kind | Label | ID | Path |\n| --- | --- | --- | --- |\n");
+    for artifact in &report.artifacts {
+        output.push_str(&format!(
+            "| {} | {} | {} | {} |\n",
+            markdown_table_value(&artifact.kind),
+            markdown_table_value(&artifact.label),
+            markdown_table_value(&artifact.id),
+            markdown_table_value(&artifact.path),
+        ));
+    }
+    if report.artifacts.is_empty() {
+        output.push_str("| none | none | none | none |\n");
+    }
+
+    output.push_str("\n## Privacy\n\n");
+    output.push_str("- Source contents included: no\n");
+    for note in &report.privacy.redaction_notes {
+        output.push_str(&format!("- {}\n", markdown_text(note)));
+    }
+    for note in &report.privacy.notes {
+        output.push_str(&format!("- {}\n", markdown_text(note)));
+    }
+    output
+}
+
+fn push_check_table(output: &mut String, title: &str, checks: &[EvidenceReportCheck]) {
+    output.push_str(&format!("\n## {title}\n\n"));
+    output.push_str("| Kind | Required | Status | Attempt | Duration | Exit | Artifacts |\n");
+    output.push_str("| --- | --- | --- | --- | --- | --- | --- |\n");
+    for check in checks {
+        output.push_str(&format!(
+            "| {} | {} | {} | {} | {:.1}s | {} | {} |\n",
+            markdown_table_value(&check.kind),
+            if check.required { "yes" } else { "no" },
+            markdown_table_value(&check.status),
+            check.attempt,
+            check.duration_ms as f64 / 1000.0,
+            check
+                .exit_code
+                .map(|code| code.to_string())
+                .unwrap_or_else(|| "none".to_string()),
+            markdown_table_value(&check.artifact_ids.join(", ")),
+        ));
+    }
+    if checks.is_empty() {
+        output.push_str("| none | no | none | 0 | 0.0s | none | none |\n");
+    }
+}
+
+fn push_markdown_row(output: &mut String, field: &str, value: &str) {
+    output.push_str(&format!(
+        "| {} | {} |\n",
+        markdown_table_value(field),
+        markdown_table_value(value)
+    ));
+}
+
+fn markdown_table_value(value: &str) -> String {
+    markdown_text(value).replace('|', "\\|").replace('\n', "<br>")
+}
+
+fn markdown_text(value: &str) -> String {
+    value.replace('\r', "")
+}
+
+fn replace_report_artifacts(
+    data_dir: &Path,
+    session_id: &str,
+    json_path: &Path,
+    markdown_path: &Path,
+) -> Result<(Artifact, Artifact), String> {
+    ensure_artifact_path_confined(data_dir, session_id, json_path)?;
+    ensure_artifact_path_confined(data_dir, session_id, markdown_path)?;
+    let timestamp = now_ms();
+    let json_artifact = Artifact {
+        id: Uuid::new_v4().to_string(),
+        session_id: session_id.to_string(),
+        kind: "report".to_string(),
+        path: json_path.to_string_lossy().into_owned(),
+        label: "Evidence report (JSON)".to_string(),
+        created_at: timestamp,
+    };
+    let markdown_artifact = Artifact {
+        id: Uuid::new_v4().to_string(),
+        session_id: session_id.to_string(),
+        kind: "report".to_string(),
+        path: markdown_path.to_string_lossy().into_owned(),
+        label: "Evidence report (Markdown)".to_string(),
+        created_at: timestamp,
+    };
+    let mut connection = super::database(data_dir)?;
+    let transaction = connection.transaction().map_err(display_error)?;
+    transaction
+        .execute(
+            "DELETE FROM session_artifacts WHERE session_id = ?1 AND kind = 'report'",
+            [session_id],
+        )
+        .map_err(display_error)?;
+    for artifact in [&json_artifact, &markdown_artifact] {
+        transaction
+            .execute(
+                "INSERT INTO session_artifacts(id, session_id, kind, path, label, created_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![
+                    &artifact.id,
+                    &artifact.session_id,
+                    &artifact.kind,
+                    &artifact.path,
+                    &artifact.label,
+                    artifact.created_at
+                ],
+            )
+            .map_err(display_error)?;
+    }
+    transaction.commit().map_err(display_error)?;
+    Ok((json_artifact, markdown_artifact))
 }
 
 #[tauri::command]
@@ -1738,12 +2442,21 @@ async fn run_session_cycle_with_runtime(
         .ok_or_else(|| "Repository not found".to_string())?;
     let policy = load_policy_row(&runtime.data_dir, &session.repository_id)?
         .ok_or_else(|| "Repository policy not found".to_string())?;
+    let target = session
+        .target_id
+        .as_deref()
+        .map(|target_id| load_target_row(&runtime.data_dir, target_id))
+        .transpose()?
+        .flatten();
     ensure_policy_valid(&repository.path, &policy).await?;
 
     let mut thread_id = session.codex_thread_id.clone();
     if run_agent {
         transition(runtime, session_id, "implementing", 1)?;
-        let prompt = continuation.unwrap_or_else(|| session.request.clone());
+        let prompt = scoped_session_prompt(
+            &continuation.unwrap_or_else(|| session.request.clone()),
+            target.as_ref(),
+        );
         thread_id = Some(
             run_engine_turn(
                 runtime,
@@ -1811,6 +2524,16 @@ async fn run_session_cycle_with_runtime(
         "Verification needs developer input",
     )?;
     Ok(())
+}
+
+fn scoped_session_prompt(prompt: &str, target: Option<&RepositoryTargetRow>) -> String {
+    let Some(target) = target else {
+        return prompt.to_string();
+    };
+    format!(
+        "Target app/package: {} at `{}`. Keep the change focused on this target unless shared code is required.\n\n{}",
+        target.name, target.path, prompt
+    )
 }
 
 async fn run_engine_turn(
@@ -2770,10 +3493,110 @@ async fn read_stream<R: tokio::io::AsyncRead + Unpin>(mut reader: R) -> String {
     output
 }
 
-async fn propose_policy(repository: &Path) -> Result<PolicyProposal, String> {
-    let package: Value = serde_json::from_slice(&git_blob(repository, "package.json").await?)
-        .map_err(display_error)?;
-    let scripts = package
+async fn propose_policy(
+    repository: &Path,
+    target: Option<&RepositoryTargetRow>,
+) -> Result<PolicyProposal, String> {
+    let scripts = if let Some(target) = target {
+        target.scripts.clone()
+    } else {
+        let package: Value = serde_json::from_slice(&git_blob(repository, "package.json").await?)
+            .map_err(display_error)?;
+        package_scripts(&package)
+    };
+    let manifest = default_manifest_with_filter(&scripts, target.and_then(|target| target.package_name.as_deref()));
+    let fingerprint_paths = committed_fingerprint_paths(repository).await?;
+    let fingerprint = fingerprint_committed_files(repository, &fingerprint_paths).await?;
+    Ok(PolicyProposal {
+        manifest,
+        fingerprint,
+        fingerprint_paths,
+        detected_scripts: scripts.keys().cloned().collect(),
+    })
+}
+
+async fn discover_repository_targets(
+    repository: &RepositoryRow,
+) -> Result<Vec<RepositoryTargetRow>, String> {
+    let package_paths = committed_package_paths(&repository.path).await?;
+    let tracked_paths = git_text(&repository.path, &["ls-tree", "-r", "--name-only", "HEAD"])
+        .await?
+        .lines()
+        .map(str::to_string)
+        .collect::<HashSet<_>>();
+    let root_package: Option<Value> = git_blob(&repository.path, "package.json")
+        .await
+        .ok()
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok());
+    let has_nested_packages = package_paths.iter().any(|path| path != "package.json");
+    let root_is_workspace =
+        has_nested_packages && root_package.as_ref().is_some_and(package_has_workspaces);
+    let timestamp = now_ms();
+    let mut targets = Vec::new();
+
+    for package_path in package_paths {
+        if package_path == "package.json" && root_is_workspace {
+            continue;
+        }
+        let package: Value = serde_json::from_slice(&git_blob(&repository.path, &package_path).await?)
+            .map_err(display_error)?;
+        let scripts = package_scripts(&package);
+        let package_name = package
+            .get("name")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        let target_path = package_directory(&package_path);
+        let kind = classify_target(&target_path, &scripts, &tracked_paths);
+        let name = target_name(&repository.name, &target_path, package_name.as_deref());
+        targets.push(RepositoryTargetRow {
+            id: Uuid::new_v4().to_string(),
+            repository_id: repository.id.clone(),
+            name,
+            path: target_path,
+            kind,
+            package_name,
+            scripts,
+            source: "detected".to_string(),
+            selected: true,
+            created_at: timestamp,
+            updated_at: timestamp,
+        });
+    }
+
+    targets.sort_by(|left, right| {
+        target_kind_rank(&left.kind)
+            .cmp(&target_kind_rank(&right.kind))
+            .then(left.path.cmp(&right.path))
+    });
+    targets.dedup_by(|left, right| left.path == right.path);
+    Ok(targets)
+}
+
+async fn committed_package_paths(repository: &Path) -> Result<Vec<String>, String> {
+    let mut paths = git_text(repository, &["ls-tree", "-r", "--name-only", "HEAD"])
+        .await?
+        .lines()
+        .filter(|relative| *relative == "package.json" || relative.ends_with("/package.json"))
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    paths.sort();
+    paths.dedup();
+    Ok(paths)
+}
+
+fn package_has_workspaces(package: &Value) -> bool {
+    match package.get("workspaces") {
+        Some(Value::Array(values)) => values.iter().any(Value::is_string),
+        Some(Value::Object(value)) => value
+            .get("packages")
+            .and_then(Value::as_array)
+            .is_some_and(|values| values.iter().any(Value::is_string)),
+        _ => false,
+    }
+}
+
+fn package_scripts(package: &Value) -> BTreeMap<String, String> {
+    package
         .get("scripts")
         .and_then(Value::as_object)
         .map(|scripts| {
@@ -2786,19 +3609,128 @@ async fn propose_policy(repository: &Path) -> Result<PolicyProposal, String> {
                 })
                 .collect::<BTreeMap<_, _>>()
         })
-        .unwrap_or_default();
-    let manifest = default_manifest(&scripts);
-    let fingerprint_paths = committed_fingerprint_paths(repository).await?;
-    let fingerprint = fingerprint_committed_files(repository, &fingerprint_paths).await?;
-    Ok(PolicyProposal {
-        manifest,
-        fingerprint,
-        fingerprint_paths,
-        detected_scripts: scripts.keys().cloned().collect(),
-    })
+        .unwrap_or_default()
 }
 
+fn package_directory(package_path: &str) -> String {
+    Path::new(package_path)
+        .parent()
+        .and_then(|path| {
+            if path.as_os_str().is_empty() {
+                None
+            } else {
+                Some(path.to_string_lossy().replace('\\', "/"))
+            }
+        })
+        .unwrap_or_else(|| ".".to_string())
+}
+
+fn classify_target(
+    target_path: &str,
+    scripts: &BTreeMap<String, String>,
+    tracked_paths: &HashSet<String>,
+) -> String {
+    let prefix = if target_path == "." {
+        String::new()
+    } else {
+        format!("{target_path}/")
+    };
+    let has_app_config = [
+        "vite.config.ts",
+        "vite.config.js",
+        "astro.config.mjs",
+        "next.config.js",
+        "src-tauri/tauri.conf.json",
+        "src-tauri/Cargo.toml",
+    ]
+    .iter()
+    .any(|path| tracked_paths.contains(&format!("{prefix}{path}")));
+
+    if target_path.starts_with("apps/")
+        || scripts.contains_key("dev")
+        || scripts.contains_key("preview")
+        || has_app_config
+    {
+        "app".to_string()
+    } else {
+        "package".to_string()
+    }
+}
+
+fn target_name(repository_name: &str, path: &str, package_name: Option<&str>) -> String {
+    package_name
+        .and_then(|name| name.rsplit('/').next())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            (path != ".")
+                .then(|| path.rsplit('/').next().unwrap_or(path).to_string())
+        })
+        .unwrap_or_else(|| repository_name.to_string())
+}
+
+fn target_kind_rank(kind: &str) -> u8 {
+    match kind {
+        "app" => 0,
+        "package" => 1,
+        _ => 2,
+    }
+}
+
+fn validate_target_kind(kind: &str) -> Result<(), String> {
+    if matches!(kind, "app" | "package" | "manual") {
+        Ok(())
+    } else {
+        Err(format!("Unsupported target kind: {kind}"))
+    }
+}
+
+fn validate_target_source(source: &str) -> Result<(), String> {
+    if matches!(source, "detected" | "codex" | "manual") {
+        Ok(())
+    } else {
+        Err(format!("Unsupported target source: {source}"))
+    }
+}
+
+fn validate_target_path(path: &str) -> Result<String, String> {
+    let path = path.trim().trim_matches('/').to_string();
+    if path == "." {
+        return Ok(path);
+    }
+    if path.is_empty() {
+        return Err("Target path cannot be empty".to_string());
+    }
+    let parsed = Path::new(&path);
+    if parsed.is_absolute()
+        || parsed.components().any(|component| {
+            matches!(
+                component,
+                Component::Prefix(_)
+                    | Component::RootDir
+                    | Component::CurDir
+                    | Component::ParentDir
+            )
+        })
+        || path.contains('\\')
+        || path.split('/').any(str::is_empty)
+    {
+        return Err(
+            "Target path must be repository-relative POSIX without dot segments".to_string(),
+        );
+    }
+    Ok(path)
+}
+
+#[cfg(test)]
 fn default_manifest(scripts: &BTreeMap<String, String>) -> VerificationManifest {
+    default_manifest_with_filter(scripts, None)
+}
+
+fn default_manifest_with_filter(
+    scripts: &BTreeMap<String, String>,
+    package_name: Option<&str>,
+) -> VerificationManifest {
     let mut gates = BTreeMap::new();
     gates.insert(
         "install".to_string(),
@@ -2836,7 +3768,7 @@ fn default_manifest(scripts: &BTreeMap<String, String>) -> VerificationManifest 
                 kind.to_string(),
                 VerificationCommand {
                     command: "bun".to_string(),
-                    args: vec!["run".to_string(), script.to_string()],
+                    args: filtered_bun_run_args(script, package_name),
                     timeout_ms,
                     required: true,
                     network: "disabled".to_string(),
@@ -2853,6 +3785,19 @@ fn default_manifest(scripts: &BTreeMap<String, String>) -> VerificationManifest 
         },
         gates,
         app_server: None,
+    }
+}
+
+fn filtered_bun_run_args(script: &str, package_name: Option<&str>) -> Vec<String> {
+    if let Some(package_name) = package_name {
+        vec![
+            "run".to_string(),
+            "--filter".to_string(),
+            package_name.to_string(),
+            script.to_string(),
+        ]
+    } else {
+        vec!["run".to_string(), script.to_string()]
     }
 }
 
@@ -3076,6 +4021,111 @@ async fn policy_view(repository: &Path, row: PolicyRow) -> Result<RepositoryPoli
     })
 }
 
+fn repository_target_view(row: RepositoryTargetRow) -> RepositoryTarget {
+    RepositoryTarget {
+        id: row.id,
+        repository_id: row.repository_id,
+        name: row.name,
+        path: row.path,
+        kind: row.kind,
+        package_name: row.package_name,
+        scripts: row.scripts,
+        source: row.source,
+        selected: row.selected,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+    }
+}
+
+fn load_target_rows(
+    data_dir: &Path,
+    repository_id: &str,
+) -> Result<Vec<RepositoryTargetRow>, String> {
+    let connection = super::database(data_dir)?;
+    let mut statement = connection
+        .prepare(
+            "SELECT id, repository_id, name, path, kind, package_name, scripts_json,
+                    source, selected, created_at, updated_at
+             FROM repository_targets
+             WHERE repository_id = ?1
+             ORDER BY selected DESC, kind, name",
+        )
+        .map_err(display_error)?;
+    let rows = statement
+        .query_map([repository_id], target_from_row)
+        .map_err(display_error)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(display_error)?;
+    Ok(rows)
+}
+
+fn load_target_row(data_dir: &Path, id: &str) -> Result<Option<RepositoryTargetRow>, String> {
+    super::database(data_dir)?
+        .query_row(
+            "SELECT id, repository_id, name, path, kind, package_name, scripts_json,
+                    source, selected, created_at, updated_at
+             FROM repository_targets WHERE id = ?1",
+            [id],
+            target_from_row,
+        )
+        .optional()
+        .map_err(display_error)
+}
+
+fn target_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RepositoryTargetRow> {
+    let scripts_json = row.get::<_, String>(6)?;
+    let scripts = serde_json::from_str(&scripts_json).unwrap_or_default();
+    Ok(RepositoryTargetRow {
+        id: row.get(0)?,
+        repository_id: row.get(1)?,
+        name: row.get(2)?,
+        path: row.get(3)?,
+        kind: row.get(4)?,
+        package_name: row.get(5)?,
+        scripts,
+        source: row.get(7)?,
+        selected: row.get(8)?,
+        created_at: row.get(9)?,
+        updated_at: row.get(10)?,
+    })
+}
+
+fn replace_targets(
+    data_dir: &Path,
+    repository_id: &str,
+    rows: &[RepositoryTargetRow],
+) -> Result<(), String> {
+    let mut connection = super::database(data_dir)?;
+    let transaction = connection.transaction().map_err(display_error)?;
+    transaction
+        .execute("DELETE FROM repository_targets WHERE repository_id = ?1", [repository_id])
+        .map_err(display_error)?;
+    for row in rows {
+        transaction
+            .execute(
+                "INSERT INTO repository_targets
+                 (id, repository_id, name, path, kind, package_name, scripts_json, source,
+                  selected, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                params![
+                    &row.id,
+                    &row.repository_id,
+                    &row.name,
+                    &row.path,
+                    &row.kind,
+                    &row.package_name,
+                    serde_json::to_string(&row.scripts).map_err(display_error)?,
+                    &row.source,
+                    row.selected,
+                    row.created_at,
+                    row.updated_at,
+                ],
+            )
+            .map_err(display_error)?;
+    }
+    transaction.commit().map_err(display_error)
+}
+
 fn load_repository_rows(data_dir: &Path) -> Result<Vec<RepositoryRow>, String> {
     let connection = super::database(data_dir)?;
     let mut statement = connection
@@ -3157,7 +4207,7 @@ fn load_policy_row(data_dir: &Path, repository_id: &str) -> Result<Option<Policy
 fn load_session_row(data_dir: &Path, id: &str) -> Result<Option<SessionRow>, String> {
     super::database(data_dir)?
         .query_row(
-            "SELECT id, repository_id, request, base_sha, worktree_path, branch_name,
+            "SELECT id, repository_id, target_id, request, base_sha, worktree_path, branch_name,
                     codex_thread_id, status, attempt, verification_digest, terminal_reason,
                     created_at, updated_at
              FROM change_sessions WHERE id = ?1",
@@ -3166,17 +4216,18 @@ fn load_session_row(data_dir: &Path, id: &str) -> Result<Option<SessionRow>, Str
                 Ok(SessionRow {
                     id: row.get(0)?,
                     repository_id: row.get(1)?,
-                    request: row.get(2)?,
-                    base_sha: row.get(3)?,
-                    worktree_path: PathBuf::from(row.get::<_, String>(4)?),
-                    branch_name: row.get(5)?,
-                    codex_thread_id: row.get(6)?,
-                    status: row.get(7)?,
-                    attempt: row.get(8)?,
-                    verification_digest: row.get(9)?,
-                    terminal_reason: row.get(10)?,
-                    created_at: row.get(11)?,
-                    updated_at: row.get(12)?,
+                    target_id: row.get(2)?,
+                    request: row.get(3)?,
+                    base_sha: row.get(4)?,
+                    worktree_path: PathBuf::from(row.get::<_, String>(5)?),
+                    branch_name: row.get(6)?,
+                    codex_thread_id: row.get(7)?,
+                    status: row.get(8)?,
+                    attempt: row.get(9)?,
+                    verification_digest: row.get(10)?,
+                    terminal_reason: row.get(11)?,
+                    created_at: row.get(12)?,
+                    updated_at: row.get(13)?,
                 })
             },
         )
@@ -3184,11 +4235,18 @@ fn load_session_row(data_dir: &Path, id: &str) -> Result<Option<SessionRow>, Str
         .map_err(display_error)
 }
 
-fn session_view(repository_name: &str, row: SessionRow) -> ChangeSession {
+fn session_view(
+    repository_name: &str,
+    row: SessionRow,
+    target: Option<&RepositoryTargetRow>,
+) -> ChangeSession {
     ChangeSession {
         id: row.id,
         repository_id: row.repository_id,
         repository_name: repository_name.to_string(),
+        target_id: row.target_id,
+        target_name: target.map(|target| target.name.clone()),
+        target_path: target.map(|target| target.path.clone()),
         request: row.request,
         base_sha: row.base_sha,
         worktree_path: row.worktree_path.to_string_lossy().into_owned(),
@@ -3573,11 +4631,8 @@ fn insert_artifact(
     path: &Path,
     label: &str,
 ) -> Result<String, String> {
-    let root = normalize_path(&artifact_directory(data_dir, session_id));
-    let confined_path = normalize_path(path);
-    if !confined_path.starts_with(&root) {
-        return Err("Artifact path is outside app-managed session storage".to_string());
-    }
+    validate_artifact_kind(kind)?;
+    ensure_artifact_path_confined(data_dir, session_id, path)?;
     let id = Uuid::new_v4().to_string();
     super::database(data_dir)?
         .execute(
@@ -3594,6 +4649,30 @@ fn insert_artifact(
         )
         .map_err(display_error)?;
     Ok(id)
+}
+
+fn validate_artifact_kind(kind: &str) -> Result<(), String> {
+    if matches!(
+        kind,
+        "patch" | "commandLog" | "screenshot" | "playwrightTrace" | "assertions" | "report"
+    ) {
+        Ok(())
+    } else {
+        Err(format!("Unsupported artifact kind: {kind}"))
+    }
+}
+
+fn ensure_artifact_path_confined(
+    data_dir: &Path,
+    session_id: &str,
+    path: &Path,
+) -> Result<(), String> {
+    let root = normalize_path(&artifact_directory(data_dir, session_id));
+    let confined_path = normalize_path(path);
+    if !confined_path.starts_with(&root) {
+        return Err("Artifact path is outside app-managed session storage".to_string());
+    }
+    Ok(())
 }
 
 fn session_id_for_thread(data_dir: &Path, thread_id: &str) -> Result<Option<String>, String> {
@@ -4441,7 +5520,7 @@ mod tests {
 
             migrate(&data_dir).unwrap();
             let runtime = tokio::runtime::Runtime::new().unwrap();
-            let proposal = runtime.block_on(propose_policy(&repository)).unwrap();
+            let proposal = runtime.block_on(propose_policy(&repository, None)).unwrap();
             let head = runtime
                 .block_on(git_text(&repository, &["rev-parse", "HEAD"]))
                 .unwrap();
@@ -5902,6 +6981,112 @@ mod tests {
     }
 
     #[test]
+    fn report_fixtures_export_verified_and_accepted_reports() {
+        let fixture = SessionHarnessFixture::new();
+        std::fs::write(fixture.worktree.join("source.txt"), "reportable content").unwrap();
+        verify_fixture_change(
+            &fixture,
+            Arc::new(FakeProcessExecutor::scripted(vec![
+                passing_process(),
+                passing_process(),
+            ])),
+        )
+        .unwrap();
+        let tokio = tokio::runtime::Runtime::new().unwrap();
+
+        let verified_export = tokio
+            .block_on(export_evidence_report_for_session(
+                &fixture.data_dir,
+                "session-1",
+            ))
+            .unwrap();
+        assert!(verified_export.report.accepted_branch.is_none());
+        assert_eq!(verified_export.json_artifact.kind, "report");
+        assert_eq!(verified_export.markdown_artifact.kind, "report");
+        let verified_json =
+            std::fs::read_to_string(&verified_export.json_artifact.path).unwrap();
+        let verified_value: Value = serde_json::from_str(&verified_json).unwrap();
+        assert_eq!(verified_value["version"], 1);
+        assert!(verified_value.get("acceptedBranch").is_none());
+        assert!(verified_value["artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|artifact| artifact["kind"] != "report"));
+        let verified_markdown =
+            std::fs::read_to_string(&verified_export.markdown_artifact.path).unwrap();
+        assert!(verified_markdown.contains("# Evidence Report"));
+        assert!(verified_markdown.contains("## Verification Gates"));
+        assert!(verified_markdown.contains("## Safety Checks"));
+
+        let branch = tokio
+            .block_on(accept_session(&fixture.data_dir, "session-1"))
+            .unwrap();
+        let accepted_export = tokio
+            .block_on(export_evidence_report_for_session(
+                &fixture.data_dir,
+                "session-1",
+            ))
+            .unwrap();
+        assert_eq!(accepted_export.report.accepted_branch.as_deref(), Some(branch.as_str()));
+        let accepted_json =
+            std::fs::read_to_string(&accepted_export.json_artifact.path).unwrap();
+        let accepted_value: Value = serde_json::from_str(&accepted_json).unwrap();
+        assert_eq!(accepted_value["acceptedBranch"].as_str(), Some(branch.as_str()));
+        assert_eq!(
+            load_artifacts(&fixture.data_dir, "session-1")
+                .unwrap()
+                .into_iter()
+                .filter(|artifact| artifact.kind == "report")
+                .count(),
+            2
+        );
+
+        run(&fixture.repository, &["branch", "-D", &branch]);
+        fixture.cleanup();
+    }
+
+    #[test]
+    fn report_fixtures_reject_artifacts_outside_session_storage() {
+        let fixture = SessionHarnessFixture::new();
+        std::fs::write(fixture.worktree.join("source.txt"), "reportable content").unwrap();
+        verify_fixture_change(
+            &fixture,
+            Arc::new(FakeProcessExecutor::scripted(vec![
+                passing_process(),
+                passing_process(),
+            ])),
+        )
+        .unwrap();
+        let outside = fixture.root.join("outside.log");
+        std::fs::write(&outside, "outside").unwrap();
+        let outside_text = outside.to_string_lossy().into_owned();
+        super::super::database(&fixture.data_dir)
+            .unwrap()
+            .execute(
+                "INSERT INTO session_artifacts(id, session_id, kind, path, label, created_at)
+                 VALUES ('outside-artifact', 'session-1', 'commandLog', ?1, 'outside', 1)",
+                [outside_text],
+            )
+            .unwrap();
+        let tokio = tokio::runtime::Runtime::new().unwrap();
+        let error = match tokio.block_on(export_evidence_report_for_session(
+            &fixture.data_dir,
+            "session-1",
+        )) {
+            Ok(_) => panic!("report export should reject unconfined artifacts"),
+            Err(error) => error,
+        };
+
+        assert!(error.contains("outside app-managed session storage"));
+        assert!(load_artifacts(&fixture.data_dir, "session-1")
+            .unwrap()
+            .into_iter()
+            .all(|artifact| artifact.kind != "report"));
+        fixture.cleanup();
+    }
+
+    #[test]
     fn lifecycle_fixtures_acceptance_failures_remain_recoverable() {
         for scenario in ["branch-collision", "commit-failure", "removal-failure"] {
             let fixture = SessionHarnessFixture::new();
@@ -6420,6 +7605,99 @@ mod tests {
     }
 
     #[test]
+    fn target_fixtures_discover_workspace_apps_and_packages() {
+        let repository = temporary_directory("target-discovery");
+        std::fs::create_dir_all(repository.join("apps/trading")).unwrap();
+        std::fs::create_dir_all(repository.join("packages/ui")).unwrap();
+        std::fs::write(
+            repository.join("package.json"),
+            r#"{"private":true,"workspaces":["apps/*","packages/*"]}"#,
+        )
+        .unwrap();
+        std::fs::write(repository.join("bun.lock"), "fixture lock").unwrap();
+        std::fs::write(
+            repository.join("apps/trading/package.json"),
+            r#"{"name":"trading","scripts":{"dev":"vite dev","build":"vite build","typecheck":"tsc --noEmit"}}"#,
+        )
+        .unwrap();
+        std::fs::write(repository.join("apps/trading/vite.config.ts"), "export default {}")
+            .unwrap();
+        std::fs::write(
+            repository.join("packages/ui/package.json"),
+            r#"{"name":"@workspace/ui","scripts":{"typecheck":"tsc --noEmit"}}"#,
+        )
+        .unwrap();
+        run(&repository, &["init"]);
+        run(&repository, &["config", "user.name", "Code Test"]);
+        run(
+            &repository,
+            &["config", "user.email", "code-test@example.com"],
+        );
+        run(&repository, &["add", "."]);
+        run(&repository, &["commit", "-m", "fixture"]);
+
+        let row = RepositoryRow {
+            id: "repo-1".to_string(),
+            path: repository.clone(),
+            name: "target-discovery".to_string(),
+            head_sha: "head".to_string(),
+            branch: Some("main".to_string()),
+            dirty: false,
+            compatible: true,
+            compatibility_detail: None,
+            created_at: now_ms(),
+            updated_at: now_ms(),
+        };
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let targets = runtime.block_on(discover_repository_targets(&row)).unwrap();
+
+        assert!(targets
+            .iter()
+            .any(|target| target.path == "apps/trading" && target.kind == "app"));
+        assert!(targets
+            .iter()
+            .any(|target| target.path == "packages/ui" && target.kind == "package"));
+        assert!(targets.iter().all(|target| target.path != "."));
+        assert!(targets.iter().all(|target| target.source == "detected"));
+
+        std::fs::remove_dir_all(repository).unwrap();
+    }
+
+    #[test]
+    fn target_fixtures_persist_targets_and_reject_duplicate_paths() {
+        let data_dir = temporary_directory("target-storage");
+        std::fs::create_dir_all(&data_dir).unwrap();
+        migrate(&data_dir).unwrap();
+        let timestamp = now_ms();
+        let row = RepositoryTargetRow {
+            id: "target-1".to_string(),
+            repository_id: "repo-1".to_string(),
+            name: "trading".to_string(),
+            path: "apps/trading".to_string(),
+            kind: "app".to_string(),
+            package_name: Some("trading".to_string()),
+            scripts: BTreeMap::from([("build".to_string(), "vite build".to_string())]),
+            source: "detected".to_string(),
+            selected: true,
+            created_at: timestamp,
+            updated_at: timestamp,
+        };
+
+        replace_targets(&data_dir, "repo-1", std::slice::from_ref(&row)).unwrap();
+        let stored = load_target_rows(&data_dir, "repo-1").unwrap();
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].scripts.get("build").map(String::as_str), Some("vite build"));
+
+        let mut duplicate = row.clone();
+        duplicate.id = "target-2".to_string();
+        assert!(replace_targets(&data_dir, "repo-1", &[row, duplicate])
+            .unwrap_err()
+            .contains("UNIQUE"));
+
+        std::fs::remove_dir_all(data_dir).unwrap();
+    }
+
+    #[test]
     fn branch_names_are_local_and_bounded() {
         let name = branch_name(
             "Add verified local sessions with browser interaction and deterministic checks",
@@ -6499,7 +7777,7 @@ mod tests {
     fn policy_fingerprint_changes_with_package_configuration() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let repository = fixture_repository();
-        let proposal = runtime.block_on(propose_policy(&repository)).unwrap();
+        let proposal = runtime.block_on(propose_policy(&repository, None)).unwrap();
         let policy = PolicyRow {
             repository_id: "repo-1".to_string(),
             manifest: proposal.manifest,
@@ -6536,7 +7814,7 @@ mod tests {
     fn worktree_policy_fingerprint_detects_new_package_manifests() {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         let repository = fixture_repository();
-        let proposal = runtime.block_on(propose_policy(&repository)).unwrap();
+        let proposal = runtime.block_on(propose_policy(&repository, None)).unwrap();
 
         std::fs::create_dir_all(repository.join("packages/new-package")).unwrap();
         std::fs::write(

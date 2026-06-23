@@ -32,6 +32,10 @@ test('registers a dirty repository without importing working-tree edits', async 
       window.__CODE_TEST_SELECT_DIRECTORY__ = async () => '/fixtures/new-repository';
       window.__CODE_TEST_INVOKE__ = async (command) => {
         if (command === 'list_repositories') return structuredClone(repositories);
+        if (command === 'list_repository_targets') return [];
+        if (command === 'scan_repository_targets') {
+          return { targets: [], assisted: false, assistanceDetail: 'deterministic scan' };
+        }
         if (command === 'list_change_sessions') return [];
         if (command === 'register_repository') {
           const repository = {
@@ -78,6 +82,10 @@ test('proposes, edits, approves, and invalidates repository policy', async ({ pa
       };
       window.__CODE_TEST_INVOKE__ = async (command, args) => {
         if (command === 'list_repositories') return [structuredClone(repository)];
+        if (command === 'list_repository_targets') return [];
+        if (command === 'scan_repository_targets') {
+          return { targets: [], assisted: false, assistanceDetail: 'deterministic scan' };
+        }
         if (command === 'list_change_sessions') return [];
         if (command === 'propose_repository_policy') {
           return {
@@ -110,6 +118,7 @@ test('proposes, edits, approves, and invalidates repository policy', async ({ pa
 
   await page.goto('/repositories/repo-1');
   await page.getByRole('button', { name: 'Propose policy' }).click();
+  await page.getByText('Technical details').click();
   await page
     .locator('textarea')
     .first()
@@ -158,6 +167,10 @@ test('creates an active isolated session and exposes cancellation', async ({ pag
       };
       window.__CODE_TEST_INVOKE__ = async (command) => {
         if (command === 'list_repositories') return [repository];
+        if (command === 'list_repository_targets') return [];
+        if (command === 'scan_repository_targets') {
+          return { targets: [], assisted: false, assistanceDetail: 'deterministic scan' };
+        }
         if (command === 'list_change_sessions') return [];
         if (command === 'start_change_session') return session.id;
         if (command === 'get_change_session') {
@@ -194,6 +207,139 @@ test('creates an active isolated session and exposes cancellation', async ({ pag
   await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
 });
 
+test('scans, curates, and starts a target-scoped session', async ({ page }) => {
+  await page.addInitScript(
+    ({ timestamp, approvedManifest }) => {
+      const repository = {
+        id: 'repo-1',
+        path: '/fixtures/root',
+        name: 'root',
+        headSha: '0123456789abcdef',
+        branch: 'main',
+        dirty: false,
+        compatible: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        policy: {
+          repositoryId: 'repo-1',
+          manifest: approvedManifest,
+          fingerprint: 'approved',
+          fingerprintPaths: ['bun.lock', 'package.json'],
+          approvedAt: timestamp,
+          valid: true,
+        },
+      };
+      let targets: Array<Record<string, unknown>> = [];
+      const session = {
+        id: 'session-target',
+        repositoryId: 'repo-1',
+        repositoryName: 'root',
+        targetId: 'target-trading',
+        targetName: 'trading',
+        targetPath: 'apps/trading',
+        request: 'Fix trading header',
+        baseSha: repository.headSha,
+        worktreePath: '/app-data/worktrees/session-target',
+        status: 'implementing',
+        attempt: 1,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      window.__CODE_TEST_INVOKE__ = async (command, args) => {
+        if (command === 'list_repositories') return [repository];
+        if (command === 'list_repository_targets') return structuredClone(targets);
+        if (command === 'scan_repository_targets') {
+          return {
+            assisted: false,
+            assistanceDetail: 'deterministic scan',
+            targets: [
+              {
+                id: 'target-trading',
+                repositoryId: 'repo-1',
+                name: 'trading',
+                path: 'apps/trading',
+                kind: 'app',
+                packageName: 'trading',
+                scripts: { dev: 'vite dev', build: 'vite build' },
+                source: 'detected',
+                selected: true,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              },
+              {
+                id: 'target-ui',
+                repositoryId: 'repo-1',
+                name: 'ui',
+                path: 'packages/ui',
+                kind: 'package',
+                packageName: '@workspace/ui',
+                scripts: { typecheck: 'tsc --noEmit' },
+                source: 'detected',
+                selected: true,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              },
+            ],
+          };
+        }
+        if (command === 'save_repository_targets') {
+          targets = (args as any).input.targets.map((target: any, index: number) => ({
+            ...target,
+            id: target.id ?? `manual-${index}`,
+            repositoryId: 'repo-1',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          }));
+          return structuredClone(targets);
+        }
+        if (command === 'list_change_sessions') return [];
+        if (command === 'start_change_session') {
+          (window as any).__START_INPUT__ = (args as any).input;
+          return session.id;
+        }
+        if (command === 'get_change_session') {
+          return {
+            session,
+            repository,
+            policy: repository.policy,
+            events: [],
+            gateResults: [],
+            approvals: [],
+            artifacts: [],
+            diff: '',
+            currentDigest: '',
+            verificationStale: false,
+          };
+        }
+        throw new Error(`Unhandled test command: ${command}`);
+      };
+    },
+    { timestamp: now, approvedManifest: manifest() },
+  );
+
+  await page.goto('/repositories/repo-1');
+
+  await expect(page.getByRole('heading', { name: 'Repository map' })).toBeVisible();
+  await expect(page.getByText('trading', { exact: true })).toBeVisible();
+  await expect(page.getByText('packages/ui')).toBeVisible();
+
+  await page.getByPlaceholder('Target name').fill('docs');
+  await page.getByPlaceholder('apps/example').fill('apps/docs');
+  await page.getByRole('button', { name: 'Add target' }).click();
+  await expect(page.getByText('apps/docs')).toBeVisible();
+  await page.getByRole('button', { name: 'Save map' }).click();
+
+  await expect(page.getByRole('heading', { name: 'root / trading' })).toBeVisible();
+  await page
+    .getByPlaceholder('Describe the change and the behavior that should be verified.')
+    .fill('Fix trading header');
+  await page.getByRole('button', { name: 'Start isolated session' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Fix trading header' })).toBeVisible();
+  const startInput = await page.evaluate(() => (window as any).__START_INPUT__);
+  expect(startInput).toMatchObject({ targetId: 'target-trading' });
+});
+
 test('shows distinct setup guidance when the local runtime is unavailable', async ({ page }) => {
   await page.addInitScript(() => {
     window.__CODE_TEST_INVOKE__ = async (command) => {
@@ -209,6 +355,7 @@ test('shows distinct setup guidance when the local runtime is unavailable', asyn
         };
       }
       if (command === 'list_repositories') return [];
+      if (command === 'list_repository_targets') return [];
       if (command === 'list_change_sessions') return [];
       throw new Error(`Unhandled test command: ${command}`);
     };

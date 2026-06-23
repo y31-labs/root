@@ -1,3 +1,4 @@
+import { verificationGateKinds } from '@workspace/code-agent-contracts/manifest';
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
@@ -13,16 +14,7 @@ const runStatus = v.union(
   v.literal('needs_input'),
 );
 
-const gateKind = v.union(
-  v.literal('install'),
-  v.literal('typecheck'),
-  v.literal('lint'),
-  v.literal('build'),
-  v.literal('unit'),
-  v.literal('integration'),
-  v.literal('authSetup'),
-  v.literal('browser'),
-);
+const gateKind = v.union(...verificationGateKinds.map((kind) => v.literal(kind)));
 
 export default defineSchema({
   userProfiles: defineTable({

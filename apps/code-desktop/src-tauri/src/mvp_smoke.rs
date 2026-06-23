@@ -348,9 +348,12 @@ async fn prepare_repository(
         fixture.repository.to_string_lossy().into_owned(),
     )
     .await?;
-    let proposal =
-        local_sessions::propose_repository_policy(app.state::<AppState>(), repository.id.clone())
-            .await?;
+    let proposal = local_sessions::propose_repository_policy(
+        app.state::<AppState>(),
+        repository.id.clone(),
+        None,
+    )
+    .await?;
     let mut manifest = proposal.manifest;
     if browser {
         manifest.app_server = Some(AppServerConfig {
@@ -384,6 +387,7 @@ async fn start_session(
         app.state::<AppState>(),
         StartSessionInput {
             repository_id: repository_id.to_string(),
+            target_id: None,
             request: request.to_string(),
         },
     )

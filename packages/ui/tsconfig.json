@@ -10,6 +10,7 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
+      "#/*": ["./src/*"],
       "@workspace/ui/*": ["./src/*"]
     }
   },

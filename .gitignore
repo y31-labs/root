@@ -1,10 +1,13 @@
 .DS_Store
+.artifacts/
 node_modules
 .idea
 .vscode/*
 !.vscode/settings.json
 dist
 dist-ssr
+test-results/
+playwright-report/
 *.local
 .env
 .env.local

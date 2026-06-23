@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  artifactKinds,
   canTransitionRun,
   isVerifiedResult,
   summarizeVerification,
@@ -23,5 +24,9 @@ describe('run contract', () => {
     );
     expect(isVerifiedResult(summary, true)).toBe(true);
     expect(isVerifiedResult(summary, false)).toBe(false);
+  });
+
+  test('declares report as an evidence artifact kind', () => {
+    expect(artifactKinds).toContain('report');
   });
 });

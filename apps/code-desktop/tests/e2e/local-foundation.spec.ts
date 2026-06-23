@@ -40,8 +40,22 @@ test.beforeEach(async ({ page }) => {
         valid: true,
       },
     };
+    const target = {
+      id: 'target-1',
+      repositoryId: 'repo-1',
+      name: 'code',
+      path: '.',
+      kind: 'app',
+      packageName: 'code',
+      scripts: { test: 'vitest run' },
+      source: 'detected',
+      selected: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
     window.__CODE_TEST_INVOKE__ = async (command) => {
       if (command === 'list_repositories') return [repository];
+      if (command === 'list_repository_targets') return [target];
       if (command === 'list_change_sessions') return [];
       if (command === 'engine_health') {
         return {
@@ -64,13 +78,13 @@ test('opens a dirty local repository without treating its edits as session input
 }) => {
   await page.goto('/repositories');
 
-  await expect(page.getByRole('heading', { name: 'Repositories' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Code', exact: true })).toBeVisible();
   await expect(page.getByText('/fixtures/code')).toBeVisible();
   await expect(
     page.getByText('Uncommitted changes stay in this working tree and are excluded from sessions.'),
   ).toBeVisible();
 
-  await page.getByRole('button', { name: 'Open', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'code' })).toBeVisible();
+  await page.getByRole('button', { name: 'Open workspace' }).click();
+  await expect(page.getByRole('heading', { name: /code/ })).toBeVisible();
   await expect(page.getByText('Approved and current')).toBeVisible();
 });

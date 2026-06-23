@@ -3,9 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "ui:add": "bunx shadcn@latest add"
-  },
   "imports": {
     "#/*": "./src/*"
   },
@@ -16,6 +13,10 @@
     "./hooks/*": "./src/hooks/*",
     "./lib/*": "./src/lib/*.ts",
     "./styles/*": "./src/styles/*.css"
+  },
+  "scripts": {
+    "typecheck": "bunx tsc --noEmit",
+    "ui:add": "bunx shadcn@latest add"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -39,7 +40,8 @@
   "devDependencies": {
     "@types/lodash-es": "^4.17.12",
     "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3"
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
   },
   "peerDependencies": {
     "react": "^19.0.0",
