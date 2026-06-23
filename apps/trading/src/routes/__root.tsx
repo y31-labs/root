@@ -1,7 +1,3 @@
-import { AppSidebar } from '#/components/navigation/app-sidebar';
-import { SiteHeader } from '#/components/site-header';
-import { SidebarInset, SidebarProvider } from '@workspace/ui/components/ui/sidebar';
-import appCssUrl from '#/styles.css?url';
 import type { ConvexQueryClient } from '@convex-dev/react-query';
 import { type QueryClient } from '@tanstack/react-query';
 import {
@@ -11,10 +7,16 @@ import {
   createRootRouteWithContext,
   redirect,
 } from '@tanstack/react-router';
-import { fetchWorkosAuth, setConvexQueryClientAuthForSsr } from '@workspace/web-foundation';
 import { getAuth, getSignInUrl, getSignUpUrl } from '@workos/authkit-tanstack-react-start';
+import { SidebarInset, SidebarProvider } from '@workspace/ui/components/ui/sidebar';
+import { fetchWorkosAuth, setConvexQueryClientAuthForSsr } from '@workspace/web-foundation';
 import { type ConvexReactClient } from 'convex/react';
 import { type PropsWithChildren, type ReactNode } from 'react';
+
+import { AppSidebar } from '#/components/navigation/app-sidebar';
+import { SiteHeader } from '#/components/site-header';
+
+import appCssUrl from '#/styles.css?url';
 
 interface Context {
   title?: string;
@@ -33,9 +35,9 @@ export const Route = createRootRouteWithContext<Context>()({
     links: [{ rel: 'stylesheet', href: appCssUrl }],
   }),
   beforeLoad: async ({ context }) => {
-    const { userId, token } = await fetchWorkosAuth();
+    const { token } = await fetchWorkosAuth();
     setConvexQueryClientAuthForSsr(context.convexQueryClient, token);
-    return { userId, token };
+    return { token };
   },
   loader: async () => {
     const [{ user }, signInUrl, signUpUrl] = await Promise.all([
@@ -61,7 +63,7 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang='en'>
       <head>
         <HeadContent />
       </head>
@@ -85,11 +87,11 @@ function LayoutComponent({ children }: PropsWithChildren) {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant='inset' />
       <SidebarInset>
         <SiteHeader signInUrl={signInUrl} signUpUrl={signUpUrl} />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">{children}</div>
+        <div className='flex flex-1 flex-col'>
+          <div className='@container/main flex flex-1 flex-col gap-2'>{children}</div>
         </div>
       </SidebarInset>
     </SidebarProvider>

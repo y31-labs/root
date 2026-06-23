@@ -1,5 +1,5 @@
 import { IconSettings } from '@tabler/icons-react';
-import { Route as SettingsRoute } from '#/routes/settings';
+import { Link, useMatchRoute } from '@tanstack/react-router';
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -7,9 +7,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@workspace/ui/components/ui/sidebar';
-import { Link, useMatchRoute } from '@tanstack/react-router';
-import type { NavItem } from '#/components/navigation/nav-types';
 import type { ComponentPropsWithoutRef } from 'react';
+
+import type { NavItem } from '#/components/navigation/nav-types';
+import { Route as SettingsRoute } from '#/routes/settings';
 
 const items: NavItem[] = [
   {
@@ -28,11 +29,12 @@ export function NavSettings(props: ComponentPropsWithoutRef<typeof SidebarGroup>
         <SidebarMenu>
           {items.map(({ title, route: { to }, icon: Icon }) => (
             <SidebarMenuItem key={title}>
-              <SidebarMenuButton asChild isActive={!!matchRoute({ to, fuzzy: true })}>
-                <Link to={to}>
-                  <Icon />
-                  <span>{title}</span>
-                </Link>
+              <SidebarMenuButton
+                render={<Link to={to} />}
+                isActive={!!matchRoute({ to, fuzzy: true })}
+              >
+                <Icon />
+                <span>{title}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

@@ -10,7 +10,8 @@
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "typecheck": "bunx tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
     "convex": "convex dev"
   },
   "dependencies": {

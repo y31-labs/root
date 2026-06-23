@@ -1,4 +1,7 @@
+import { IconArrowDownRight, IconArrowUpRight, IconMinus } from '@tabler/icons-react';
 import { ToggleGroup, ToggleGroupItem } from '@workspace/ui/components/ui/toggle-group';
+import { useMemo, useState } from 'react';
+
 import {
   CHART_RANGES,
   filterBarsByRange,
@@ -9,8 +12,6 @@ import {
 import { StockChart, type ChartDirection } from '#/components/watchlist/stock-chart-card';
 import { formatCompactNumber, formatCurrency, formatShortDate } from '#/components/watchlist/utils';
 import { cn } from '#/lib/utils';
-import { IconArrowDownRight, IconArrowUpRight, IconMinus } from '@tabler/icons-react';
-import { useMemo, useState } from 'react';
 
 type PriceHeroProps = {
   bars: MarketBar[];
@@ -86,58 +87,58 @@ export function PriceHero({ bars, quote }: PriceHeroProps) {
   const volumeText = typeof volume === 'number' ? `${formatCompactNumber(volume)} vol` : null;
 
   return (
-    <section className="grid gap-8 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-start">
-      <div className="space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+    <section className='grid gap-8 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-start'>
+      <div className='space-y-2'>
+        <p className='text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground'>
           Last price
         </p>
-        <div className="text-5xl font-semibold tracking-tight tabular-nums">{priceLabel}</div>
+        <div className='text-5xl font-semibold tracking-tight tabular-nums'>{priceLabel}</div>
         {absDelta || pctDelta ? (
           <div
             className={cn('flex items-center gap-1.5 text-sm font-medium tabular-nums', deltaColor)}
           >
-            <DeltaIcon className="size-4" />
+            <DeltaIcon className='size-4' />
             {absDelta ? <span>{absDelta}</span> : null}
-            {pctDelta ? <span className="text-muted-foreground/70">·</span> : null}
+            {pctDelta ? <span className='text-muted-foreground/70'>·</span> : null}
             {pctDelta ? <span>{pctDelta}</span> : null}
           </div>
         ) : null}
         {(asOf || volumeText) && (
-          <p className="text-xs text-muted-foreground">
+          <p className='text-xs text-muted-foreground'>
             {asOf ? `As of ${asOf}` : null}
-            {asOf && volumeText ? <span className="mx-1.5 text-muted-foreground/50">·</span> : null}
+            {asOf && volumeText ? <span className='mx-1.5 text-muted-foreground/50'>·</span> : null}
             {volumeText}
           </p>
         )}
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+      <div className='space-y-3'>
+        <div className='flex items-center justify-between'>
+          <p className='text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground'>
             Price history
           </p>
           <ToggleGroup
-            type="single"
-            size="sm"
-            value={range}
+            size='sm'
+            value={[range]}
             onValueChange={(value) => {
-              if (value) setRange(value as ChartRange);
+              const [nextRange] = value;
+              if (nextRange) setRange(nextRange as ChartRange);
             }}
-            className="gap-0.5 rounded-md"
+            className='gap-0.5 rounded-md'
           >
             {CHART_RANGES.map((r) => (
               <ToggleGroupItem
                 key={r}
                 value={r}
                 aria-label={`Show ${r} range`}
-                className="h-7 min-w-10 rounded-md px-2 text-xs font-medium"
+                className='h-7 min-w-10 rounded-md px-2 text-xs font-medium'
               >
                 {r}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
         </div>
-        <div className="h-64 w-full">
+        <div className='h-64 w-full'>
           <StockChart bars={rangedBars} direction={rangeDirection} />
         </div>
       </div>
