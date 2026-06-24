@@ -1,6 +1,11 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { formatPublishedDate, getPublishedPosts, getReadingTime } from "../lib/posts";
+import PostTitleTransition from "../components/PostTitleTransition.astro";
+import {
+	formatPublishedDate,
+	getPublishedPosts,
+	getReadingTime,
+} from "../lib/posts";
 import { AUTHOR, SITE_DESCRIPTION, SITE_TITLE } from "../lib/site";
 
 const posts = await getPublishedPosts();
@@ -9,26 +14,25 @@ const posts = await getPublishedPosts();
 <Layout title={SITE_TITLE} description={SITE_DESCRIPTION}>
 	<main class="page-shell home-page" id="main-content">
 		<section class="intro" aria-labelledby="intro-title">
-			<h1 id="intro-title">
-				<a
-					href={AUTHOR.linkedin}
-					data-profile-link="linkedin"
-					rel="me noreferrer"
-					target="_blank"
-				>
-					{AUTHOR.name}
-				</a>
-				<span aria-hidden="true"> / </span>
+			<h1 id="intro-title">{AUTHOR.name}</h1>
+			<nav class="intro-links" aria-label="Profile links">
 				<a
 					href={AUTHOR.github}
 					data-profile-link="github"
 					rel="me noreferrer"
 					target="_blank"
 				>
-					@{AUTHOR.username}
+					GitHub
 				</a>
-			</h1>
-			<p>A couple of thoughts and nothing more.</p>
+				<a
+					href={AUTHOR.linkedin}
+					data-profile-link="linkedin"
+					rel="me noreferrer"
+					target="_blank"
+				>
+					LinkedIn
+				</a>
+			</nav>
 		</section>
 
 		<section class="writing-index" id="writing" aria-labelledby="writing-title">
@@ -44,7 +48,9 @@ const posts = await getPublishedPosts();
 								<article class="post-row">
 									<a href={`/writing/${post.id}/`}>
 										<div class="post-row-copy">
-											<h3>{post.data.title}</h3>
+											<h3>
+												<PostTitleTransition postId={post.id} title={post.data.title} />
+											</h3>
 											<p>{post.data.description}</p>
 										</div>
 										<p class="post-meta">

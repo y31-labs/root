@@ -4,21 +4,10 @@ import { AUTHOR } from "../lib/site";
 
 <footer class="site-footer">
 	<nav aria-label="Footer">
-		<a
-			href={AUTHOR.github}
-			data-profile-link="github"
-			rel="me noreferrer"
-			target="_blank">GitHub</a
-		>
-		<a
-			href={AUTHOR.linkedin}
-			data-profile-link="linkedin"
-			rel="me noreferrer"
-			target="_blank">LinkedIn</a
-		>
 		<a href="/rss.xml" data-rss-link>RSS</a>
 		<a href="/privacy/">Privacy</a>
-		<button type="button" data-analytics-toggle>Analytics off</button>
+		<span class="analytics-status" data-analytics-status>Analytics off</span>
+		<button type="button" data-analytics-toggle hidden>Disable analytics</button>
 	</nav>
 	<p>&copy; {new Date().getFullYear()} {AUTHOR.name}</p>
 </footer>
@@ -26,6 +15,7 @@ import { AUTHOR } from "../lib/site";
 <script is:inline>
 	(function () {
 		const posthog = window.posthog;
+		const status = document.querySelector("[data-analytics-status]");
 		const toggle = document.querySelector("[data-analytics-toggle]");
 
 		function analyticsAvailable() {
@@ -40,14 +30,14 @@ import { AUTHOR } from "../lib/site";
 			if (!(toggle instanceof HTMLButtonElement)) return;
 
 			if (!analyticsAvailable()) {
-				toggle.textContent = "Analytics off";
-				toggle.disabled = true;
-				toggle.setAttribute("aria-pressed", "false");
+				toggle.hidden = true;
+				status?.removeAttribute("hidden");
 				return;
 			}
 
 			const isEnabled = !posthog.has_opted_out_capturing();
-			toggle.disabled = false;
+			status?.setAttribute("hidden", "");
+			toggle.hidden = false;
 			toggle.textContent = isEnabled ? "Disable analytics" : "Enable analytics";
 			toggle.setAttribute("aria-pressed", String(isEnabled));
 		}

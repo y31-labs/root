@@ -1,5 +1,6 @@
 ---
 import { render, type CollectionEntry } from "astro:content";
+import PostTitleTransition from "../../components/PostTitleTransition.astro";
 import Layout from "../../layouts/Layout.astro";
 import {
 	formatPublishedDate,
@@ -58,7 +59,9 @@ const pageTitle = `${post.data.title} | ${AUTHOR.name}`;
 					<span aria-hidden="true">&middot;</span>
 					<span>{readingTime} min read</span>
 				</p>
-				<h1>{post.data.title}</h1>
+				<h1>
+					<PostTitleTransition postId={post.id} title={post.data.title} />
+				</h1>
 				<p class="post-description">{post.data.description}</p>
 			</header>
 

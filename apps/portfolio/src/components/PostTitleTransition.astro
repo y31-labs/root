@@ -1,0 +1,25 @@
+---
+import { getPostTitleTransitionSegments } from "../lib/posts";
+
+interface Props {
+	postId: string;
+	title: string;
+}
+
+const { postId, title } = Astro.props;
+---
+
+{
+	getPostTitleTransitionSegments(postId, title).map(({ transitionName, text }) =>
+		transitionName ? (
+			<span
+				class="post-title-transition"
+				style={`--post-title-transition-name: ${transitionName}`}
+			>
+				{text}
+			</span>
+		) : (
+			text
+		),
+	)
+}
