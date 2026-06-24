@@ -3,6 +3,7 @@ import PostHog from "../components/posthog.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import { AUTHOR, SITE_DESCRIPTION, SITE_TITLE } from "../lib/site";
 import "../styles/global.css";
+import { ClientRouter } from "astro:transitions";
 
 interface ArticleMetadata {
 	headline: string;
@@ -120,6 +121,7 @@ const structuredData = JSON.stringify({
 
 		<script is:inline type="application/ld+json" set:html={structuredData} />
 		<PostHog />
+		<ClientRouter />
 	</head>
 	<body>
 		<a class="skip-link" href="#main-content">Skip to content</a>
