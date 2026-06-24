@@ -23,9 +23,13 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const { Content } = await render(post);
+const { Content, headings } = await render(post);
 const readingTime = getReadingTime(post.body);
 const pageTitle = `${post.data.title} | ${AUTHOR.name}`;
+const tableOfContents = headings.filter(
+	({ depth }) => depth === 2 || depth === 3,
+);
+const hasTableOfContents = tableOfContents.length > 0;
 ---
 
 <Layout
@@ -44,7 +48,10 @@ const pageTitle = `${post.data.title} | ${AUTHOR.name}`;
 		<a href="/#writing">Writing</a>
 	</header>
 
-	<main class="post-shell" id="main-content">
+	<main
+		class={`post-shell${hasTableOfContents ? " post-shell-with-toc" : ""}`}
+		id="main-content"
+	>
 		<article
 			data-post
 			data-post-slug={post.id}
@@ -65,9 +72,115 @@ const pageTitle = `${post.data.title} | ${AUTHOR.name}`;
 				<p class="post-description">{post.data.description}</p>
 			</header>
 
-			<div class="prose">
-				<Content />
-			</div>
+			{
+				hasTableOfContents ? (
+					<div class="post-body-with-toc">
+						<aside class="post-toc" aria-labelledby="post-toc-title">
+							<h2 id="post-toc-title">Table of contents</h2>
+							<nav aria-label="Post sections">
+								<ol>
+									{tableOfContents.map((heading) => (
+										<li class={`post-toc-level-${heading.depth}`}>
+											<a
+												href={`#${heading.slug}`}
+												data-toc-link
+												data-toc-slug={heading.slug}
+											>
+												{heading.text}
+											</a>
+										</li>
+									))}
+								</ol>
+							</nav>
+						</aside>
+
+						<div class="prose">
+							<Content />
+						</div>
+					</div>
+				) : (
+					<div class="prose">
+						<Content />
+					</div>
+				)
+			}
 		</article>
 	</main>
+
+	<script>
+		let cleanupPostToc: (() => void) | undefined;
+
+		const setupPostToc = () => {
+			cleanupPostToc?.();
+			cleanupPostToc = undefined;
+
+			const links = Array.from(
+				document.querySelectorAll<HTMLAnchorElement>("[data-toc-link]"),
+			);
+
+			if (links.length === 0) return;
+
+			const headings = links
+				.map((link) => {
+					const slug = link.dataset.tocSlug;
+
+					return slug ? document.getElementById(slug) : null;
+				})
+				.filter((heading): heading is HTMLElement => heading instanceof HTMLElement);
+
+			if (headings.length === 0) return;
+
+			const setActiveLink = (activeId: string) => {
+				for (const link of links) {
+					if (link.dataset.tocSlug === activeId) {
+						link.setAttribute("aria-current", "location");
+					} else {
+						link.removeAttribute("aria-current");
+					}
+				}
+			};
+
+			const updateActiveLink = () => {
+				let activeHeading = headings[0];
+
+				for (const heading of headings) {
+					if (heading.getBoundingClientRect().top <= 128) {
+						activeHeading = heading;
+					} else {
+						break;
+					}
+				}
+
+				setActiveLink(activeHeading.id);
+			};
+
+			let animationFrame = 0;
+			const requestActiveLinkUpdate = () => {
+				if (animationFrame) return;
+
+				animationFrame = window.requestAnimationFrame(() => {
+					animationFrame = 0;
+					updateActiveLink();
+				});
+			};
+
+			window.addEventListener("scroll", requestActiveLinkUpdate, {
+				passive: true,
+			});
+			window.addEventListener("resize", requestActiveLinkUpdate);
+			updateActiveLink();
+
+			cleanupPostToc = () => {
+				if (animationFrame) {
+					window.cancelAnimationFrame(animationFrame);
+				}
+
+				window.removeEventListener("scroll", requestActiveLinkUpdate);
+				window.removeEventListener("resize", requestActiveLinkUpdate);
+			};
+		};
+
+		document.addEventListener("astro:page-load", setupPostToc);
+		setupPostToc();
+	</script>
 </Layout>
