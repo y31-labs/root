@@ -257,6 +257,62 @@ button:disabled {
   flex: 1;
 }
 
+.post-body-with-toc {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2.5rem, 7vw, 4.5rem);
+}
+
+.post-toc {
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.post-toc h2 {
+  margin: 0 0 0.85rem;
+  color: var(--foreground);
+  font-size: 0.75rem;
+  font-weight: 560;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.post-toc nav {
+  padding-block: 0.85rem;
+  border-block: 1px solid var(--border);
+}
+
+.post-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post-toc li + li {
+  margin-top: 0.6rem;
+}
+
+.post-toc a {
+  display: block;
+  text-decoration: none;
+}
+
+.post-toc a:hover {
+  color: var(--foreground);
+  text-decoration: underline;
+}
+
+.post-toc a[aria-current='location'] {
+  color: var(--foreground);
+  font-weight: 560;
+}
+
+.post-toc-level-3 {
+  padding-left: 1rem;
+}
+
 .post-header {
   margin-bottom: clamp(3rem, 8vw, 6rem);
 }
@@ -423,6 +479,52 @@ button:disabled {
   .post-row a {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
+  }
+}
+
+@media (min-width: 72rem) {
+  .post-shell-with-toc {
+    --toc-width: 13rem;
+    --toc-gap: clamp(2.5rem, 4vw, 4rem);
+    width: min(
+      100%,
+      calc(
+        var(--reading-width) + var(--toc-width) + var(--toc-width) +
+          var(--toc-gap) + var(--toc-gap)
+      )
+    );
+  }
+
+  .post-shell-with-toc > article {
+    display: grid;
+    grid-template-columns:
+      minmax(0, var(--toc-width)) minmax(0, var(--reading-width))
+      minmax(0, var(--toc-width));
+    column-gap: var(--toc-gap);
+  }
+
+  .post-shell-with-toc .post-header {
+    grid-column: 2;
+  }
+
+  .post-body-with-toc {
+    display: contents;
+  }
+
+  .post-body-with-toc .prose {
+    grid-row: 2;
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  .post-toc {
+    position: sticky;
+    top: 1.5rem;
+    grid-row: 2;
+    grid-column: 3;
+    align-self: start;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
   }
 }
 
