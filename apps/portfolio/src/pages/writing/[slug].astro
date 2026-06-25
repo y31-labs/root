@@ -109,6 +109,75 @@ const hasTableOfContents = tableOfContents.length > 0;
 
 	<script>
 		let cleanupPostToc: (() => void) | undefined;
+		const headingCopyTimeouts = new WeakMap<HTMLAnchorElement, number>();
+
+		const writeClipboardText = async (text: string) => {
+			if (!navigator.clipboard || !window.isSecureContext) return false;
+
+			await navigator.clipboard.writeText(text);
+			return true;
+		};
+
+		const setCopiedState = (link: HTMLAnchorElement, label: string) => {
+			const existingTimeout = headingCopyTimeouts.get(link);
+
+			if (existingTimeout) {
+				window.clearTimeout(existingTimeout);
+			}
+
+			link.dataset.copied = "true";
+			link.setAttribute("aria-label", `Copied link to ${label}`);
+
+			const timeout = window.setTimeout(() => {
+				link.dataset.copied = "false";
+				link.setAttribute("aria-label", `Copy link to ${label}`);
+			}, 1400);
+
+			headingCopyTimeouts.set(link, timeout);
+		};
+
+		const setupHeadingLinks = () => {
+			const headings = Array.from(
+				document.querySelectorAll<HTMLElement>(".prose h2[id], .prose h3[id]"),
+			);
+
+			for (const heading of headings) {
+				if (heading.dataset.headingLinkReady === "true") continue;
+
+				const label = heading.textContent?.trim() || "section";
+				const link = document.createElement("a");
+				link.className = "post-heading-link";
+				link.href = `#${heading.id}`;
+				link.textContent = "#";
+				link.setAttribute("aria-label", `Copy link to ${label}`);
+
+				link.addEventListener("click", (event) => {
+					event.preventDefault();
+
+					const url = new URL(window.location.href);
+					url.hash = heading.id;
+					window.history.pushState(
+						null,
+						"",
+						`${url.pathname}${url.search}${url.hash}`,
+					);
+					heading.scrollIntoView({ block: "start" });
+
+					void writeClipboardText(url.toString())
+						.then((copied) => {
+							if (copied) {
+								setCopiedState(link, label);
+							}
+						})
+						.catch(() => {
+							link.dataset.copied = "false";
+						});
+				});
+
+				heading.append(" ", link);
+				heading.dataset.headingLinkReady = "true";
+			}
+		};
 
 		const setupPostToc = () => {
 			cleanupPostToc?.();
@@ -180,7 +249,12 @@ const hasTableOfContents = tableOfContents.length > 0;
 			};
 		};
 
-		document.addEventListener("astro:page-load", setupPostToc);
-		setupPostToc();
+		const setupPostPage = () => {
+			setupHeadingLinks();
+			setupPostToc();
+		};
+
+		document.addEventListener("astro:page-load", setupPostPage);
+		setupPostPage();
 	</script>
 </Layout>
