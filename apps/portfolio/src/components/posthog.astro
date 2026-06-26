@@ -59,10 +59,11 @@ const enabled = import.meta.env.PROD && Boolean(apiKey && apiHost);
 				ui_host: "https://us.posthog.com",
 				defaults: "2026-01-30",
 				autocapture: true,
+				capture_dead_clicks: false,
 				capture_pageview: true,
 				capture_pageleave: true,
 				disable_session_recording: false,
-				enable_heatmaps: true,
+				enable_heatmaps: false,
 				persistence: "localStorage+cookie",
 				person_profiles: "always",
 				session_recording: {
