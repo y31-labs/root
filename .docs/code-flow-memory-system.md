@@ -16,6 +16,19 @@ This is a business memory layer for software workflows. It connects what users d
 product expects, which decisions changed behavior, what code implemented it, which tickets or
 incidents explain it, and which metrics show impact.
 
+The codebase is the source of implementation truth. The cloud memory graph is the source of
+interpreted workflow truth. The memory graph must stay commit-aware and evidence-backed instead of
+becoming detached documentation.
+
+Hard rules:
+
+- The canonical memory graph represents `main`.
+- Pull requests and local sessions are preview inputs, not canonical memory state.
+- The product should not store canonical memory inside the project repository.
+- AI can propose mappings, summaries, and links, but evidence and validation decide what becomes
+  current.
+- No source, no claim.
+
 ## Core Model
 
 The system should document workflows as linked structured objects, not screenshots or long prose.
@@ -43,7 +56,7 @@ is a linked action.
 
 ## Object Types
 
-Start with five object types.
+Start with six object types.
 
 | Object | Purpose |
 | --- | --- |
@@ -52,6 +65,7 @@ Start with five object types.
 | Action | Something a user, system, or team does. |
 | Decision | Why something exists or changed. |
 | Evidence | A source event, ticket, document, support case, metric, trace, or session artifact. |
+| Comment | A review question, correction, verification request, blocker, or decision note attached to a claim, edge, entity, or proposal. |
 
 Everything else should begin as metadata or edges. Avoid adding overlapping abstractions like
 journey, task, process, workflow, scenario, case, and operation until the product proves it needs
@@ -59,8 +73,8 @@ them.
 
 ## Action Cards
 
-Action cards are the main durable artifact. They should be simple Markdown with stable IDs and
-frontmatter.
+Action cards are a durable projection of cloud memory entities. They should have stable IDs and can
+be exported as simple Markdown with frontmatter, but Markdown is not the source of truth.
 
 ```md
 ---
@@ -156,8 +170,9 @@ These cards let users ask:
 
 ## Event Log And Projections
 
-The source of truth should be an append-only event log. Human-readable docs should be generated
-projections over that log and graph.
+The source of truth should be a cloud append-only event log. Human-readable docs should be generated
+projections over that log and graph. Project repositories should only provide signals such as commit
+SHAs, changed paths, flow IDs, verified artifacts, and source references.
 
 ```json
 {
@@ -175,6 +190,10 @@ projections over that log and graph.
   "flow_id": "flow.checkout",
   "session_id": "session_789",
   "source": "web_app",
+  "repository": {
+    "id": "repo_123",
+    "main_commit_sha": "abc123"
+  },
   "metadata": {
     "market": "LT",
     "device": "desktop"
@@ -182,7 +201,7 @@ projections over that log and graph.
 }
 ```
 
-Projected docs can live in a portable Markdown tree:
+Projected docs can be exported as a portable Markdown tree:
 
 ```text
 /flows/checkout.md
@@ -193,7 +212,41 @@ Projected docs can live in a portable Markdown tree:
 ```
 
 Events give machines provenance. Markdown gives humans portability. AI gets both context and source
-links.
+links. The exported tree is optional output, not canonical storage.
+
+## Main Sync Model
+
+The memory graph tracks only `main`. GitHub pull requests and local Code sessions can create preview
+proposals, but canonical memory updates only when the relevant change lands on `main`.
+
+```text
+push to main
+  -> ingest commit metadata
+  -> detect changed paths
+  -> compare against known source references
+  -> mark affected memory nodes stale
+  -> ask AI to propose updates
+  -> validate proposal shape and citations
+  -> resolve review comments and verification blockers
+  -> promote verified nodes to current
+```
+
+Every memory object that reflects code should carry a code anchor:
+
+```ts
+{
+  repositoryId: string;
+  mainCommitSha: string;
+  paths: string[];
+  contentDigest?: string;
+  verifiedAt?: string;
+  status: 'current' | 'stale' | 'proposed' | 'blocked' | 'removed';
+}
+```
+
+The product should prefer stale status over silent mutation. When `main` changes and the system can
+see that a known source path changed, it should mark related entities and edges stale until the
+change is verified or explicitly accepted.
 
 ## Graph Behavior
 
@@ -257,6 +310,90 @@ When a support issue appears, suggest the relevant step:
 
 When AI summarizes, require citations to source nodes or events. No source, no claim.
 
+## AI Governance
+
+AI should map data to information, but it should not be authoritative. Treat AI output as a proposal
+inside a deterministic evidence machine.
+
+```text
+raw data
+  -> deterministic extraction where possible
+  -> AI interpretation proposal
+  -> schema validation
+  -> source and citation validation
+  -> graph consistency checks
+  -> review comments and verification requests
+  -> promotion to current memory
+```
+
+Facts and interpretations should be stored separately.
+
+Facts:
+
+- Commit `abc123` changed `src/checkout/coupon.ts`.
+- Test `checkout-e2e` passed.
+- Artifact `screenshot_123` exists.
+- Flow `checkout` references `src/checkout/coupon.ts`.
+
+Interpretations:
+
+- This change affects coupon redemption.
+- This decision changed checkout behavior.
+- This step exists because of fraud risk.
+- This flow is stale after the latest `main` commit.
+
+Interpretations should carry provenance:
+
+```ts
+{
+  claim: string;
+  status: 'proposed' | 'verified' | 'rejected';
+  confidence: 'low' | 'medium' | 'high';
+  sources: EvidenceRef[];
+  generatedBy: 'ai' | 'human' | 'system';
+}
+```
+
+Use AI for small, bounded mapping tasks. Ask it to explain one commit, one flow, one stale node, or
+one evidence bundle at a time. Large repository-wide interpretation should be composed from smaller
+validated proposals.
+
+## Verification Comments
+
+Comments should be a first-class verification layer. They should attach to the risky parts of the
+graph: claims, edges, entities, and proposals.
+
+Useful comment kinds:
+
+- Question: "Why did you link this to onboarding?"
+- Verification request: "Check if this only affects partner coupons, not all coupons."
+- Correction: "This belongs to billing, not checkout."
+- Decision note: "Product agreed to keep this behavior."
+- Blocker: "Do not promote until support confirms."
+
+A comment can block promotion of proposed memory:
+
+```ts
+{
+  id: "comment_123",
+  targetType: "claim" | "edge" | "entity" | "proposal",
+  targetId: "claim_456",
+  kind: "verification_request",
+  body: "Verify whether this only affects partner coupons, not all coupons.",
+  status: "open" | "resolved" | "rejected",
+  createdBy: "human" | "ai" | "system",
+  resolution?: {
+    outcome: "confirmed" | "corrected" | "rejected";
+    evidence: EvidenceRef[];
+    summary: string;
+  }
+}
+```
+
+Promotion should require open blocking comments to be resolved. Resolved comments become evidence
+for future AI context packs, so Claude and other assistants can distinguish confirmed memory from
+unresolved doubt.
+
 ## AI Use Cases
 
 Expose compact linked context packs instead of giant text dumps.
@@ -287,44 +424,51 @@ AI can write summaries, but links make them trustworthy.
 ## Architecture Sketch
 
 ```text
-event collectors
+Code Desktop, GitHub, CI, support, analytics
   -> event inbox
   -> normalization pipeline
-  -> append-only event store
+  -> cloud append-only event store
   -> entity resolver
   -> graph store
   -> projections
-       -> flow docs
-       -> decision docs
+       -> Code website visualization
        -> timelines
        -> metrics views
        -> AI context packs
+       -> Markdown export
 ```
 
 A practical storage shape:
 
 | Table | Key fields |
 | --- | --- |
-| events | id, type, source, actor_id, object_id, flow_id, timestamp, payload, hash, previous_event_hash |
-| entities | id, type, title, status, owner, created_at, updated_at |
-| edges | from_entity_id, to_entity_id, relation_type, confidence, created_by, source_event_id |
+| repositories | id, provider, owner, name, default_branch, current_main_sha, connected_at |
+| events | id, repository_id, main_commit_sha, type, source, actor_id, object_id, flow_id, timestamp, payload, hash, previous_event_hash |
+| entities | id, repository_id, type, title, status, owner, main_commit_sha, source_paths, created_at, updated_at |
+| edges | from_entity_id, to_entity_id, relation_type, confidence, status, created_by, source_event_id |
+| claims | id, target_type, target_id, claim, status, confidence, sources, generated_by |
+| comments | id, target_type, target_id, kind, body, status, created_by, resolution, created_at |
 | documents | entity_id, markdown, frontmatter, generated_from_event_id, updated_at |
+| artifacts | id, repository_id, event_id, kind, storage_url, digest, created_at |
 
 The critical table is `edges`. That is where the linked-memory behavior lives.
 
 ## MVP
 
-Start with one flow type, such as checkout, onboarding, approval, support escalation, or booking.
+Start with one repository on `main` and one flow type, such as checkout, onboarding, approval,
+support escalation, or booking.
 
 MVP features:
 
+- Cloud event ingestion for GitHub `main` pushes and verified Code session evidence.
+- Main-only repository sync ledger with current, stale, proposed, blocked, and removed states.
 - Flow map with steps, branches, completion/drop-off, and related decisions.
 - Action cards with backlinks, owner, rules, and source events.
 - Decision log with affected flows/actions and review dates.
-- Event import through an SDK or API endpoint.
+- Review comments attached to claims, edges, entities, and proposals.
 - Immutable event history.
 - AI Q&A with citations.
-- Markdown export of the full graph.
+- Markdown export of the full graph as a portability feature.
 
 Markdown export matters because users should feel that their product knowledge is portable and not
 trapped in the app.
@@ -352,6 +496,9 @@ Useful events:
 Also avoid AI-generated documentation that is not grounded in events. It may look impressive at
 first, then become untrusted.
 
+Do not let AI silently mutate canonical memory after code changes. Mark affected memory stale,
+create a proposed update, require citations, and resolve blocking comments before promotion.
+
 ## Relationship To Code
 
 This idea extends the existing Code direction around verified evidence and flow coverage.
@@ -362,10 +509,10 @@ Near term, Code can use the flow memory model to improve the Flow Coverage Workb
 - Treat verified session artifacts as evidence nodes.
 - Treat coverage states and transitions as flow, step, and action nodes.
 - Link accepted changes to decisions and affected flows.
-- Generate Markdown projections from verified sessions.
+- Publish verified session evidence to the cloud after user approval.
+- Generate Markdown exports from the cloud memory graph.
 - Let AI answer questions using only cited events, artifacts, and cards.
 
 Longer term, this can become a product category adjacent to verified AI change management:
 
 > A living memory graph for product flows, decisions, and operational actions.
-
