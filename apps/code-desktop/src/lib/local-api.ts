@@ -7,9 +7,11 @@ import type {
   ChangeSession,
   GateResult,
   Repository,
+  RepositoryMappingMode,
   RepositoryPolicy,
   RepositoryTarget,
   SessionEvent,
+  TargetFlowOverview,
   VerificationSnapshot,
 } from '@workspace/code-agent-contracts/sessions';
 
@@ -21,16 +23,16 @@ export interface PolicyProposal {
 }
 
 export interface RepositoryTargetScan {
+  mode: RepositoryMappingMode;
   targets: RepositoryTarget[];
   assisted: boolean;
   assistanceDetail?: string;
 }
 
-export interface SaveRepositoryTarget
-  extends Pick<
-    RepositoryTarget,
-    'name' | 'path' | 'kind' | 'packageName' | 'scripts' | 'source' | 'selected'
-  > {
+export interface SaveRepositoryTarget extends Pick<
+  RepositoryTarget,
+  'name' | 'path' | 'kind' | 'packageName' | 'scripts' | 'source' | 'selected'
+> {
   id?: string;
 }
 
@@ -75,12 +77,14 @@ export function createLocalApi(call: Invoke = invoke) {
       request<Repository>('refresh_repository', { repositoryId }),
     listRepositoryTargets: (repositoryId: string) =>
       request<RepositoryTarget[]>('list_repository_targets', { repositoryId }),
-    scanRepositoryTargets: (repositoryId: string) =>
-      request<RepositoryTargetScan>('scan_repository_targets', { repositoryId }),
+    scanRepositoryTargets: (repositoryId: string, mode: RepositoryMappingMode = 'code') =>
+      request<RepositoryTargetScan>('scan_repository_targets', { repositoryId, mode }),
     saveRepositoryTargets: (repositoryId: string, targets: SaveRepositoryTarget[]) =>
       request<RepositoryTarget[]>('save_repository_targets', {
         input: { repositoryId, targets },
       }),
+    getTargetFlowOverview: (repositoryId: string, targetId: string) =>
+      request<TargetFlowOverview>('get_target_flow_overview', { repositoryId, targetId }),
     proposeRepositoryPolicy: (repositoryId: string, targetId?: string) =>
       request<PolicyProposal>('propose_repository_policy', {
         repositoryId,

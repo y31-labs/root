@@ -305,6 +305,7 @@ const createWorkspaceSnapshot = async (sequence = 7): Promise<FlowguardWorkspace
             issues: [],
           },
         ],
+        coverage: [],
         invalidDocuments: [],
         diagnosticDocuments: [],
         watchPatterns: [FLOWGUARD_WATCH_PATTERN],

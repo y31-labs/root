@@ -273,6 +273,7 @@ const createWorkspaceSnapshot = async (
         },
         flows: [await createFlowDocument(root, flow)],
         proposals: [],
+        coverage: [],
         invalidDocuments: [],
         diagnosticDocuments: [],
         watchPatterns: [],

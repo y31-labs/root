@@ -20,7 +20,7 @@ describe('local API', () => {
         },
       },
     });
-    await api.scanRepositoryTargets('repo-1');
+    await api.scanRepositoryTargets('repo-1', 'code');
     await api.saveRepositoryTargets('repo-1', [
       {
         name: 'trading',
@@ -32,6 +32,7 @@ describe('local API', () => {
         selected: true,
       },
     ]);
+    await api.getTargetFlowOverview('repo-1', 'target-trading');
     await api.startChangeSession('repo-1', 'Add a verified feature');
     await api.exportEvidenceReport('session-1');
 
@@ -43,6 +44,7 @@ describe('local API', () => {
     });
     expect(invoke).toHaveBeenNthCalledWith(2, 'scan_repository_targets', {
       repositoryId: 'repo-1',
+      mode: 'code',
     });
     expect(invoke).toHaveBeenNthCalledWith(3, 'save_repository_targets', {
       input: {
@@ -60,10 +62,14 @@ describe('local API', () => {
         ],
       },
     });
-    expect(invoke).toHaveBeenNthCalledWith(4, 'start_change_session', {
+    expect(invoke).toHaveBeenNthCalledWith(4, 'get_target_flow_overview', {
+      repositoryId: 'repo-1',
+      targetId: 'target-trading',
+    });
+    expect(invoke).toHaveBeenNthCalledWith(5, 'start_change_session', {
       input: { repositoryId: 'repo-1', request: 'Add a verified feature' },
     });
-    expect(invoke).toHaveBeenNthCalledWith(5, 'export_evidence_report', {
+    expect(invoke).toHaveBeenNthCalledWith(6, 'export_evidence_report', {
       sessionId: 'session-1',
     });
   });

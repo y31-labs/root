@@ -1,10 +1,17 @@
-import type { FlowguardFlow, CanonicalDigest, FlowProposal, FlowguardConfig } from '#/types';
+import type {
+  FlowCoverageDocument,
+  FlowguardFlow,
+  CanonicalDigest,
+  FlowProposal,
+  FlowguardConfig,
+} from '#/types';
 
 export const makeFlowguardConfigFixture = (): FlowguardConfig => {
   return {
     version: 1,
     flowDirectory: 'flows',
     proposalDirectory: 'proposals',
+    coverageDirectory: 'coverage',
   };
 };
 
@@ -80,6 +87,54 @@ export const makePasswordResetProposalFixture = (baseDigest: CanonicalDigest): F
           action: 'Choose forgot password',
         },
         reason: 'The login form exposes the new recovery action',
+      },
+    ],
+  };
+};
+
+export const makeLoginCoverageFixture = (): FlowCoverageDocument => {
+  return {
+    version: 1,
+    id: 'login-e2e',
+    flowId: 'login',
+    title: 'Login happy path',
+    description: 'Playwright verifies that a known user can sign in and land on the account page.',
+    gate: 'e2e',
+    covers: [
+      {
+        kind: 'state',
+        id: 'login-form',
+        behavior: 'The email and password fields are visible.',
+        required: true,
+      },
+      {
+        kind: 'transition',
+        id: 'submit-valid-credentials',
+        behavior: 'Submitting valid credentials authenticates the user.',
+        required: true,
+      },
+      {
+        kind: 'state',
+        id: 'account-home',
+        behavior: 'The account home page confirms the user is signed in.',
+        required: true,
+      },
+    ],
+    evidence: [
+      {
+        kind: 'screenshot',
+        label: 'Signed-in account page',
+        required: true,
+      },
+      {
+        kind: 'playwrightTrace',
+        label: 'Playwright trace',
+        required: true,
+      },
+      {
+        kind: 'assertions',
+        label: 'Assertion log',
+        required: false,
       },
     ],
   };

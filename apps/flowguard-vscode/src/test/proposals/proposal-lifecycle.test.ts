@@ -258,6 +258,7 @@ const createSnapshot = async (
         proposals: await Promise.all(
           options.proposals.map((proposal) => createProposalDocument(root, proposal)),
         ),
+        coverage: [],
         invalidDocuments: [],
         diagnosticDocuments: [],
         watchPatterns: [],

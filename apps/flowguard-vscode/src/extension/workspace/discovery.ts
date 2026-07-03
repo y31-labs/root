@@ -1,13 +1,16 @@
 import {
   defaultConfigForMissingDocument,
+  digestFlowCoverageDocument,
   digestFlowguardFlow,
   digestFlowProposal,
   digestFlowguardConfig,
+  parseFlowCoverageDocumentJson,
   parseFlowguardFlowJson,
   parseFlowProposalJson,
   parseFlowguardConfigJson,
 } from '@workspace/flowguard-contracts';
 import type {
+  FlowCoverageDocument,
   FlowguardFlow,
   CanonicalDigest,
   FlowProposal,
@@ -20,6 +23,7 @@ import {
   FLOWGUARD_DIRECTORY,
   FLOWGUARD_WATCH_PATTERN,
   type FlowguardDiagnosticDocument,
+  type FlowCoverageDocumentSnapshot,
   type FlowguardFlowDocumentSnapshot,
   type FlowguardRepositorySnapshot,
   type FlowguardWorkspaceSnapshot,
@@ -56,7 +60,7 @@ interface ValidDocumentCommon {
 }
 
 interface ParseDocumentOptions<TDocument, TSnapshot> {
-  readonly kind: 'flow' | 'proposal';
+  readonly kind: 'flow' | 'proposal' | 'coverage';
   readonly root: WorkspaceRoot;
   readonly readDocument: ReadDocument;
   readonly parse: (text: string) => ParseResult<TDocument>;
@@ -87,6 +91,7 @@ const discoverRepository = async (
   const config = await discoverConfig(root, fs, diagnosticDocuments, invalidDocuments);
   const flowDirectory = config.activeConfig.flowDirectory;
   const proposalDirectory = config.activeConfig.proposalDirectory;
+  const coverageDirectory = config.activeConfig.coverageDirectory;
   const flows = await discoverJsonDocuments({
     fs,
     root,
@@ -117,12 +122,28 @@ const discoverRepository = async (
       document,
     }),
   });
+  const coverage = await discoverJsonDocuments({
+    fs,
+    root,
+    kind: 'coverage',
+    directory: coverageDirectory,
+    diagnosticDocuments,
+    invalidDocuments,
+    parse: parseFlowCoverageDocumentJson,
+    digest: digestFlowCoverageDocument,
+    createSnapshot: (common, document) => ({
+      ...common,
+      kind: 'coverage',
+      document,
+    }),
+  });
 
   return {
     root,
     config,
     flows,
     proposals,
+    coverage,
     invalidDocuments,
     diagnosticDocuments,
     watchPatterns: [FLOWGUARD_WATCH_PATTERN],
@@ -198,12 +219,15 @@ const discoverConfig = async (
 };
 
 const discoverJsonDocuments = async <
-  TDocument extends FlowguardFlow | FlowProposal,
-  TSnapshot extends FlowguardFlowDocumentSnapshot | FlowProposalDocumentSnapshot,
+  TDocument extends FlowguardFlow | FlowProposal | FlowCoverageDocument,
+  TSnapshot extends
+    | FlowguardFlowDocumentSnapshot
+    | FlowProposalDocumentSnapshot
+    | FlowCoverageDocumentSnapshot,
 >(options: {
   readonly fs: WorkspaceFileSystem;
   readonly root: WorkspaceRoot;
-  readonly kind: 'flow' | 'proposal';
+  readonly kind: 'flow' | 'proposal' | 'coverage';
   readonly directory: string;
   readonly diagnosticDocuments: FlowguardDiagnosticDocument[];
   readonly invalidDocuments: InvalidFlowguardDocumentSnapshot[];
@@ -261,7 +285,7 @@ const discoverJsonDocuments = async <
 
 type ParsedRepositoryDocument<TSnapshot> =
   | {
-      readonly kind: 'flow' | 'proposal';
+      readonly kind: 'flow' | 'proposal' | 'coverage';
       readonly uri: string;
       readonly relativePath: string;
       readonly text: string;
@@ -271,7 +295,7 @@ type ParsedRepositoryDocument<TSnapshot> =
   | ValidParsedRepositoryDocument<TSnapshot>;
 
 interface ValidParsedRepositoryDocument<TSnapshot> {
-  readonly kind: 'flow' | 'proposal';
+  readonly kind: 'flow' | 'proposal' | 'coverage';
   readonly uri: string;
   readonly relativePath: string;
   readonly text: string;

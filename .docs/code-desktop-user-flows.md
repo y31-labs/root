@@ -145,6 +145,31 @@ Screenshot placeholders:
 - `report-preview`: Markdown report preview.
 - `accepted-branch`: accepted final state.
 
+## Flow Coverage Workbench
+
+```text
+[Selected target]
+      |
+      v
+[Flows tab]
+  - states rendered as workflow nodes
+  - transitions rendered as workflow edges
+  - coverage badges from committed .flowguard/coverage docs
+      |
+      +-- select state/transition --> [Coverage inspector]
+      |                              - behavior descriptions
+      |                              - expected evidence
+      |                              - latest verified session
+      |
+      +-- evidence artifact --> [Preview screenshot/assertions] or [Reveal trace]
+```
+
+Screenshot placeholders:
+
+- `flow-workbench-canvas`: target flow canvas with coverage badges.
+- `flow-workbench-inspector`: selected transition showing behavior and evidence.
+- `flow-workbench-evidence`: screenshot or assertion artifact preview.
+
 ## Failure Recovery
 
 ```text

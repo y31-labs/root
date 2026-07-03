@@ -9,10 +9,16 @@ import { jsonPath, jsonPathRoot } from '#/paths';
 import {
   flowguardFlowContractVersion,
   defaultFlowguardConfig,
+  flowCoverageEvidenceKinds,
+  flowCoverageGates,
+  flowCoverageTargetKinds,
   flowActors,
   flowProposalConfidences,
   flowProposalOperations,
   flowStateKinds,
+  type FlowCoverageDocument,
+  type FlowCoverageEvidenceExpectation,
+  type FlowCoverageTarget,
   type FlowguardFlow,
   type FlowMetadataPatch,
   type FlowProposal,
@@ -49,7 +55,12 @@ const transitionKeys = new Set([
   'sources',
   'tags',
 ]);
-const configKeys = new Set(['version', 'flowDirectory', 'proposalDirectory']);
+const configKeys = new Set([
+  'version',
+  'flowDirectory',
+  'proposalDirectory',
+  'coverageDirectory',
+]);
 const proposalKeys = new Set([
   'version',
   'id',
@@ -61,6 +72,18 @@ const proposalKeys = new Set([
   'confidence',
   'operations',
 ]);
+const coverageKeys = new Set([
+  'version',
+  'id',
+  'flowId',
+  'title',
+  'description',
+  'gate',
+  'covers',
+  'evidence',
+]);
+const coverageTargetKeys = new Set(['kind', 'id', 'behavior', 'required']);
+const coverageEvidenceKeys = new Set(['kind', 'label', 'required']);
 const producerKeys = new Set(['kind', 'label']);
 const statePatchKeys = new Set(['name', 'kind', 'route', 'description', 'sources', 'tags']);
 const transitionPatchKeys = new Set([
@@ -102,6 +125,12 @@ export const parseFlowProposalJson = (text: string): ParseResult<FlowProposal> =
   return parseJson(text, parseFlowProposal);
 };
 
+export const parseFlowCoverageDocumentJson = (
+  text: string,
+): ParseResult<FlowCoverageDocument> => {
+  return parseJson(text, parseFlowCoverageDocument);
+};
+
 export const parseFlowguardConfig = (value: unknown): ParseResult<FlowguardConfig> => {
   const issues: SemanticIssue[] = [];
   const root = readObject(value, jsonPathRoot, issues);
@@ -111,10 +140,13 @@ export const parseFlowguardConfig = (value: unknown): ParseResult<FlowguardConfi
   const version = readVersion1(root, jsonPathRoot, issues);
   const flowDirectory = readRequiredString(root, 'flowDirectory', jsonPathRoot, issues);
   const proposalDirectory = readRequiredString(root, 'proposalDirectory', jsonPathRoot, issues);
+  const coverageDirectory =
+    readOptionalString(root, 'coverageDirectory', jsonPathRoot, issues) ??
+    defaultFlowguardConfig.coverageDirectory;
 
   const config =
     version && flowDirectory && proposalDirectory
-      ? { version, flowDirectory, proposalDirectory }
+      ? { version, flowDirectory, proposalDirectory, coverageDirectory }
       : undefined;
 
   if (config) {
@@ -229,6 +261,48 @@ export const parseFlowProposal = (value: unknown): ParseResult<FlowProposal> => 
   return parseResult(proposal, issues);
 };
 
+export const parseFlowCoverageDocument = (value: unknown): ParseResult<FlowCoverageDocument> => {
+  const issues: SemanticIssue[] = [];
+  const root = readObject(value, jsonPathRoot, issues);
+  if (!root) return parseResult<FlowCoverageDocument>(undefined, issues);
+
+  rejectUnknownKeys(root, coverageKeys, jsonPathRoot, issues);
+  const version = readVersion1(root, jsonPathRoot, issues);
+  const id = readRequiredString(root, 'id', jsonPathRoot, issues);
+  const flowId = readRequiredString(root, 'flowId', jsonPathRoot, issues);
+  const title = readRequiredString(root, 'title', jsonPathRoot, issues);
+  const description = readRequiredString(root, 'description', jsonPathRoot, issues);
+  const gate = readRequiredEnum(root, 'gate', jsonPathRoot, flowCoverageGates, issues);
+  const covers = readRequiredArray(root, 'covers', jsonPathRoot, issues)?.map((item, index) =>
+    parseCoverageTargetValue(item, jsonPath(jsonPath(jsonPathRoot, 'covers'), index), issues),
+  );
+  const evidence = readRequiredArray(root, 'evidence', jsonPathRoot, issues)?.map((item, index) =>
+    parseCoverageEvidenceValue(item, jsonPath(jsonPath(jsonPathRoot, 'evidence'), index), issues),
+  );
+
+  const parsedCovers = compact(covers);
+  const parsedEvidence = compact(evidence);
+  const coverage =
+    version && id && flowId && title && description && gate && covers && evidence
+      ? {
+          version,
+          id,
+          flowId,
+          title,
+          description,
+          gate,
+          covers: parsedCovers,
+          evidence: parsedEvidence,
+        }
+      : undefined;
+
+  if (coverage) {
+    issues.push(...validateFlowCoverageDocument(coverage));
+  }
+
+  return parseResult(coverage, issues);
+};
+
 export const defaultConfigForMissingDocument = (): FlowguardConfig => {
   return { ...defaultFlowguardConfig };
 };
@@ -243,6 +317,12 @@ export const migrateFlowguardFlowDocument = (value: unknown): ParseResult<Flowgu
 
 export const migrateFlowProposalDocument = (value: unknown): ParseResult<FlowProposal> => {
   return parseFlowProposal(value);
+};
+
+export const migrateFlowCoverageDocument = (
+  value: unknown,
+): ParseResult<FlowCoverageDocument> => {
+  return parseFlowCoverageDocument(value);
 };
 
 export const validateFlowguardConfig = (
@@ -262,6 +342,7 @@ export const validateFlowguardConfig = (
   }
   validateRepositoryPath(config.flowDirectory, jsonPath(path, 'flowDirectory'), issues);
   validateRepositoryPath(config.proposalDirectory, jsonPath(path, 'proposalDirectory'), issues);
+  validateRepositoryPath(config.coverageDirectory, jsonPath(path, 'coverageDirectory'), issues);
 
   return issues;
 };
@@ -452,6 +533,78 @@ export const validateFlowProposal = (
   return issues;
 };
 
+export const validateFlowCoverageDocument = (
+  coverage: FlowCoverageDocument,
+  path = jsonPathRoot,
+): SemanticIssue[] => {
+  const issues: SemanticIssue[] = [];
+
+  if (coverage.version !== flowguardFlowContractVersion) {
+    issues.push(
+      errorIssue(
+        'UNSUPPORTED_VERSION',
+        jsonPath(path, 'version'),
+        `Unsupported document version ${String(coverage.version)}.`,
+      ),
+    );
+  }
+  validateLowerKebabId(coverage.id, jsonPath(path, 'id'), issues, 'Coverage id');
+  validateLowerKebabId(coverage.flowId, jsonPath(path, 'flowId'), issues, 'Flow id');
+  if (!coverage.title.trim()) {
+    issues.push(errorIssue('INVALID_VALUE', jsonPath(path, 'title'), 'Title must not be empty.'));
+  }
+  if (!coverage.description.trim()) {
+    issues.push(
+      errorIssue('INVALID_VALUE', jsonPath(path, 'description'), 'Description must not be empty.'),
+    );
+  }
+  if (!flowCoverageGates.includes(coverage.gate)) {
+    issues.push(
+      errorIssue(
+        'INVALID_VALUE',
+        jsonPath(path, 'gate'),
+        `Coverage gate must be one of: ${flowCoverageGates.join(', ')}.`,
+      ),
+    );
+  }
+  if (coverage.covers.length === 0) {
+    issues.push(
+      errorIssue(
+        'EMPTY_COLLECTION',
+        jsonPath(path, 'covers'),
+        'A coverage document must cover at least one flow state or transition.',
+      ),
+    );
+  }
+  if (coverage.evidence.length === 0) {
+    issues.push(
+      errorIssue(
+        'EMPTY_COLLECTION',
+        jsonPath(path, 'evidence'),
+        'A coverage document must declare at least one evidence expectation.',
+      ),
+    );
+  }
+
+  const coverageTargets = new Map<string, string>();
+  coverage.covers.forEach((target, index) => {
+    const targetPath = jsonPath(jsonPath(path, 'covers'), index);
+    validateCoverageTarget(target, targetPath, issues);
+    recordUniqueId(
+      coverageTargets,
+      `${target.kind}:${target.id}`,
+      jsonPath(targetPath, 'id'),
+      'Coverage target',
+      issues,
+    );
+  });
+  coverage.evidence.forEach((evidence, index) => {
+    validateCoverageEvidence(evidence, jsonPath(jsonPath(path, 'evidence'), index), issues);
+  });
+
+  return issues;
+};
+
 export const isSafeRepositoryPath = (value: string): boolean => {
   if (!value || value.startsWith('/') || value.startsWith('\\')) return false;
   if (value.includes('\\') || value.includes('\0')) return false;
@@ -577,6 +730,41 @@ const parseFlowStateValue = (
   if (sources !== undefined) parsed.sources = sources;
   if (tags !== undefined) parsed.tags = tags;
   return parsed;
+};
+
+const parseCoverageTargetValue = (
+  value: unknown,
+  path: string,
+  issues: SemanticIssue[],
+): FlowCoverageTarget | undefined => {
+  const target = readObject(value, path, issues);
+  if (!target) return undefined;
+
+  rejectUnknownKeys(target, coverageTargetKeys, path, issues);
+  const kind = readRequiredEnum(target, 'kind', path, flowCoverageTargetKinds, issues);
+  const id = readRequiredString(target, 'id', path, issues);
+  const behavior = readRequiredString(target, 'behavior', path, issues);
+  const required = readRequiredBoolean(target, 'required', path, issues);
+
+  return kind && id && behavior && required !== undefined
+    ? { kind, id, behavior, required }
+    : undefined;
+};
+
+const parseCoverageEvidenceValue = (
+  value: unknown,
+  path: string,
+  issues: SemanticIssue[],
+): FlowCoverageEvidenceExpectation | undefined => {
+  const evidence = readObject(value, path, issues);
+  if (!evidence) return undefined;
+
+  rejectUnknownKeys(evidence, coverageEvidenceKeys, path, issues);
+  const kind = readRequiredEnum(evidence, 'kind', path, flowCoverageEvidenceKinds, issues);
+  const label = readRequiredString(evidence, 'label', path, issues);
+  const required = readRequiredBoolean(evidence, 'required', path, issues);
+
+  return kind && label && required !== undefined ? { kind, label, required } : undefined;
 };
 
 const parseFlowTransitionValue = (
@@ -787,6 +975,47 @@ const validateTransitionSemantics = (
   }
 };
 
+const validateCoverageTarget = (
+  target: FlowCoverageTarget,
+  path: string,
+  issues: SemanticIssue[],
+) => {
+  if (!flowCoverageTargetKinds.includes(target.kind)) {
+    issues.push(
+      errorIssue(
+        'INVALID_VALUE',
+        jsonPath(path, 'kind'),
+        `Coverage target kind must be one of: ${flowCoverageTargetKinds.join(', ')}.`,
+      ),
+    );
+  }
+  validateLowerKebabId(target.id, jsonPath(path, 'id'), issues, 'Coverage target id');
+  if (!target.behavior.trim()) {
+    issues.push(
+      errorIssue('INVALID_VALUE', jsonPath(path, 'behavior'), 'Behavior must not be empty.'),
+    );
+  }
+};
+
+const validateCoverageEvidence = (
+  evidence: FlowCoverageEvidenceExpectation,
+  path: string,
+  issues: SemanticIssue[],
+) => {
+  if (!flowCoverageEvidenceKinds.includes(evidence.kind)) {
+    issues.push(
+      errorIssue(
+        'INVALID_VALUE',
+        jsonPath(path, 'kind'),
+        `Coverage evidence kind must be one of: ${flowCoverageEvidenceKinds.join(', ')}.`,
+      ),
+    );
+  }
+  if (!evidence.label.trim()) {
+    issues.push(errorIssue('INVALID_VALUE', jsonPath(path, 'label'), 'Label must not be empty.'));
+  }
+};
+
 const validateLowerKebabId = (
   value: string,
   path: string,
@@ -982,6 +1211,26 @@ const readRequiredArray = (
 
   if (!Array.isArray(value[key])) {
     issues.push(errorIssue('INVALID_TYPE', fieldPath, 'Expected an array.'));
+    return undefined;
+  }
+
+  return value[key];
+};
+
+const readRequiredBoolean = (
+  value: RawObject,
+  key: string,
+  path: string,
+  issues: SemanticIssue[],
+): boolean | undefined => {
+  const fieldPath = jsonPath(path, key);
+  if (!hasOwn(value, key)) {
+    issues.push(errorIssue('MISSING_REQUIRED_FIELD', fieldPath, 'Missing required field.'));
+    return undefined;
+  }
+
+  if (typeof value[key] !== 'boolean') {
+    issues.push(errorIssue('INVALID_TYPE', fieldPath, 'Expected a boolean.'));
     return undefined;
   }
 

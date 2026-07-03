@@ -12,12 +12,14 @@ export interface FlowguardConfig {
   version: 1;
   flowDirectory: string;
   proposalDirectory: string;
+  coverageDirectory: string;
 }
 
 export const defaultFlowguardConfig: FlowguardConfig = {
   version: 1,
   flowDirectory: 'flows',
   proposalDirectory: 'proposals',
+  coverageDirectory: 'coverage',
 };
 
 export const flowStateKinds = ['page', 'dialog', 'panel', 'system', 'terminal'] as const;
@@ -82,6 +84,43 @@ export interface FlowProposal {
   summary: string;
   confidence: FlowProposalConfidence;
   operations: FlowProposalOperation[];
+}
+
+export const flowCoverageGates = ['e2e'] as const;
+export type FlowCoverageGate = (typeof flowCoverageGates)[number];
+
+export const flowCoverageTargetKinds = ['state', 'transition'] as const;
+export type FlowCoverageTargetKind = (typeof flowCoverageTargetKinds)[number];
+
+export const flowCoverageEvidenceKinds = [
+  'screenshot',
+  'playwrightTrace',
+  'assertions',
+] as const;
+export type FlowCoverageEvidenceKind = (typeof flowCoverageEvidenceKinds)[number];
+
+export interface FlowCoverageDocument {
+  version: 1;
+  id: string;
+  flowId: string;
+  title: string;
+  description: string;
+  gate: FlowCoverageGate;
+  covers: FlowCoverageTarget[];
+  evidence: FlowCoverageEvidenceExpectation[];
+}
+
+export interface FlowCoverageTarget {
+  kind: FlowCoverageTargetKind;
+  id: string;
+  behavior: string;
+  required: boolean;
+}
+
+export interface FlowCoverageEvidenceExpectation {
+  kind: FlowCoverageEvidenceKind;
+  label: string;
+  required: boolean;
 }
 
 export type FlowProposalOperation =

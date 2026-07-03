@@ -34,6 +34,11 @@ const MAX_ADDED_FILE_SIZE: u64 = 5 * 1024 * 1024;
 const VERIFIER_BUN_VERSION: &str = "1.3.5";
 const BROWSER_CONTROLLER: &str = include_str!("../browser-controller.cjs");
 const BROWSER_VERIFIER: &str = include_str!("../browser-verifier.cjs");
+const FLOW_COVERAGE_REPORT_FILE: &str = "flow-coverage.json";
+const FLOW_COVERAGE_REPORT_ENV: &str = "CODE_FLOW_COVERAGE_REPORT";
+const REPOSITORY_MAPPING_OUTPUT_FILE: &str = "project-map.json";
+const REPOSITORY_MAPPING_SUMMARY_FILE: &str = "repository-summary.json";
+const REPOSITORY_MAPPING_TIMEOUT: Duration = Duration::from_secs(90);
 
 const GATE_ORDER: [&str; 10] = [
     "install",
@@ -143,10 +148,392 @@ pub(crate) struct RepositoryTarget {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RepositoryTargetScan {
+    mode: String,
     targets: Vec<RepositoryTarget>,
     assisted: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     assistance_detail: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RepositoryMappingMode {
+    Code,
+    Claude,
+    CloudApi,
+}
+
+impl RepositoryMappingMode {
+    fn parse(mode: Option<&str>) -> Result<Self, String> {
+        match mode.unwrap_or("code") {
+            "code" => Ok(Self::Code),
+            "claude" => Ok(Self::Claude),
+            "cloudApi" => Ok(Self::CloudApi),
+            value => Err(format!("Unsupported repository mapping mode: {value}")),
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Code => "code",
+            Self::Claude => "claude",
+            Self::CloudApi => "cloudApi",
+        }
+    }
+}
+
+struct RepositoryMappingInput<'a> {
+    repository: &'a RepositoryRow,
+    existing: &'a [RepositoryTargetRow],
+}
+
+struct RepositoryMappingOutput {
+    mode: RepositoryMappingMode,
+    targets: Vec<RepositoryTargetRow>,
+    assisted: bool,
+    assistance_detail: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[allow(dead_code)]
+struct AiRepositoryMapDocument {
+    version: u8,
+    mode: String,
+    targets: Vec<AiRepositoryMapTarget>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[allow(dead_code)]
+struct AiRepositoryMapTarget {
+    name: String,
+    path: String,
+    kind: String,
+    #[serde(default)]
+    package_name: Option<String>,
+    #[serde(default)]
+    scripts: BTreeMap<String, String>,
+    #[serde(default = "default_selected")]
+    selected: bool,
+}
+
+trait RepositoryMapper {
+    fn map<'a>(
+        &'a self,
+        input: RepositoryMappingInput<'a>,
+    ) -> EngineFuture<'a, RepositoryMappingOutput>;
+}
+
+struct DeterministicRepositoryMapper {
+    mode: RepositoryMappingMode,
+}
+
+struct CodeRepositoryMapper {
+    data_dir: PathBuf,
+    engine: Arc<dyn ImplementationEngine>,
+}
+
+impl RepositoryMapper for DeterministicRepositoryMapper {
+    fn map<'a>(
+        &'a self,
+        input: RepositoryMappingInput<'a>,
+    ) -> EngineFuture<'a, RepositoryMappingOutput> {
+        Box::pin(async move {
+            let mut targets = discover_repository_targets(input.repository).await?;
+            preserve_existing_target_state(&mut targets, input.existing);
+            Ok(RepositoryMappingOutput {
+                mode: self.mode,
+                targets,
+                assisted: false,
+                assistance_detail: Some(repository_mapping_detail(self.mode)),
+            })
+        })
+    }
+}
+
+impl RepositoryMapper for CodeRepositoryMapper {
+    fn map<'a>(
+        &'a self,
+        input: RepositoryMappingInput<'a>,
+    ) -> EngineFuture<'a, RepositoryMappingOutput> {
+        Box::pin(async move {
+            let workspace = self
+                .data_dir
+                .join("repository-mapping")
+                .join(Uuid::new_v4().to_string());
+            fs::create_dir_all(&workspace).await.map_err(display_error)?;
+            let result = self.map_in_workspace(input, &workspace).await;
+            let _ = fs::remove_dir_all(&workspace).await;
+            result
+        })
+    }
+}
+
+impl CodeRepositoryMapper {
+    async fn map_in_workspace(
+        &self,
+        input: RepositoryMappingInput<'_>,
+        workspace: &Path,
+    ) -> Result<RepositoryMappingOutput, String> {
+        let summary = repository_mapping_summary(input.repository, input.existing).await?;
+        fs::write(
+            workspace.join(REPOSITORY_MAPPING_SUMMARY_FILE),
+            serde_json::to_string_pretty(&summary).map_err(display_error)?,
+        )
+        .await
+        .map_err(display_error)?;
+
+        run_repository_mapping_turn(self.engine.clone(), workspace.to_path_buf()).await?;
+        let output = fs::read_to_string(workspace.join(REPOSITORY_MAPPING_OUTPUT_FILE))
+            .await
+            .map_err(|error| {
+                format!(
+                    "Code automatic mapping did not produce {REPOSITORY_MAPPING_OUTPUT_FILE}: {error}"
+                )
+            })?;
+        let mut targets =
+            parse_ai_repository_map_document(input.repository, RepositoryMappingMode::Code, &output)?;
+        preserve_existing_target_state(&mut targets, input.existing);
+        Ok(RepositoryMappingOutput {
+            mode: RepositoryMappingMode::Code,
+            targets,
+            assisted: true,
+            assistance_detail: Some(
+                "Code automatic mapping used a generated repository summary and AI classification."
+                    .to_string(),
+            ),
+        })
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TargetFlowOverview {
+    snapshot: TargetFlowSnapshot,
+    timeline: Vec<TargetFlowTimelineItem>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowSnapshot {
+    target: RepositoryTarget,
+    flows: Vec<TargetFlow>,
+    unscoped_flows: Vec<TargetFlow>,
+    proposals: Vec<TargetFlowProposal>,
+    invalid_documents: Vec<TargetFlowInvalidDocument>,
+    generated_at: i64,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlow {
+    flow_id: String,
+    name: String,
+    goal: String,
+    relative_path: String,
+    digest: String,
+    graph: TargetFlowGraph,
+    source_paths: Vec<String>,
+    coverage_scenarios: Vec<TargetFlowCoverageScenario>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowGraph {
+    nodes: Vec<TargetFlowNode>,
+    edges: Vec<TargetFlowEdge>,
+    issues: Vec<TargetFlowIssue>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowNode {
+    id: String,
+    state_id: String,
+    label: String,
+    kind: String,
+    route: Option<String>,
+    status: String,
+    coverage: TargetFlowCoverageSummary,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowEdge {
+    id: String,
+    transition_id: String,
+    source: String,
+    target: String,
+    label: String,
+    actor: String,
+    status: String,
+    coverage: TargetFlowCoverageSummary,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowIssue {
+    severity: String,
+    code: String,
+    message: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowProposal {
+    proposal_id: String,
+    flow_id: String,
+    summary: String,
+    confidence: String,
+    relative_path: String,
+    digest: String,
+    operation_count: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowInvalidDocument {
+    kind: String,
+    relative_path: String,
+    issue_count: usize,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowCoverageSummary {
+    status: String,
+    required: usize,
+    covered: usize,
+    missing: usize,
+    optional: usize,
+    scenarios: Vec<TargetFlowCoverageScenarioReference>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowCoverageScenarioReference {
+    scenario_id: String,
+    title: String,
+    behavior: String,
+    required: bool,
+    covered: bool,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowCoverageScenario {
+    scenario_id: String,
+    flow_id: String,
+    title: String,
+    description: String,
+    gate: String,
+    relative_path: String,
+    digest: String,
+    covers: Vec<TargetFlowCoverageCover>,
+    expected_evidence: Vec<TargetFlowCoverageExpectedEvidence>,
+    evidence: Vec<TargetFlowCoverageEvidence>,
+    latest_session: Option<TargetFlowCoverageSession>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowCoverageCover {
+    kind: String,
+    id: String,
+    behavior: String,
+    required: bool,
+    covered: bool,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowCoverageExpectedEvidence {
+    kind: String,
+    label: String,
+    required: bool,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowCoverageEvidence {
+    scenario_id: String,
+    session_id: String,
+    artifact_id: String,
+    kind: String,
+    label: String,
+    path: String,
+    created_at: i64,
+    verified_at: i64,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowCoverageSession {
+    session_id: String,
+    request: String,
+    status: String,
+    verified_at: i64,
+}
+
+#[derive(Clone)]
+struct ParsedFlowCoverageDocument {
+    scenario: TargetFlowCoverageScenario,
+    targets: Vec<ParsedFlowCoverageTarget>,
+}
+
+#[derive(Clone)]
+struct ParsedFlowCoverageTarget {
+    kind: String,
+    id: String,
+    behavior: String,
+    required: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FlowCoverageRuntimeReport {
+    version: u8,
+    scenarios: Vec<FlowCoverageRuntimeScenario>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FlowCoverageRuntimeScenario {
+    flow_id: String,
+    scenario_id: String,
+    status: Option<String>,
+    covers: Vec<FlowCoverageRuntimeCover>,
+    evidence: Vec<FlowCoverageRuntimeEvidence>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FlowCoverageRuntimeCover {
+    kind: String,
+    id: String,
+    status: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FlowCoverageRuntimeEvidence {
+    kind: String,
+    label: String,
+    path: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TargetFlowTimelineItem {
+    id: String,
+    flow_id: Option<String>,
+    flow_name: Option<String>,
+    relative_path: String,
+    change_type: String,
+    commit_sha: String,
+    commit_subject: String,
+    committed_at: i64,
+    summary: String,
 }
 
 #[derive(Serialize)]
@@ -218,7 +605,7 @@ struct SessionApproval {
     created_at: i64,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Artifact {
     id: String,
@@ -982,6 +1369,23 @@ pub(crate) fn migrate(data_dir: &Path) -> Result<(), String> {
              );
              CREATE INDEX IF NOT EXISTS session_artifacts_by_session
                ON session_artifacts(session_id, created_at);
+             CREATE TABLE IF NOT EXISTS session_flow_coverage (
+               id TEXT PRIMARY KEY,
+               session_id TEXT NOT NULL,
+               attempt INTEGER NOT NULL,
+               flow_id TEXT NOT NULL,
+               scenario_id TEXT NOT NULL,
+               target_kind TEXT NOT NULL,
+               target_id TEXT NOT NULL,
+               status TEXT NOT NULL,
+               evidence_artifact_ids_json TEXT NOT NULL,
+               worktree_digest TEXT NOT NULL,
+               verified_at INTEGER NOT NULL
+             );
+             CREATE INDEX IF NOT EXISTS session_flow_coverage_by_session
+               ON session_flow_coverage(session_id, attempt, flow_id, scenario_id);
+             CREATE INDEX IF NOT EXISTS session_flow_coverage_by_target
+               ON session_flow_coverage(flow_id, scenario_id, target_kind, target_id, verified_at);
              CREATE TABLE IF NOT EXISTS verification_snapshots (
                session_id TEXT PRIMARY KEY,
                worktree_digest TEXT NOT NULL,
@@ -997,6 +1401,12 @@ pub(crate) fn migrate(data_dir: &Path) -> Result<(), String> {
         )
         .map_err(display_error)?;
     add_column_if_missing(&connection, "change_sessions", "target_id", "TEXT")?;
+    connection
+        .execute(
+            "UPDATE repository_targets SET kind = 'other' WHERE kind = 'manual'",
+            [],
+        )
+        .map_err(display_error)?;
     Ok(())
 }
 
@@ -1201,29 +1611,25 @@ pub(crate) async fn list_repository_targets(
 pub(crate) async fn scan_repository_targets(
     state: State<'_, AppState>,
     repository_id: String,
+    mode: Option<String>,
 ) -> Result<RepositoryTargetScan, String> {
     migrate(&state.data_dir)?;
+    let data_dir = state.data_dir.clone();
+    let engine = state.implementation_engine.clone();
+    let mode = RepositoryMappingMode::parse(mode.as_deref())?;
     let repository = load_repository_row(&state.data_dir, &repository_id)?
         .ok_or_else(|| "Repository not found".to_string())?;
     let existing = load_target_rows(&state.data_dir, &repository_id)?;
-    let mut targets = discover_repository_targets(&repository).await?;
-    for target in &mut targets {
-        if let Some(existing) = existing.iter().find(|item| item.path == target.path) {
-            target.id = existing.id.clone();
-            target.selected = existing.selected;
-            target.created_at = existing.created_at;
-        }
-    }
+    let mapping = map_repository_targets(&data_dir, engine, &repository, &existing, mode).await?;
     Ok(RepositoryTargetScan {
-        targets: targets
+        mode: mapping.mode.as_str().to_string(),
+        targets: mapping
+            .targets
             .into_iter()
             .map(repository_target_view)
             .collect::<Vec<_>>(),
-        assisted: false,
-        assistance_detail: Some(
-            "Local Codex assisted classification is unavailable for this scan; deterministic package metadata was used."
-                .to_string(),
-        ),
+        assisted: mapping.assisted,
+        assistance_detail: mapping.assistance_detail,
     })
 }
 
@@ -1257,7 +1663,7 @@ pub(crate) async fn save_repository_targets(
                 repository_id: repository.id.clone(),
                 name: name.to_string(),
                 path,
-                kind: target.kind,
+                kind: normalize_target_kind(&target.kind),
                 package_name: target
                     .package_name
                     .map(|value| value.trim().to_string())
@@ -1278,6 +1684,23 @@ pub(crate) async fn save_repository_targets(
             .map(repository_target_view)
             .collect::<Vec<_>>()
     })
+}
+
+#[tauri::command]
+pub(crate) async fn get_target_flow_overview(
+    state: State<'_, AppState>,
+    repository_id: String,
+    target_id: String,
+) -> Result<TargetFlowOverview, String> {
+    migrate(&state.data_dir)?;
+    let repository = load_repository_row(&state.data_dir, &repository_id)?
+        .ok_or_else(|| "Repository not found".to_string())?;
+    let target = load_target_row(&state.data_dir, &target_id)?
+        .ok_or_else(|| "Repository target not found".to_string())?;
+    if target.repository_id != repository.id {
+        return Err("Repository target does not belong to this repository".to_string());
+    }
+    target_flow_overview(&state.data_dir, &repository, target).await
 }
 
 #[tauri::command]
@@ -2676,6 +3099,7 @@ async fn verify_session(
         }
     }
     let digest = worktree_digest(&session.worktree_path).await?;
+    clear_flow_coverage_session(&runtime.data_dir, &session.id)?;
     let safety = run_safety_checks(runtime, session, policy, attempt, &digest).await?;
     let mut failures = safety.failures;
     let mut results = safety.results;
@@ -2697,7 +3121,7 @@ async fn verify_session(
         ensure_cycle_time(runtime, started)?;
         let gate_started = Instant::now();
         let result = run_gate(runtime, session, manifest, kind, gate, started).await?;
-        let status = if result.exit_code == Some(0) && !result.timed_out && !result.cancelled {
+        let mut status = if result.exit_code == Some(0) && !result.timed_out && !result.cancelled {
             "passed"
         } else {
             "failed"
@@ -2722,6 +3146,24 @@ async fn verify_session(
             &log_path,
             &format!("{kind} attempt {attempt}"),
         )?;
+        let mut artifact_ids = vec![artifact_id];
+        if kind == "e2e" {
+            match ingest_flow_coverage_report(
+                &runtime.data_dir,
+                &session.id,
+                attempt,
+                &digest,
+                &artifact_directory(&runtime.data_dir, &session.id),
+            )
+            .await
+            {
+                Ok(mut coverage_artifact_ids) => artifact_ids.append(&mut coverage_artifact_ids),
+                Err(error) => {
+                    status = "failed";
+                    failures.push(format!("Gate `e2e` produced invalid flow coverage: {error}"));
+                }
+            }
+        }
         results.push(PendingGateResult {
             kind: kind.to_string(),
             required: gate.required,
@@ -2730,7 +3172,7 @@ async fn verify_session(
             duration_ms: gate_started.elapsed().as_millis() as u64,
             exit_code: result.exit_code,
             worktree_digest: digest.clone(),
-            artifact_ids: vec![artifact_id],
+            artifact_ids,
         });
         if gate.required {
             if status != "passed" {
@@ -3106,11 +3548,19 @@ async fn run_gate(
     let gate_timeout = Duration::from_millis(gate.timeout_ms).min(remaining);
     if matches!(kind, "accessibility" | "e2e" | "visual") {
         if let Some(server) = &manifest.app_server {
-            return run_app_gate(runtime, session, server, gate, gate_timeout).await;
+            return run_app_gate(runtime, session, server, kind, gate, gate_timeout).await;
         }
     }
-    let mut args = restricted_docker_args(&session.worktree_path, &gate.network);
+    let artifacts = artifact_directory(&runtime.data_dir, &session.id);
+    fs::create_dir_all(&artifacts).await.map_err(display_error)?;
+    let mut args = restricted_docker_args(&session.worktree_path, &gate.network, Some(&artifacts));
     add_docker_labels(&mut args, &session.id, &format!("gate-{kind}"));
+    if kind == "e2e" {
+        args.extend([
+            "-e".to_string(),
+            format!("{FLOW_COVERAGE_REPORT_ENV}=/artifacts/{FLOW_COVERAGE_REPORT_FILE}"),
+        ]);
+    }
     for (key, value) in gate.env.as_ref().into_iter().flatten() {
         args.extend(["-e".to_string(), format!("{key}={value}")]);
     }
@@ -3133,6 +3583,7 @@ async fn run_app_gate(
     runtime: &SessionRuntime,
     session: &SessionRow,
     server: &AppServerConfig,
+    kind: &str,
     gate: &VerificationCommand,
     gate_timeout: Duration,
 ) -> Result<ProcessOutput, String> {
@@ -3141,7 +3592,9 @@ async fn run_app_gate(
     fs::write(&verifier_path, BROWSER_VERIFIER)
         .await
         .map_err(display_error)?;
-    let mut start_args = restricted_docker_args(&session.worktree_path, "disabled");
+    let artifacts = artifact_directory(&runtime.data_dir, &session.id);
+    fs::create_dir_all(&artifacts).await.map_err(display_error)?;
+    let mut start_args = restricted_docker_args(&session.worktree_path, "disabled", Some(&artifacts));
     start_args.extend(["-d".to_string(), "--name".to_string(), name.clone()]);
     add_docker_labels(&mut start_args, &session.id, "application-server");
     start_args.extend([
@@ -3237,6 +3690,12 @@ async fn run_app_gate(
                 Ok(smoke)
             } else {
                 let mut args = vec!["exec".to_string()];
+                if kind == "e2e" {
+                    args.extend([
+                        "-e".to_string(),
+                        format!("{FLOW_COVERAGE_REPORT_ENV}=/artifacts/{FLOW_COVERAGE_REPORT_FILE}"),
+                    ]);
+                }
                 for (key, value) in gate.env.as_ref().into_iter().flatten() {
                     args.extend(["-e".to_string(), format!("{key}={value}")]);
                 }
@@ -3572,6 +4031,247 @@ async fn discover_repository_targets(
     Ok(targets)
 }
 
+async fn map_repository_targets(
+    data_dir: &Path,
+    engine: Arc<dyn ImplementationEngine>,
+    repository: &RepositoryRow,
+    existing: &[RepositoryTargetRow],
+    mode: RepositoryMappingMode,
+) -> Result<RepositoryMappingOutput, String> {
+    let input = RepositoryMappingInput {
+        repository,
+        existing,
+    };
+    match mode {
+        RepositoryMappingMode::Code => {
+            match (CodeRepositoryMapper {
+                data_dir: data_dir.to_path_buf(),
+                engine,
+            })
+            .map(input)
+            .await
+            {
+                Ok(mapping) => Ok(mapping),
+                Err(error) => {
+                    let mut fallback = DeterministicRepositoryMapper { mode }
+                        .map(RepositoryMappingInput {
+                            repository,
+                            existing,
+                        })
+                        .await?;
+                    fallback.assistance_detail =
+                        Some(repository_mapping_fallback_detail(mode, &error));
+                    Ok(fallback)
+                }
+            }
+        }
+        RepositoryMappingMode::Claude | RepositoryMappingMode::CloudApi => {
+            DeterministicRepositoryMapper { mode }.map(input).await
+        }
+    }
+}
+
+fn parse_ai_repository_map_document(
+    repository: &RepositoryRow,
+    mode: RepositoryMappingMode,
+    text: &str,
+) -> Result<Vec<RepositoryTargetRow>, String> {
+    let document: AiRepositoryMapDocument = serde_json::from_str(text).map_err(display_error)?;
+    if document.version != 1 {
+        return Err("AI repository map version must be 1".to_string());
+    }
+    if document.mode != mode.as_str() {
+        return Err(format!(
+            "AI repository map mode `{}` did not match requested mode `{}`",
+            document.mode,
+            mode.as_str()
+        ));
+    }
+    if document.targets.is_empty() {
+        return Err("AI repository map must include at least one target".to_string());
+    }
+
+    let timestamp = now_ms();
+    let mut seen = HashSet::new();
+    let mut targets = Vec::new();
+    for target in document.targets {
+        let name = target.name.trim();
+        if name.is_empty() {
+            return Err("AI repository map target name cannot be empty".to_string());
+        }
+        let path = validate_target_path(&target.path)?;
+        if !seen.insert(path.clone()) {
+            return Err(format!("Duplicate AI repository map target path: {path}"));
+        }
+        validate_target_kind(&target.kind)?;
+        let package_name = target
+            .package_name
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        targets.push(RepositoryTargetRow {
+            id: Uuid::new_v4().to_string(),
+            repository_id: repository.id.clone(),
+            name: name.to_string(),
+            path,
+            kind: normalize_target_kind(&target.kind),
+            package_name,
+            scripts: target.scripts,
+            source: "codex".to_string(),
+            selected: target.selected,
+            created_at: timestamp,
+            updated_at: timestamp,
+        });
+    }
+    Ok(targets)
+}
+
+async fn repository_mapping_summary(
+    repository: &RepositoryRow,
+    existing: &[RepositoryTargetRow],
+) -> Result<Value, String> {
+    let candidates = discover_repository_targets(repository).await?;
+    let tracked_paths = repository_mapping_tracked_paths(&repository.path).await?;
+    Ok(json!({
+        "version": 1,
+        "repository": {
+            "name": repository.name,
+            "branch": repository.branch,
+            "headSha": repository.head_sha,
+            "dirty": repository.dirty
+        },
+        "candidateTargets": candidates.into_iter().map(repository_mapping_target_summary).collect::<Vec<_>>(),
+        "existingTargets": existing.iter().map(repository_mapping_target_summary_ref).collect::<Vec<_>>(),
+        "trackedPathHints": tracked_paths
+    }))
+}
+
+async fn repository_mapping_tracked_paths(repository: &Path) -> Result<Vec<String>, String> {
+    let mut paths = git_text(repository, &["ls-tree", "-r", "--name-only", "HEAD"])
+        .await?
+        .lines()
+        .filter(|path| repository_mapping_path_hint(path))
+        .take(500)
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    paths.sort();
+    paths.dedup();
+    Ok(paths)
+}
+
+fn repository_mapping_path_hint(path: &str) -> bool {
+    path == "package.json"
+        || path.ends_with("/package.json")
+        || path.ends_with("vite.config.ts")
+        || path.ends_with("vite.config.js")
+        || path.ends_with("astro.config.mjs")
+        || path.ends_with("next.config.js")
+        || path.ends_with("tauri.conf.json")
+        || path.ends_with("Cargo.toml")
+        || path.starts_with(".flowguard/")
+        || path.contains("/src/")
+}
+
+fn repository_mapping_target_summary(target: RepositoryTargetRow) -> Value {
+    repository_mapping_target_summary_ref(&target)
+}
+
+fn repository_mapping_target_summary_ref(target: &RepositoryTargetRow) -> Value {
+    json!({
+        "name": target.name,
+        "path": target.path,
+        "kind": normalize_target_kind(&target.kind),
+        "packageName": target.package_name,
+        "scripts": target.scripts,
+        "selected": target.selected
+    })
+}
+
+async fn run_repository_mapping_turn(
+    engine: Arc<dyn ImplementationEngine>,
+    workspace: PathBuf,
+) -> Result<(), String> {
+    let thread_id = engine.start_thread(workspace.clone(), Vec::new()).await?;
+    let turn_id = engine
+        .start_turn(thread_id.clone(), workspace.clone(), repository_mapping_prompt())
+        .await?;
+    let started = Instant::now();
+    loop {
+        match engine
+            .turn_status(thread_id.clone(), turn_id.clone())
+            .await?
+        {
+            EngineTurnStatus::Completed => return Ok(()),
+            EngineTurnStatus::Failed => {
+                return Err("Code automatic mapping turn failed".to_string());
+            }
+            EngineTurnStatus::Interrupted => {
+                return Err("Code automatic mapping turn was interrupted".to_string());
+            }
+            EngineTurnStatus::Running => {
+                if started.elapsed() >= REPOSITORY_MAPPING_TIMEOUT {
+                    let _ = engine
+                        .interrupt(thread_id, Some(turn_id))
+                        .await;
+                    return Err("Code automatic mapping timed out".to_string());
+                }
+                sleep(Duration::from_millis(500)).await;
+            }
+        }
+    }
+}
+
+fn repository_mapping_prompt() -> String {
+    format!(
+        r#"Map this repository for Code Desktop.
+
+You are in a temporary workspace, not the user's repository. Read `{summary_file}` and write `{output_file}` in this same directory. Do not create or modify any other files.
+
+The output must be strict JSON with this exact shape:
+{{
+  "version": 1,
+  "mode": "code",
+  "targets": [
+    {{
+      "name": "Human readable app or package name",
+      "path": "repo-relative POSIX path, or . for the repository root",
+      "kind": "app | package | other",
+      "packageName": "optional package name",
+      "scripts": {{ "scriptName": "script command" }},
+      "selected": true
+    }}
+  ]
+}}
+
+Rules:
+- Include only targets a user should be able to choose from the top-right app/project dropdown.
+- Prefer app targets for runnable products, package targets for reusable libraries, and other only for meaningful non-package scopes.
+- Use only safe repository-relative paths from the summary; never use absolute paths, parent traversal, or backslashes.
+- Preserve useful scripts from candidate or existing targets.
+- Keep at least one target selected.
+- Return JSON only through the `{output_file}` file; no markdown wrapper."#,
+        summary_file = REPOSITORY_MAPPING_SUMMARY_FILE,
+        output_file = REPOSITORY_MAPPING_OUTPUT_FILE,
+    )
+}
+
+fn preserve_existing_target_state(
+    targets: &mut [RepositoryTargetRow],
+    existing: &[RepositoryTargetRow],
+) {
+    for target in targets {
+        if let Some(existing) = existing.iter().find(|item| item.path == target.path) {
+            target.id = existing.id.clone();
+            target.selected = existing.selected;
+            target.created_at = existing.created_at;
+        }
+    }
+}
+
+#[allow(dead_code)]
+fn default_selected() -> bool {
+    true
+}
+
 async fn committed_package_paths(repository: &Path) -> Result<Vec<String>, String> {
     let mut paths = git_text(repository, &["ls-tree", "-r", "--name-only", "HEAD"])
         .await?
@@ -3673,15 +4373,24 @@ fn target_kind_rank(kind: &str) -> u8 {
     match kind {
         "app" => 0,
         "package" => 1,
+        "other" => 2,
         _ => 2,
     }
 }
 
 fn validate_target_kind(kind: &str) -> Result<(), String> {
-    if matches!(kind, "app" | "package" | "manual") {
+    if matches!(kind, "app" | "package" | "other" | "manual") {
         Ok(())
     } else {
         Err(format!("Unsupported target kind: {kind}"))
+    }
+}
+
+fn normalize_target_kind(kind: &str) -> String {
+    if kind == "manual" {
+        "other".to_string()
+    } else {
+        kind.to_string()
     }
 }
 
@@ -3690,6 +4399,31 @@ fn validate_target_source(source: &str) -> Result<(), String> {
         Ok(())
     } else {
         Err(format!("Unsupported target source: {source}"))
+    }
+}
+
+fn repository_mapping_detail(mode: RepositoryMappingMode) -> String {
+    match mode {
+        RepositoryMappingMode::Code => {
+            "Code automatic mapping fallback used deterministic package metadata.".to_string()
+        }
+        RepositoryMappingMode::Claude => {
+            "Claude local mapping is planned; deterministic package metadata was used.".to_string()
+        }
+        RepositoryMappingMode::CloudApi => {
+            "Cloud API mapping is planned; deterministic package metadata was used.".to_string()
+        }
+    }
+}
+
+fn repository_mapping_fallback_detail(mode: RepositoryMappingMode, error: &str) -> String {
+    match mode {
+        RepositoryMappingMode::Code => format!(
+            "Code automatic mapping could not complete ({error}); deterministic package metadata was used."
+        ),
+        RepositoryMappingMode::Claude | RepositoryMappingMode::CloudApi => {
+            repository_mapping_detail(mode)
+        }
     }
 }
 
@@ -3720,6 +4454,839 @@ fn validate_target_path(path: &str) -> Result<String, String> {
         );
     }
     Ok(path)
+}
+
+async fn target_flow_overview(
+    data_dir: &Path,
+    repository: &RepositoryRow,
+    target: RepositoryTargetRow,
+) -> Result<TargetFlowOverview, String> {
+    migrate(data_dir)?;
+    let target_view = repository_target_view(target.clone());
+    let (flow_directory, proposal_directory, coverage_directory) =
+        flowguard_directories(&repository.path).await;
+    let flow_paths =
+        committed_json_paths(&repository.path, &format!(".flowguard/{flow_directory}")).await?;
+    let proposal_paths = committed_json_paths(
+        &repository.path,
+        &format!(".flowguard/{proposal_directory}"),
+    )
+    .await?;
+    let coverage_paths = committed_json_paths(
+        &repository.path,
+        &format!(".flowguard/{coverage_directory}"),
+    )
+    .await?;
+    let mut flows = Vec::new();
+    let mut unscoped_flows = Vec::new();
+    let mut invalid_documents = Vec::new();
+
+    for relative_path in flow_paths {
+        match committed_json(&repository.path, &relative_path).await {
+            Ok(json) => match parse_target_flow(&relative_path, &json.text, json.value) {
+                Ok(flow) => {
+                    if flow.source_paths.is_empty() {
+                        unscoped_flows.push(flow);
+                    } else if flow
+                        .source_paths
+                        .iter()
+                        .any(|source| source_matches_target(&target.path, source))
+                    {
+                        flows.push(flow);
+                    }
+                }
+                Err(_) => invalid_documents.push(TargetFlowInvalidDocument {
+                    kind: "flow".to_string(),
+                    relative_path,
+                    issue_count: 1,
+                }),
+            },
+            Err(_) => invalid_documents.push(TargetFlowInvalidDocument {
+                kind: "flow".to_string(),
+                relative_path,
+                issue_count: 1,
+            }),
+        }
+    }
+
+    flows.sort_by(|left, right| left.name.cmp(&right.name));
+    unscoped_flows.sort_by(|left, right| left.name.cmp(&right.name));
+
+    let included_flow_ids = flows
+        .iter()
+        .chain(unscoped_flows.iter())
+        .map(|flow| flow.flow_id.clone())
+        .collect::<HashSet<_>>();
+    let mut proposals = Vec::new();
+
+    for relative_path in proposal_paths {
+        match committed_json(&repository.path, &relative_path).await {
+            Ok(json) => match parse_target_flow_proposal(&relative_path, &json.text, json.value) {
+                Ok(proposal) => {
+                    if included_flow_ids.contains(&proposal.flow_id) {
+                        proposals.push(proposal);
+                    }
+                }
+                Err(_) => invalid_documents.push(TargetFlowInvalidDocument {
+                    kind: "proposal".to_string(),
+                    relative_path,
+                    issue_count: 1,
+                }),
+            },
+            Err(_) => invalid_documents.push(TargetFlowInvalidDocument {
+                kind: "proposal".to_string(),
+                relative_path,
+                issue_count: 1,
+            }),
+        }
+    }
+
+    proposals.sort_by(|left, right| {
+        left.flow_id
+            .cmp(&right.flow_id)
+            .then(left.relative_path.cmp(&right.relative_path))
+    });
+
+    let coverage_rows = load_target_flow_coverage_rows(data_dir, &repository.id, &target.id)?;
+    let mut coverage_by_flow = HashMap::<String, Vec<ParsedFlowCoverageDocument>>::new();
+    for relative_path in coverage_paths {
+        match committed_json(&repository.path, &relative_path).await {
+            Ok(json) => match parse_target_flow_coverage(&relative_path, &json.text, json.value) {
+                Ok(document) => {
+                    if included_flow_ids.contains(&document.scenario.flow_id) {
+                        coverage_by_flow
+                            .entry(document.scenario.flow_id.clone())
+                            .or_default()
+                            .push(document);
+                    }
+                }
+                Err(_) => invalid_documents.push(TargetFlowInvalidDocument {
+                    kind: "coverage".to_string(),
+                    relative_path,
+                    issue_count: 1,
+                }),
+            },
+            Err(_) => invalid_documents.push(TargetFlowInvalidDocument {
+                kind: "coverage".to_string(),
+                relative_path,
+                issue_count: 1,
+            }),
+        }
+    }
+    for documents in coverage_by_flow.values_mut() {
+        documents.sort_by(|left, right| {
+            left.scenario
+                .title
+                .cmp(&right.scenario.title)
+                .then(left.scenario.scenario_id.cmp(&right.scenario.scenario_id))
+        });
+    }
+    for flow in flows.iter_mut().chain(unscoped_flows.iter_mut()) {
+        apply_flow_coverage(flow, coverage_by_flow.remove(&flow.flow_id), &coverage_rows);
+    }
+    invalid_documents.sort_by(|left, right| {
+        left.kind
+            .cmp(&right.kind)
+            .then(left.relative_path.cmp(&right.relative_path))
+    });
+
+    let flow_names = flows
+        .iter()
+        .chain(unscoped_flows.iter())
+        .map(|flow| {
+            (
+                flow.relative_path.clone(),
+                (flow.flow_id.clone(), flow.name.clone()),
+            )
+        })
+        .collect::<HashMap<_, _>>();
+    let timeline = target_flow_timeline(
+        &repository.path,
+        &format!(".flowguard/{flow_directory}"),
+        &flow_names,
+    )
+    .await?;
+
+    Ok(TargetFlowOverview {
+        snapshot: TargetFlowSnapshot {
+            target: target_view,
+            flows,
+            unscoped_flows,
+            proposals,
+            invalid_documents,
+            generated_at: now_ms(),
+        },
+        timeline,
+    })
+}
+
+struct CommittedJson {
+    text: String,
+    value: Value,
+}
+
+async fn flowguard_directories(repository: &Path) -> (String, String, String) {
+    let config = git_blob(repository, ".flowguard/config.json")
+        .await
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok());
+    let flow_directory = config
+        .as_ref()
+        .and_then(|value| value.get("flowDirectory"))
+        .and_then(Value::as_str)
+        .and_then(flowguard_child_directory)
+        .unwrap_or_else(|| "flows".to_string());
+    let proposal_directory = config
+        .as_ref()
+        .and_then(|value| value.get("proposalDirectory"))
+        .and_then(Value::as_str)
+        .and_then(flowguard_child_directory)
+        .unwrap_or_else(|| "proposals".to_string());
+    let coverage_directory = config
+        .as_ref()
+        .and_then(|value| value.get("coverageDirectory"))
+        .and_then(Value::as_str)
+        .and_then(flowguard_child_directory)
+        .unwrap_or_else(|| "coverage".to_string());
+    (flow_directory, proposal_directory, coverage_directory)
+}
+
+fn flowguard_child_directory(value: &str) -> Option<String> {
+    let value = value.trim().trim_matches('/');
+    if value.is_empty()
+        || value.starts_with('/')
+        || value.contains('\\')
+        || value
+            .split('/')
+            .any(|segment| segment.is_empty() || segment == "." || segment == "..")
+    {
+        None
+    } else {
+        Some(value.to_string())
+    }
+}
+
+async fn committed_json_paths(repository: &Path, directory: &str) -> Result<Vec<String>, String> {
+    let paths = git_text(
+        repository,
+        &["ls-tree", "-r", "--name-only", "HEAD", "--", directory],
+    )
+    .await?
+    .lines()
+    .filter(|path| path.ends_with(".json"))
+    .map(str::to_string)
+    .collect::<Vec<_>>();
+    Ok(paths)
+}
+
+async fn committed_json(repository: &Path, relative_path: &str) -> Result<CommittedJson, String> {
+    let bytes = git_blob(repository, relative_path).await?;
+    let text = String::from_utf8(bytes).map_err(|_| "Flowguard JSON is not UTF-8".to_string())?;
+    let value = serde_json::from_str(&text).map_err(display_error)?;
+    Ok(CommittedJson { text, value })
+}
+
+fn parse_target_flow(relative_path: &str, text: &str, value: Value) -> Result<TargetFlow, String> {
+    let flow_id = required_json_string(&value, "id")?;
+    let name = optional_json_string(&value, "name").unwrap_or_else(|| flow_id.clone());
+    let goal = optional_json_string(&value, "goal").unwrap_or_default();
+    let graph = target_flow_graph(&value)?;
+    let source_paths = flow_source_paths(&value);
+
+    Ok(TargetFlow {
+        flow_id,
+        name,
+        goal,
+        relative_path: relative_path.to_string(),
+        digest: canonical_text_digest(text),
+        graph,
+        source_paths,
+        coverage_scenarios: Vec::new(),
+    })
+}
+
+fn parse_target_flow_proposal(
+    relative_path: &str,
+    text: &str,
+    value: Value,
+) -> Result<TargetFlowProposal, String> {
+    let proposal_id = required_json_string(&value, "id")?;
+    let flow_id = required_json_string(&value, "flowId")?;
+    let summary = optional_json_string(&value, "summary").unwrap_or_else(|| proposal_id.clone());
+    let confidence =
+        optional_json_string(&value, "confidence").unwrap_or_else(|| "medium".to_string());
+    let operation_count = value
+        .get("operations")
+        .and_then(Value::as_array)
+        .map(Vec::len)
+        .unwrap_or_default();
+
+    Ok(TargetFlowProposal {
+        proposal_id,
+        flow_id,
+        summary,
+        confidence,
+        relative_path: relative_path.to_string(),
+        digest: canonical_text_digest(text),
+        operation_count,
+    })
+}
+
+fn parse_target_flow_coverage(
+    relative_path: &str,
+    text: &str,
+    value: Value,
+) -> Result<ParsedFlowCoverageDocument, String> {
+    if value.get("version").and_then(Value::as_i64) != Some(1) {
+        return Err("Flowguard coverage version must be 1".to_string());
+    }
+    let scenario_id = required_json_string(&value, "id")?;
+    let flow_id = required_json_string(&value, "flowId")?;
+    let title = required_json_string(&value, "title")?;
+    let description = required_json_string(&value, "description")?;
+    let gate = required_json_string(&value, "gate")?;
+    if gate != "e2e" {
+        return Err("Flowguard coverage supports only e2e gates".to_string());
+    }
+    let covers = value
+        .get("covers")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "Flowguard coverage is missing covers".to_string())?;
+    let evidence = value
+        .get("evidence")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "Flowguard coverage is missing evidence".to_string())?;
+    if covers.is_empty() || evidence.is_empty() {
+        return Err("Flowguard coverage must include covers and evidence".to_string());
+    }
+
+    let mut targets = Vec::new();
+    let mut scenario_covers = Vec::new();
+    let mut seen_targets = HashSet::new();
+    for cover in covers {
+        let kind = required_json_string(cover, "kind")?;
+        if !matches!(kind.as_str(), "state" | "transition") {
+            return Err("Unsupported Flowguard coverage target kind".to_string());
+        }
+        let id = required_json_string(cover, "id")?;
+        let behavior = required_json_string(cover, "behavior")?;
+        let required = required_json_bool(cover, "required")?;
+        if !seen_targets.insert(format!("{kind}:{id}")) {
+            return Err("Duplicate Flowguard coverage target".to_string());
+        }
+        targets.push(ParsedFlowCoverageTarget {
+            kind: kind.clone(),
+            id: id.clone(),
+            behavior: behavior.clone(),
+            required,
+        });
+        scenario_covers.push(TargetFlowCoverageCover {
+            kind,
+            id,
+            behavior,
+            required,
+            covered: false,
+        });
+    }
+
+    let mut expected_evidence = Vec::new();
+    for item in evidence {
+        let kind = required_json_string(item, "kind")?;
+        if !matches!(kind.as_str(), "screenshot" | "playwrightTrace" | "assertions") {
+            return Err("Unsupported Flowguard coverage evidence kind".to_string());
+        }
+        expected_evidence.push(TargetFlowCoverageExpectedEvidence {
+            kind,
+            label: required_json_string(item, "label")?,
+            required: required_json_bool(item, "required")?,
+        });
+    }
+
+    Ok(ParsedFlowCoverageDocument {
+        scenario: TargetFlowCoverageScenario {
+            scenario_id,
+            flow_id,
+            title,
+            description,
+            gate,
+            relative_path: relative_path.to_string(),
+            digest: canonical_text_digest(text),
+            covers: scenario_covers,
+            expected_evidence,
+            evidence: Vec::new(),
+            latest_session: None,
+        },
+        targets,
+    })
+}
+
+fn target_flow_graph(value: &Value) -> Result<TargetFlowGraph, String> {
+    let states = value
+        .get("states")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "Flowguard flow is missing states".to_string())?;
+    let transitions = value
+        .get("transitions")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "Flowguard flow is missing transitions".to_string())?;
+    let mut state_ids = HashSet::new();
+    let mut nodes = Vec::new();
+
+    for state in states {
+        let state_id = required_json_string(state, "id")?;
+        state_ids.insert(state_id.clone());
+        nodes.push(TargetFlowNode {
+            id: format!("state:{state_id}"),
+            state_id,
+            label: optional_json_string(state, "name")
+                .unwrap_or_else(|| "Unnamed state".to_string()),
+            kind: optional_json_string(state, "kind").unwrap_or_else(|| "system".to_string()),
+            route: optional_json_string(state, "route"),
+            status: "unchanged".to_string(),
+            coverage: empty_flow_coverage_summary(),
+        });
+    }
+
+    let mut edges = Vec::new();
+    let mut issues = Vec::new();
+    for transition in transitions {
+        let transition_id = required_json_string(transition, "id")?;
+        let from = required_json_string(transition, "from")?;
+        let to = required_json_string(transition, "to")?;
+        if !state_ids.contains(&from) || !state_ids.contains(&to) {
+            issues.push(TargetFlowIssue {
+                severity: "error".to_string(),
+                code: "MISSING_STATE".to_string(),
+                message: format!("Transition {transition_id} references a missing state."),
+            });
+        }
+        edges.push(TargetFlowEdge {
+            id: format!("transition:{transition_id}"),
+            transition_id,
+            source: format!("state:{from}"),
+            target: format!("state:{to}"),
+            label: optional_json_string(transition, "action")
+                .unwrap_or_else(|| "transition".to_string()),
+            actor: optional_json_string(transition, "actor")
+                .unwrap_or_else(|| "system".to_string()),
+            status: "unchanged".to_string(),
+            coverage: empty_flow_coverage_summary(),
+        });
+    }
+
+    Ok(TargetFlowGraph {
+        nodes,
+        edges,
+        issues,
+    })
+}
+
+#[derive(Clone)]
+struct StoredCoverageRow {
+    session_id: String,
+    request: String,
+    session_status: String,
+    flow_id: String,
+    scenario_id: String,
+    target_kind: String,
+    target_id: String,
+    status: String,
+    evidence_artifacts: Vec<Artifact>,
+    verified_at: i64,
+}
+
+fn load_target_flow_coverage_rows(
+    data_dir: &Path,
+    repository_id: &str,
+    target_id: &str,
+) -> Result<Vec<StoredCoverageRow>, String> {
+    let connection = super::database(data_dir)?;
+    let mut statement = connection
+        .prepare(
+            "SELECT coverage.session_id,
+                    sessions.request,
+                    sessions.status,
+                    coverage.flow_id,
+                    coverage.scenario_id,
+                    coverage.target_kind,
+                    coverage.target_id,
+                    coverage.status,
+                    coverage.evidence_artifact_ids_json,
+                    coverage.verified_at
+             FROM session_flow_coverage coverage
+             JOIN change_sessions sessions ON sessions.id = coverage.session_id
+             WHERE sessions.repository_id = ?1
+               AND sessions.target_id = ?2
+               AND sessions.status IN ('verified', 'accepted')
+             ORDER BY coverage.verified_at DESC, coverage.id DESC",
+        )
+        .map_err(display_error)?;
+    let rows = statement
+        .query_map(params![repository_id, target_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, String>(6)?,
+                row.get::<_, String>(7)?,
+                row.get::<_, String>(8)?,
+                row.get::<_, i64>(9)?,
+            ))
+        })
+        .map_err(display_error)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(display_error)?;
+
+    rows.into_iter()
+        .map(
+            |(
+                session_id,
+                request,
+                session_status,
+                flow_id,
+                scenario_id,
+                target_kind,
+                target_id,
+                status,
+                artifact_ids,
+                verified_at,
+            )| {
+                let evidence_artifact_ids = serde_json::from_str::<Vec<String>>(&artifact_ids)
+                    .map_err(display_error)?;
+                let evidence_artifact_ids = evidence_artifact_ids.into_iter().collect::<HashSet<_>>();
+                let evidence_artifacts = load_artifacts(data_dir, &session_id)?
+                    .into_iter()
+                    .filter(|artifact| evidence_artifact_ids.contains(&artifact.id))
+                    .collect::<Vec<_>>();
+                Ok(StoredCoverageRow {
+                    session_id,
+                    request,
+                    session_status,
+                    flow_id,
+                    scenario_id,
+                    target_kind,
+                    target_id,
+                    status,
+                    evidence_artifacts,
+                    verified_at,
+                })
+            },
+        )
+        .collect()
+}
+
+fn apply_flow_coverage(
+    flow: &mut TargetFlow,
+    documents: Option<Vec<ParsedFlowCoverageDocument>>,
+    rows: &[StoredCoverageRow],
+) {
+    let documents = documents.unwrap_or_default();
+    if documents.is_empty() {
+        return;
+    }
+    let mut scenario_by_id = HashMap::<String, TargetFlowCoverageScenario>::new();
+    let mut target_refs = HashMap::<String, Vec<TargetFlowCoverageScenarioReference>>::new();
+
+    for document in documents {
+        let mut scenario = document.scenario;
+        let scenario_rows = rows
+            .iter()
+            .filter(|row| row.flow_id == scenario.flow_id && row.scenario_id == scenario.scenario_id)
+            .collect::<Vec<_>>();
+        let mut latest_session = scenario_rows.first().map(|row| TargetFlowCoverageSession {
+            session_id: row.session_id.clone(),
+            request: row.request.clone(),
+            status: row.session_status.clone(),
+            verified_at: row.verified_at,
+        });
+        let mut evidence = Vec::new();
+        for row in &scenario_rows {
+            for artifact in &row.evidence_artifacts {
+                evidence.push(TargetFlowCoverageEvidence {
+                    scenario_id: scenario.scenario_id.clone(),
+                    session_id: row.session_id.clone(),
+                    artifact_id: artifact.id.clone(),
+                    kind: artifact.kind.clone(),
+                    label: artifact.label.clone(),
+                    path: artifact.path.clone(),
+                    created_at: artifact.created_at,
+                    verified_at: row.verified_at,
+                });
+            }
+            if latest_session
+                .as_ref()
+                .is_some_and(|session| row.verified_at > session.verified_at)
+            {
+                latest_session = Some(TargetFlowCoverageSession {
+                    session_id: row.session_id.clone(),
+                    request: row.request.clone(),
+                    status: row.session_status.clone(),
+                    verified_at: row.verified_at,
+                });
+            }
+        }
+        evidence.sort_by(|left, right| {
+            left.kind
+                .cmp(&right.kind)
+                .then(left.created_at.cmp(&right.created_at))
+        });
+        evidence.dedup_by(|left, right| left.artifact_id == right.artifact_id);
+        scenario.evidence = evidence;
+        scenario.latest_session = latest_session;
+        for cover in &mut scenario.covers {
+            cover.covered = scenario_rows.iter().any(|row| {
+                row.target_kind == cover.kind
+                    && row.target_id == cover.id
+                    && row.status == "passed"
+            });
+        }
+        for target in document.targets {
+            let covered = scenario.covers.iter().any(|cover| {
+                cover.kind == target.kind && cover.id == target.id && cover.covered
+            });
+            target_refs
+                .entry(format!("{}:{}", target.kind, target.id))
+                .or_default()
+                .push(TargetFlowCoverageScenarioReference {
+                    scenario_id: scenario.scenario_id.clone(),
+                    title: scenario.title.clone(),
+                    behavior: target.behavior,
+                    required: target.required,
+                    covered,
+                });
+        }
+        scenario_by_id.insert(scenario.scenario_id.clone(), scenario);
+    }
+
+    for node in &mut flow.graph.nodes {
+        node.coverage =
+            coverage_summary_for_refs(target_refs.remove(&format!("state:{}", node.state_id)));
+    }
+    for edge in &mut flow.graph.edges {
+        edge.coverage = coverage_summary_for_refs(
+            target_refs.remove(&format!("transition:{}", edge.transition_id)),
+        );
+    }
+    let mut scenarios = scenario_by_id.into_values().collect::<Vec<_>>();
+    scenarios.sort_by(|left, right| {
+        left.title
+            .cmp(&right.title)
+            .then(left.scenario_id.cmp(&right.scenario_id))
+    });
+    flow.coverage_scenarios = scenarios;
+}
+
+fn coverage_summary_for_refs(
+    refs: Option<Vec<TargetFlowCoverageScenarioReference>>,
+) -> TargetFlowCoverageSummary {
+    let mut scenarios = refs.unwrap_or_default();
+    scenarios.sort_by(|left, right| {
+        left.title
+            .cmp(&right.title)
+            .then(left.scenario_id.cmp(&right.scenario_id))
+    });
+    let required = scenarios.iter().filter(|item| item.required).count();
+    let covered = scenarios
+        .iter()
+        .filter(|item| item.required && item.covered)
+        .count();
+    let missing = required.saturating_sub(covered);
+    let optional = scenarios.iter().filter(|item| !item.required).count();
+    let status = if required == 0 {
+        if scenarios.iter().any(|item| item.covered) {
+            "covered"
+        } else {
+            "missing"
+        }
+    } else if covered == required {
+        "covered"
+    } else if covered > 0 {
+        "partial"
+    } else {
+        "missing"
+    };
+
+    TargetFlowCoverageSummary {
+        status: status.to_string(),
+        required,
+        covered,
+        missing,
+        optional,
+        scenarios,
+    }
+}
+
+fn empty_flow_coverage_summary() -> TargetFlowCoverageSummary {
+    TargetFlowCoverageSummary {
+        status: "missing".to_string(),
+        required: 0,
+        covered: 0,
+        missing: 0,
+        optional: 0,
+        scenarios: Vec::new(),
+    }
+}
+
+fn flow_source_paths(value: &Value) -> Vec<String> {
+    let mut sources = HashSet::new();
+    for key in ["states", "transitions"] {
+        if let Some(items) = value.get(key).and_then(Value::as_array) {
+            for item in items {
+                if let Some(paths) = item.get("sources").and_then(Value::as_array) {
+                    for path in paths.iter().filter_map(Value::as_str) {
+                        let path = normalize_source_path(path);
+                        if !path.is_empty() {
+                            sources.insert(path);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let mut paths = sources.into_iter().collect::<Vec<_>>();
+    paths.sort();
+    paths
+}
+
+fn source_matches_target(target_path: &str, source_path: &str) -> bool {
+    if target_path == "." {
+        true
+    } else {
+        source_path == target_path
+            || source_path
+                .strip_prefix(target_path)
+                .is_some_and(|suffix| suffix.starts_with('/'))
+    }
+}
+
+fn normalize_source_path(path: &str) -> String {
+    path.trim()
+        .trim_start_matches("./")
+        .trim_start_matches('/')
+        .replace('\\', "/")
+}
+
+fn required_json_string(value: &Value, key: &str) -> Result<String, String> {
+    optional_json_string(value, key).ok_or_else(|| format!("Missing JSON string field: {key}"))
+}
+
+fn required_json_bool(value: &Value, key: &str) -> Result<bool, String> {
+    value
+        .get(key)
+        .and_then(Value::as_bool)
+        .ok_or_else(|| format!("Missing JSON boolean field: {key}"))
+}
+
+fn optional_json_string(value: &Value, key: &str) -> Option<String> {
+    value
+        .get(key)
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+}
+
+fn canonical_text_digest(text: &str) -> String {
+    format!("sha256:{:x}", Sha256::digest(text.as_bytes()))
+}
+
+async fn target_flow_timeline(
+    repository: &Path,
+    flow_directory: &str,
+    flow_names: &HashMap<String, (String, String)>,
+) -> Result<Vec<TargetFlowTimelineItem>, String> {
+    let output = git_text(
+        repository,
+        &[
+            "log",
+            "-n",
+            "80",
+            "--date=unix",
+            "--name-status",
+            "--format=__CODE_COMMIT__%H%x1f%ct%x1f%s",
+            "--",
+            flow_directory,
+        ],
+    )
+    .await?;
+    let mut items = Vec::new();
+    let mut current_sha = String::new();
+    let mut current_timestamp = 0;
+    let mut current_subject = String::new();
+
+    for line in output.lines() {
+        if let Some(metadata) = line.strip_prefix("__CODE_COMMIT__") {
+            let mut parts = metadata.splitn(3, '\x1f');
+            current_sha = parts.next().unwrap_or_default().to_string();
+            current_timestamp = parts
+                .next()
+                .and_then(|value| value.parse::<i64>().ok())
+                .unwrap_or_default()
+                * 1000;
+            current_subject = parts.next().unwrap_or_default().to_string();
+            continue;
+        }
+        if line.trim().is_empty() || current_sha.is_empty() {
+            continue;
+        }
+        let columns = line.split('\t').collect::<Vec<_>>();
+        if columns.len() < 2 {
+            continue;
+        }
+        let status = columns[0];
+        let relative_path = columns.last().copied().unwrap_or_default();
+        if !relative_path.ends_with(".json") || !relative_path.starts_with(flow_directory) {
+            continue;
+        }
+        let known_flow = flow_names.get(relative_path);
+        if known_flow.is_none() && !status.starts_with('D') {
+            continue;
+        }
+        let change_type = flow_change_type(status);
+        let flow_name = known_flow.map(|(_, name)| name.clone());
+        let flow_id = known_flow.map(|(id, _)| id.clone());
+        items.push(TargetFlowTimelineItem {
+            id: format!("{}:{relative_path}:{status}", current_sha),
+            flow_id,
+            flow_name: flow_name.clone(),
+            relative_path: relative_path.to_string(),
+            change_type: change_type.to_string(),
+            commit_sha: current_sha.clone(),
+            commit_subject: current_subject.clone(),
+            committed_at: current_timestamp,
+            summary: format_flow_change_summary(change_type, flow_name.as_deref(), relative_path),
+        });
+    }
+
+    Ok(items)
+}
+
+fn flow_change_type(status: &str) -> &'static str {
+    match status.chars().next() {
+        Some('A') => "added",
+        Some('D') => "deleted",
+        Some('M') => "modified",
+        Some('R') => "renamed",
+        _ => "uncertain",
+    }
+}
+
+fn format_flow_change_summary(
+    change_type: &str,
+    flow_name: Option<&str>,
+    relative_path: &str,
+) -> String {
+    let subject = flow_name.unwrap_or(relative_path);
+    match change_type {
+        "added" => format!("Added {subject}"),
+        "deleted" => format!("Deleted {subject}"),
+        "renamed" => format!("Renamed {subject}"),
+        "modified" => format!("Updated {subject}"),
+        _ => format!("Changed {subject}"),
+    }
 }
 
 #[cfg(test)]
@@ -4027,7 +5594,7 @@ fn repository_target_view(row: RepositoryTargetRow) -> RepositoryTarget {
         repository_id: row.repository_id,
         name: row.name,
         path: row.path,
-        kind: row.kind,
+        kind: normalize_target_kind(&row.kind),
         package_name: row.package_name,
         scripts: row.scripts,
         source: row.source,
@@ -4651,6 +6218,148 @@ fn insert_artifact(
     Ok(id)
 }
 
+async fn ingest_flow_coverage_report(
+    data_dir: &Path,
+    session_id: &str,
+    attempt: u32,
+    worktree_digest: &str,
+    artifact_root: &Path,
+) -> Result<Vec<String>, String> {
+    let report_path = artifact_root.join(FLOW_COVERAGE_REPORT_FILE);
+    if !fs::try_exists(&report_path).await.map_err(display_error)? {
+        clear_flow_coverage_attempt(data_dir, session_id, attempt)?;
+        return Ok(Vec::new());
+    }
+    ensure_artifact_path_confined(data_dir, session_id, &report_path)?;
+    let text = fs::read_to_string(&report_path).await.map_err(display_error)?;
+    let report: FlowCoverageRuntimeReport = serde_json::from_str(&text).map_err(display_error)?;
+    if report.version != 1 {
+        return Err("coverage report version must be 1".to_string());
+    }
+
+    {
+        let mut connection = super::database(data_dir)?;
+        let transaction = connection.transaction().map_err(display_error)?;
+        transaction
+            .execute(
+                "DELETE FROM session_flow_coverage WHERE session_id = ?1 AND attempt = ?2",
+                params![session_id, attempt],
+            )
+            .map_err(display_error)?;
+        transaction.commit().map_err(display_error)?;
+    }
+
+    let mut inserted_artifact_ids = Vec::new();
+    for scenario in report.scenarios {
+        if scenario.flow_id.trim().is_empty() || scenario.scenario_id.trim().is_empty() {
+            return Err("coverage scenario flowId and scenarioId are required".to_string());
+        }
+        let scenario_passed = scenario.status.as_deref().unwrap_or("passed") == "passed";
+        let mut evidence_artifact_ids = Vec::new();
+        for evidence in scenario.evidence {
+            if !matches!(
+                evidence.kind.as_str(),
+                "screenshot" | "playwrightTrace" | "assertions"
+            ) {
+                return Err(format!("unsupported coverage evidence kind `{}`", evidence.kind));
+            }
+            let relative_path = safe_artifact_relative_path(&evidence.path)?;
+            let path = artifact_root.join(relative_path);
+            ensure_artifact_path_confined(data_dir, session_id, &path)?;
+            if !fs::try_exists(&path).await.map_err(display_error)? {
+                return Err(format!("coverage evidence file does not exist: {}", evidence.path));
+            }
+            let artifact_id =
+                insert_artifact(data_dir, session_id, &evidence.kind, &path, &evidence.label)?;
+            evidence_artifact_ids.push(artifact_id.clone());
+            inserted_artifact_ids.push(artifact_id);
+        }
+        let evidence_json = serde_json::to_string(&evidence_artifact_ids).map_err(display_error)?;
+        for cover in scenario.covers {
+            if !matches!(cover.kind.as_str(), "state" | "transition") {
+                return Err(format!("unsupported coverage target kind `{}`", cover.kind));
+            }
+            if cover.id.trim().is_empty() {
+                return Err("coverage target id is required".to_string());
+            }
+            let cover_passed =
+                scenario_passed && cover.status.as_deref().unwrap_or("passed") == "passed";
+            super::database(data_dir)?
+                .execute(
+                    "INSERT INTO session_flow_coverage
+                     (id, session_id, attempt, flow_id, scenario_id, target_kind, target_id,
+                      status, evidence_artifact_ids_json, worktree_digest, verified_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                    params![
+                        Uuid::new_v4().to_string(),
+                        session_id,
+                        attempt,
+                        &scenario.flow_id,
+                        &scenario.scenario_id,
+                        cover.kind,
+                        cover.id,
+                        if cover_passed { "passed" } else { "failed" },
+                        &evidence_json,
+                        worktree_digest,
+                        now_ms()
+                    ],
+                )
+                .map_err(display_error)?;
+        }
+    }
+
+    Ok(inserted_artifact_ids)
+}
+
+fn clear_flow_coverage_attempt(
+    data_dir: &Path,
+    session_id: &str,
+    attempt: u32,
+) -> Result<(), String> {
+    super::database(data_dir)?
+        .execute(
+            "DELETE FROM session_flow_coverage WHERE session_id = ?1 AND attempt = ?2",
+            params![session_id, attempt],
+        )
+        .map_err(display_error)?;
+    Ok(())
+}
+
+fn clear_flow_coverage_session(data_dir: &Path, session_id: &str) -> Result<(), String> {
+    super::database(data_dir)?
+        .execute(
+            "DELETE FROM session_flow_coverage WHERE session_id = ?1",
+            [session_id],
+        )
+        .map_err(display_error)?;
+    Ok(())
+}
+
+fn safe_artifact_relative_path(value: &str) -> Result<PathBuf, String> {
+    let value = value.trim();
+    let bytes = value.as_bytes();
+    let windows_drive = bytes.len() > 1 && bytes[1] == b':' && bytes[0].is_ascii_alphabetic();
+    if value.is_empty()
+        || value.starts_with('/')
+        || value.starts_with('\\')
+        || value.contains('\\')
+        || value.contains('\0')
+        || windows_drive
+    {
+        return Err("coverage evidence path must be relative to /artifacts".to_string());
+    }
+    let path = PathBuf::from(value);
+    if path.components().any(|component| {
+        matches!(
+            component,
+            Component::RootDir | Component::ParentDir | Component::CurDir | Component::Prefix(_)
+        )
+    }) {
+        return Err("coverage evidence path must not contain dot or parent segments".to_string());
+    }
+    Ok(path)
+}
+
 fn validate_artifact_kind(kind: &str) -> Result<(), String> {
     if matches!(
         kind,
@@ -4762,8 +6471,8 @@ async fn command_text(
     Ok(text)
 }
 
-fn restricted_docker_args(worktree: &Path, network: &str) -> Vec<String> {
-    vec![
+fn restricted_docker_args(worktree: &Path, network: &str, artifacts: Option<&Path>) -> Vec<String> {
+    let mut args = vec![
         "run".to_string(),
         "--rm".to_string(),
         "--init".to_string(),
@@ -4787,7 +6496,14 @@ fn restricted_docker_args(worktree: &Path, network: &str) -> Vec<String> {
         format!("{}:/workspace", worktree.display()),
         "-w".to_string(),
         "/workspace".to_string(),
-    ]
+    ];
+    if let Some(artifacts) = artifacts {
+        args.extend([
+            "-v".to_string(),
+            format!("{}:/artifacts", artifacts.display()),
+        ]);
+    }
+    args
 }
 
 fn add_docker_labels(args: &mut Vec<String>, session_id: &str, purpose: &str) {
@@ -6675,7 +8391,7 @@ mod tests {
 
     #[test]
     fn process_fixtures_docker_runs_are_session_labeled() {
-        let mut args = restricted_docker_args(Path::new("/tmp/worktree"), "disabled");
+        let mut args = restricted_docker_args(Path::new("/tmp/worktree"), "disabled", None);
         add_docker_labels(&mut args, "session-123", "ordinary-gate");
         assert!(args.windows(2).any(|pair| {
             pair == [
@@ -7352,6 +9068,7 @@ mod tests {
                     &runtime,
                     &session,
                     &server,
+                    "e2e",
                     &gate,
                     Duration::from_secs(30),
                 ))
@@ -7418,6 +9135,7 @@ mod tests {
                 &runtime,
                 &session,
                 &server,
+                "e2e",
                 &gate,
                 Duration::from_secs(30),
             ))
@@ -7694,6 +9412,462 @@ mod tests {
             .unwrap_err()
             .contains("UNIQUE"));
 
+        std::fs::remove_dir_all(data_dir).unwrap();
+    }
+
+    #[test]
+    fn target_fixtures_normalize_legacy_manual_kind() {
+        let data_dir = temporary_directory("target-legacy-kind");
+        std::fs::create_dir_all(&data_dir).unwrap();
+        migrate(&data_dir).unwrap();
+        let timestamp = now_ms();
+        let row = RepositoryTargetRow {
+            id: "target-legacy".to_string(),
+            repository_id: "repo-1".to_string(),
+            name: "docs".to_string(),
+            path: "docs".to_string(),
+            kind: "manual".to_string(),
+            package_name: None,
+            scripts: BTreeMap::new(),
+            source: "manual".to_string(),
+            selected: true,
+            created_at: timestamp,
+            updated_at: timestamp,
+        };
+
+        replace_targets(&data_dir, "repo-1", std::slice::from_ref(&row)).unwrap();
+        migrate(&data_dir).unwrap();
+        let stored = load_target_rows(&data_dir, "repo-1").unwrap();
+        assert_eq!(stored[0].kind, "other");
+        assert_eq!(repository_target_view(row).kind, "other");
+
+        std::fs::remove_dir_all(data_dir).unwrap();
+    }
+
+    #[test]
+    fn target_fixtures_repository_mapping_modes_are_explicit() {
+        assert_eq!(
+            RepositoryMappingMode::parse(None).unwrap(),
+            RepositoryMappingMode::Code
+        );
+        assert_eq!(
+            RepositoryMappingMode::parse(Some("code")).unwrap(),
+            RepositoryMappingMode::Code
+        );
+        assert_eq!(
+            RepositoryMappingMode::parse(Some("claude")).unwrap(),
+            RepositoryMappingMode::Claude
+        );
+        assert_eq!(
+            RepositoryMappingMode::parse(Some("cloudApi")).unwrap(),
+            RepositoryMappingMode::CloudApi
+        );
+        assert!(RepositoryMappingMode::parse(Some("manual")).is_err());
+        assert!(repository_mapping_detail(RepositoryMappingMode::Claude).contains("planned"));
+        assert!(repository_mapping_detail(RepositoryMappingMode::CloudApi).contains("planned"));
+    }
+
+    #[test]
+    fn target_fixtures_parse_strict_ai_repository_map() {
+        let repository = RepositoryRow {
+            id: "repo-1".to_string(),
+            path: PathBuf::from("/repo"),
+            name: "repo".to_string(),
+            head_sha: "head".to_string(),
+            branch: Some("main".to_string()),
+            dirty: false,
+            compatible: true,
+            compatibility_detail: None,
+            created_at: now_ms(),
+            updated_at: now_ms(),
+        };
+
+        let targets = parse_ai_repository_map_document(
+            &repository,
+            RepositoryMappingMode::Code,
+            r#"{
+              "version": 1,
+              "mode": "code",
+              "targets": [
+                {
+                  "name": "trading",
+                  "path": "apps/trading",
+                  "kind": "app",
+                  "packageName": "trading",
+                  "scripts": { "dev": "vite dev" }
+                }
+              ]
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].path, "apps/trading");
+        assert_eq!(targets[0].kind, "app");
+        assert_eq!(targets[0].source, "codex");
+        assert!(targets[0].selected);
+        assert!(parse_ai_repository_map_document(
+            &repository,
+            RepositoryMappingMode::Claude,
+            r#"{"version":1,"mode":"code","targets":[{"name":"x","path":"apps/x","kind":"app"}]}"#,
+        )
+        .is_err());
+        assert!(parse_ai_repository_map_document(
+            &repository,
+            RepositoryMappingMode::Code,
+            r#"{"version":1,"mode":"code","targets":[{"name":"x","path":"../x","kind":"app"}]}"#,
+        )
+        .is_err());
+        assert!(parse_ai_repository_map_document(
+            &repository,
+            RepositoryMappingMode::Code,
+            r#"{"version":1,"mode":"code","targets":[{"name":"x","path":"apps/x","kind":"app","extra":true}]}"#,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn target_fixtures_code_mapping_uses_ai_output_from_temp_workspace() {
+        let repository_path = temporary_directory("target-code-map-repo");
+        let data_dir = temporary_directory("target-code-map-data");
+        std::fs::create_dir_all(repository_path.join("apps/trading")).unwrap();
+        std::fs::create_dir_all(&data_dir).unwrap();
+        std::fs::write(
+            repository_path.join("apps/trading/package.json"),
+            r#"{"name":"trading","scripts":{"dev":"vite dev","test:e2e":"playwright test"}}"#,
+        )
+        .unwrap();
+        run(&repository_path, &["init"]);
+        run(&repository_path, &["add", "."]);
+        run(&repository_path, &["commit", "-m", "fixture"]);
+        let head = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(git_text(&repository_path, &["rev-parse", "HEAD"]))
+            .unwrap();
+        let repository = RepositoryRow {
+            id: "repo-1".to_string(),
+            path: repository_path.clone(),
+            name: "repo".to_string(),
+            head_sha: head.trim().to_string(),
+            branch: Some("main".to_string()),
+            dirty: false,
+            compatible: true,
+            compatibility_detail: None,
+            created_at: now_ms(),
+            updated_at: now_ms(),
+        };
+        let engine = FakeImplementationEngine::scripted(vec![
+            EngineStep::StartThread {
+                thread_id: "mapping-thread".to_string(),
+            },
+            EngineStep::StartTurn {
+                thread_id: "mapping-thread".to_string(),
+                turn_id: "mapping-turn".to_string(),
+                edits: vec![FileEdit {
+                    path: PathBuf::from(REPOSITORY_MAPPING_OUTPUT_FILE),
+                    contents: br#"{
+                      "version": 1,
+                      "mode": "code",
+                      "targets": [
+                        {
+                          "name": "Trading",
+                          "path": "apps/trading",
+                          "kind": "app",
+                          "packageName": "trading",
+                          "scripts": { "dev": "vite dev", "test:e2e": "playwright test" }
+                        }
+                      ]
+                    }"#
+                    .to_vec(),
+                }],
+            },
+            EngineStep::TurnStatus {
+                thread_id: "mapping-thread".to_string(),
+                turn_id: "mapping-turn".to_string(),
+                status: EngineTurnStatus::Completed,
+            },
+        ]);
+
+        let mapping = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(map_repository_targets(
+                &data_dir,
+                Arc::new(engine.clone()),
+                &repository,
+                &[],
+                RepositoryMappingMode::Code,
+            ))
+            .unwrap();
+
+        assert!(mapping.assisted);
+        assert_eq!(mapping.targets.len(), 1);
+        assert_eq!(mapping.targets[0].name, "Trading");
+        assert_eq!(mapping.targets[0].source, "codex");
+        let requests = engine.requests();
+        match &requests[0] {
+            EngineRequest::StartThread { cwd, tools } => {
+                assert!(cwd.starts_with(&data_dir));
+                assert!(!cwd.starts_with(&repository_path));
+                assert!(tools.is_empty());
+            }
+            request => panic!("expected start-thread request, got {request:?}"),
+        }
+        match &requests[1] {
+            EngineRequest::StartTurn { cwd, prompt, .. } => {
+                assert!(cwd.starts_with(&data_dir));
+                assert!(prompt.contains(REPOSITORY_MAPPING_SUMMARY_FILE));
+                assert!(prompt.contains(REPOSITORY_MAPPING_OUTPUT_FILE));
+            }
+            request => panic!("expected start-turn request, got {request:?}"),
+        }
+
+        std::fs::remove_dir_all(repository_path).unwrap();
+        std::fs::remove_dir_all(data_dir).unwrap();
+    }
+
+    #[test]
+    fn target_fixtures_code_mapping_falls_back_to_deterministic_detection() {
+        let repository_path = temporary_directory("target-code-map-fallback-repo");
+        let data_dir = temporary_directory("target-code-map-fallback-data");
+        std::fs::create_dir_all(repository_path.join("packages/ui")).unwrap();
+        std::fs::create_dir_all(&data_dir).unwrap();
+        std::fs::write(
+            repository_path.join("packages/ui/package.json"),
+            r#"{"name":"@repo/ui","scripts":{"test":"vitest run"}}"#,
+        )
+        .unwrap();
+        run(&repository_path, &["init"]);
+        run(&repository_path, &["add", "."]);
+        run(&repository_path, &["commit", "-m", "fixture"]);
+        let head = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(git_text(&repository_path, &["rev-parse", "HEAD"]))
+            .unwrap();
+        let repository = RepositoryRow {
+            id: "repo-1".to_string(),
+            path: repository_path.clone(),
+            name: "repo".to_string(),
+            head_sha: head.trim().to_string(),
+            branch: Some("main".to_string()),
+            dirty: false,
+            compatible: true,
+            compatibility_detail: None,
+            created_at: now_ms(),
+            updated_at: now_ms(),
+        };
+        let engine = FakeImplementationEngine::scripted(vec![EngineStep::Failure(
+            "Codex unavailable".to_string(),
+        )]);
+
+        let mapping = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(map_repository_targets(
+                &data_dir,
+                Arc::new(engine),
+                &repository,
+                &[],
+                RepositoryMappingMode::Code,
+            ))
+            .unwrap();
+
+        assert!(!mapping.assisted);
+        assert_eq!(mapping.targets[0].path, "packages/ui");
+        assert_eq!(mapping.targets[0].source, "detected");
+        assert!(mapping
+            .assistance_detail
+            .as_deref()
+            .is_some_and(|detail| detail.contains("deterministic")));
+
+        std::fs::remove_dir_all(repository_path).unwrap();
+        std::fs::remove_dir_all(data_dir).unwrap();
+    }
+
+    #[test]
+    fn target_fixtures_read_flowguard_overview_and_timeline() {
+        let repository = temporary_directory("target-flowguard");
+        let data_dir = temporary_directory("target-flowguard-data");
+        std::fs::create_dir_all(repository.join(".flowguard/flows")).unwrap();
+        std::fs::create_dir_all(repository.join(".flowguard/proposals")).unwrap();
+        std::fs::create_dir_all(repository.join(".flowguard/coverage")).unwrap();
+        std::fs::create_dir_all(repository.join("apps/trading/src")).unwrap();
+        std::fs::create_dir_all(&data_dir).unwrap();
+        migrate(&data_dir).unwrap();
+        std::fs::write(
+            repository.join(".flowguard/config.json"),
+            r#"{"version":1,"flowDirectory":"flows","proposalDirectory":"proposals"}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            repository.join(".flowguard/flows/login.json"),
+            r#"{"version":1,"id":"login","name":"Login","goal":"Sign in","entryStateId":"start","states":[{"id":"start","name":"Start","kind":"page","route":"/login","sources":["apps/trading/src/Login.tsx"]},{"id":"done","name":"Done","kind":"page"}],"transitions":[{"id":"submit","from":"start","to":"done","actor":"user","action":"Submit","sources":["apps/trading/src/Login.tsx"]}]}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            repository.join(".flowguard/coverage/login-e2e.json"),
+            r#"{"version":1,"id":"login-e2e","flowId":"login","title":"Login happy path","description":"User can sign in with valid credentials.","gate":"e2e","covers":[{"kind":"state","id":"start","behavior":"Login form is visible.","required":true},{"kind":"transition","id":"submit","behavior":"Valid credentials submit successfully.","required":true}],"evidence":[{"kind":"screenshot","label":"Signed-in dashboard","required":true}]}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            repository.join(".flowguard/coverage/broken.json"),
+            r#"{"version":1,"id":"broken"}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            repository.join("apps/trading/src/Login.tsx"),
+            "export default {}",
+        )
+        .unwrap();
+        run(&repository, &["init"]);
+        run(&repository, &["config", "user.name", "Code Test"]);
+        run(
+            &repository,
+            &["config", "user.email", "code-test@example.com"],
+        );
+        run(&repository, &["add", "."]);
+        run(&repository, &["commit", "-m", "add login flow"]);
+        std::fs::write(
+            repository.join(".flowguard/proposals/password-reset.json"),
+            r#"{"version":1,"id":"password-reset","flowId":"login","baseDigest":"sha256:fixture","createdAt":"2026-06-24T00:00:00.000Z","producer":{"kind":"test","label":"Test"},"summary":"Add reset","confidence":"high","operations":[]}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            repository.join(".flowguard/flows/login.json"),
+            r#"{"version":1,"id":"login","name":"Login","goal":"Sign in safely","entryStateId":"start","states":[{"id":"start","name":"Start","kind":"page","route":"/login","sources":["apps/trading/src/Login.tsx"]},{"id":"done","name":"Done","kind":"page"}],"transitions":[{"id":"submit","from":"start","to":"done","actor":"user","action":"Submit valid credentials","sources":["apps/trading/src/Login.tsx"]}]}"#,
+        )
+        .unwrap();
+        run(&repository, &["add", "."]);
+        run(&repository, &["commit", "-m", "update login flow"]);
+
+        let row = RepositoryRow {
+            id: "repo-1".to_string(),
+            path: repository.clone(),
+            name: "target-flowguard".to_string(),
+            head_sha: "head".to_string(),
+            branch: Some("main".to_string()),
+            dirty: false,
+            compatible: true,
+            compatibility_detail: None,
+            created_at: now_ms(),
+            updated_at: now_ms(),
+        };
+        let target = RepositoryTargetRow {
+            id: "target-trading".to_string(),
+            repository_id: "repo-1".to_string(),
+            name: "trading".to_string(),
+            path: "apps/trading".to_string(),
+            kind: "app".to_string(),
+            package_name: Some("trading".to_string()),
+            scripts: BTreeMap::new(),
+            source: "detected".to_string(),
+            selected: true,
+            created_at: now_ms(),
+            updated_at: now_ms(),
+        };
+        let artifact_root = artifact_directory(&data_dir, "session-covered");
+        std::fs::create_dir_all(&artifact_root).unwrap();
+        let screenshot = artifact_root.join("login.png");
+        std::fs::write(&screenshot, "png").unwrap();
+        let evidence_id = "artifact-login-screenshot";
+        let connection = super::super::database(&data_dir).unwrap();
+        connection
+            .execute(
+                "INSERT INTO change_sessions
+                 (id, repository_id, target_id, request, base_sha, worktree_path, status, attempt,
+                  verification_digest, created_at, updated_at)
+                 VALUES ('session-covered', 'repo-1', 'target-trading', 'Cover login', 'head',
+                  ?1, 'verified', 1, 'digest-current', 1, 1)",
+                params![repository.to_string_lossy()],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO change_sessions
+                 (id, repository_id, target_id, request, base_sha, worktree_path, status, attempt,
+                  verification_digest, created_at, updated_at)
+                 VALUES ('session-stale', 'repo-1', 'target-trading', 'Old failed login', 'head',
+                  ?1, 'implementing', 1, NULL, 1, 1)",
+                params![repository.to_string_lossy()],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO session_artifacts(id, session_id, kind, path, label, created_at)
+                 VALUES (?1, 'session-covered', 'screenshot', ?2, 'Signed-in dashboard', 1)",
+                params![evidence_id, screenshot.to_string_lossy()],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO session_flow_coverage
+                 (id, session_id, attempt, flow_id, scenario_id, target_kind, target_id, status,
+                  evidence_artifact_ids_json, worktree_digest, verified_at)
+                 VALUES ('coverage-state', 'session-covered', 1, 'login', 'login-e2e', 'state',
+                  'start', 'passed', ?1, 'digest-current', 2)",
+                params![serde_json::to_string(&vec![evidence_id]).unwrap()],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO session_flow_coverage
+                 (id, session_id, attempt, flow_id, scenario_id, target_kind, target_id, status,
+                  evidence_artifact_ids_json, worktree_digest, verified_at)
+                 VALUES ('coverage-transition', 'session-covered', 1, 'login', 'login-e2e',
+                  'transition', 'submit', 'passed', ?1, 'digest-current', 2)",
+                params![serde_json::to_string(&vec![evidence_id]).unwrap()],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO session_flow_coverage
+                 (id, session_id, attempt, flow_id, scenario_id, target_kind, target_id, status,
+                  evidence_artifact_ids_json, worktree_digest, verified_at)
+                 VALUES ('coverage-stale', 'session-stale', 1, 'login', 'login-e2e', 'state',
+                  'done', 'passed', '[]', 'digest-old', 3)",
+                [],
+            )
+            .unwrap();
+        drop(connection);
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let overview = runtime
+            .block_on(target_flow_overview(&data_dir, &row, target))
+            .unwrap();
+
+        assert_eq!(overview.snapshot.flows.len(), 1);
+        assert_eq!(overview.snapshot.flows[0].flow_id, "login");
+        assert_eq!(overview.snapshot.flows[0].graph.nodes.len(), 2);
+        assert_eq!(overview.snapshot.flows[0].coverage_scenarios.len(), 1);
+        assert_eq!(
+            overview.snapshot.flows[0].coverage_scenarios[0].latest_session.as_ref().map(
+                |session| session.session_id.as_str()
+            ),
+            Some("session-covered")
+        );
+        assert_eq!(
+            overview.snapshot.flows[0].coverage_scenarios[0]
+                .evidence
+                .first()
+                .map(|artifact| artifact.artifact_id.as_str()),
+            Some(evidence_id)
+        );
+        assert_eq!(overview.snapshot.flows[0].graph.nodes[0].coverage.status, "covered");
+        assert_eq!(overview.snapshot.flows[0].graph.edges[0].coverage.status, "covered");
+        assert_eq!(overview.snapshot.proposals.len(), 1);
+        assert!(overview
+            .snapshot
+            .invalid_documents
+            .iter()
+            .any(|document| document.kind == "coverage"
+                && document.relative_path.ends_with("broken.json")));
+        assert!(overview
+            .timeline
+            .iter()
+            .any(|item| item.change_type == "added"));
+        assert!(overview
+            .timeline
+            .iter()
+            .any(|item| item.change_type == "modified"));
+
+        std::fs::remove_dir_all(repository).unwrap();
         std::fs::remove_dir_all(data_dir).unwrap();
     }
 

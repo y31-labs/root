@@ -199,6 +199,7 @@ describe('BF-41 MVP assembly', () => {
       expect(host.hasFile(result.configUri)).toBe(true);
       expect(existsSync(fileURLToPath(result.flowDirectoryUri))).toBe(true);
       expect(existsSync(fileURLToPath(result.proposalDirectoryUri))).toBe(true);
+      expect(existsSync(fileURLToPath(result.coverageDirectoryUri))).toBe(true);
 
       const secondResult = await initializeFlowguardRepository({ root, fs: host });
       expect(secondResult.configWritten).toBe(false);

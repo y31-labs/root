@@ -258,8 +258,8 @@ const validateInvalidDocumentSnapshot = (value: unknown, path: string, errors: s
   const record = requireRecord(value, path, errors);
   if (record === undefined) return;
 
-  if (!isOneOf(record.kind, ['config', 'flow', 'proposal'] as const)) {
-    errors.push(`${path}.kind must be config, flow, or proposal.`);
+  if (!isOneOf(record.kind, ['config', 'flow', 'proposal', 'coverage'] as const)) {
+    errors.push(`${path}.kind must be config, flow, proposal, or coverage.`);
   }
   validateRelativePathField(record.relativePath, `${path}.relativePath`, errors);
   requireNonNegativeInteger(record.issueCount, `${path}.issueCount`, errors);

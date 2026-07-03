@@ -132,7 +132,7 @@ export interface FlowguardWebviewSourceReference {
 }
 
 export interface FlowguardWebviewInvalidDocumentSnapshot {
-  readonly kind: 'config' | 'flow' | 'proposal';
+  readonly kind: 'config' | 'flow' | 'proposal' | 'coverage';
   readonly relativePath: string;
   readonly issueCount: number;
 }
