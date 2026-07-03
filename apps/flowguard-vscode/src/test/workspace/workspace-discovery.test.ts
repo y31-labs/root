@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   digestFlowguardFlow,
+  makeLoginCoverageFixture,
   makeLoginFlowFixture,
   makePasswordResetProposalFixture,
   makeFlowguardConfigFixture,
@@ -38,9 +39,12 @@ describe('Flowguard workspace discovery', () => {
     const loginFlow = makeLoginFlowFixture();
     const loginDigest = await digestFlowguardFlow(loginFlow);
     const proposal = makePasswordResetProposalFixture(loginDigest);
+    const coverage = makeLoginCoverageFixture();
     const validFlowUri = flowUri(roots[0], 'login.json');
     const invalidFlowUri = flowUri(roots[0], 'broken.json');
     const proposalUri = proposalDocumentUri(roots[0], 'password-reset.json');
+    const coverageUri = coverageDocumentUri(roots[0], 'login-e2e.json');
+    const invalidCoverageUri = coverageDocumentUri(roots[0], 'broken-coverage.json');
     const secondRootFlowUri = flowUri(roots[1], 'login.json');
 
     fs.writeJson(configUri(roots[0]), makeFlowguardConfigFixture());
@@ -51,6 +55,12 @@ describe('Flowguard workspace discovery', () => {
       entryStateId: 'missing-state',
     });
     fs.writeJson(proposalUri, proposal);
+    fs.writeJson(coverageUri, coverage);
+    fs.writeJson(invalidCoverageUri, {
+      ...coverage,
+      id: 'broken-coverage',
+      evidence: [{ kind: 'video', label: 'Replay', required: true }],
+    });
     fs.writeJson(secondRootFlowUri, loginFlow);
 
     const service = new FlowguardWorkspaceService({
@@ -73,8 +83,10 @@ describe('Flowguard workspace discovery', () => {
     expect(repoA.config.valid).toBe(true);
     expect(repoA.flows.map((flow) => flow.document.id)).toEqual(['login']);
     expect(repoA.proposals.map((item) => item.document.flowId)).toEqual(['login']);
+    expect(repoA.coverage.map((item) => item.document.id)).toEqual(['login-e2e']);
     expect(repoA.invalidDocuments.map((document) => document.relativePath)).toEqual([
       '.flowguard/flows/broken.json',
+      '.flowguard/coverage/broken-coverage.json',
     ]);
 
     const repoB = requireRepository(snapshot, roots[1]);
@@ -88,6 +100,10 @@ describe('Flowguard workspace discovery', () => {
     expect(invalidDiagnostics?.map((diagnostic) => diagnostic.code)).toEqual(['BROKEN_REFERENCE']);
     expect(invalidDiagnostics?.[0]?.jsonPath).toBe('$.entryStateId');
     expect(invalidDiagnostics?.[0]?.range.start.line).toBeGreaterThan(0);
+    expect(sink.entries.get(invalidCoverageUri)?.map((diagnostic) => diagnostic.code)).toEqual([
+      'INVALID_VALUE',
+      'EMPTY_COLLECTION',
+    ]);
 
     service.dispose();
   });
@@ -186,6 +202,10 @@ const flowUri = (root: WorkspaceRoot, fileName: string): string => {
 
 const proposalDocumentUri = (root: WorkspaceRoot, fileName: string): string => {
   return joinRepositoryUri(root.uri, FLOWGUARD_DIRECTORY, 'proposals', fileName);
+};
+
+const coverageDocumentUri = (root: WorkspaceRoot, fileName: string): string => {
+  return joinRepositoryUri(root.uri, FLOWGUARD_DIRECTORY, 'coverage', fileName);
 };
 
 const requireRepository = (

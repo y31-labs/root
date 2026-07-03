@@ -1,4 +1,10 @@
-import type { FlowguardFlow, CanonicalDigest, FlowProposal, FlowguardConfig } from '#/types';
+import type {
+  FlowCoverageDocument,
+  FlowguardFlow,
+  CanonicalDigest,
+  FlowProposal,
+  FlowguardConfig,
+} from '#/types';
 
 export const canonicalSerialize = (value: unknown): string => {
   return writeCanonicalValue(value);
@@ -18,6 +24,12 @@ export const digestFlowguardFlow = (flow: FlowguardFlow): Promise<CanonicalDiges
 
 export const digestFlowProposal = (proposal: FlowProposal): Promise<CanonicalDigest> => {
   return digestCanonicalJson(proposal);
+};
+
+export const digestFlowCoverageDocument = (
+  coverage: FlowCoverageDocument,
+): Promise<CanonicalDigest> => {
+  return digestCanonicalJson(coverage);
 };
 
 export const digestFlowguardConfig = (config: FlowguardConfig): Promise<CanonicalDigest> => {

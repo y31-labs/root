@@ -17,6 +17,7 @@ import { Route as SessionsIndexRouteImport } from './routes/sessions/index'
 import { Route as RepositoriesIndexRouteImport } from './routes/repositories/index'
 import { Route as SessionsSessionIdRouteImport } from './routes/sessions/$sessionId'
 import { Route as RepositoriesRepositoryIdRouteImport } from './routes/repositories/$repositoryId'
+import { Route as RepositoriesRepositoryIdTargetsTargetIdRouteImport } from './routes/repositories/$repositoryId/targets/$targetId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -59,24 +60,32 @@ const RepositoriesRepositoryIdRoute =
     path: '/$repositoryId',
     getParentRoute: () => RepositoriesRouteRoute,
   } as any)
+const RepositoriesRepositoryIdTargetsTargetIdRoute =
+  RepositoriesRepositoryIdTargetsTargetIdRouteImport.update({
+    id: '/targets/$targetId',
+    path: '/targets/$targetId',
+    getParentRoute: () => RepositoriesRepositoryIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/repositories': typeof RepositoriesRouteRouteWithChildren
   '/sessions': typeof SessionsRouteRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/repositories/$repositoryId': typeof RepositoriesRepositoryIdRoute
+  '/repositories/$repositoryId': typeof RepositoriesRepositoryIdRouteWithChildren
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/repositories/': typeof RepositoriesIndexRoute
   '/sessions/': typeof SessionsIndexRoute
+  '/repositories/$repositoryId/targets/$targetId': typeof RepositoriesRepositoryIdTargetsTargetIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
-  '/repositories/$repositoryId': typeof RepositoriesRepositoryIdRoute
+  '/repositories/$repositoryId': typeof RepositoriesRepositoryIdRouteWithChildren
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/repositories': typeof RepositoriesIndexRoute
   '/sessions': typeof SessionsIndexRoute
+  '/repositories/$repositoryId/targets/$targetId': typeof RepositoriesRepositoryIdTargetsTargetIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -84,10 +93,11 @@ export interface FileRoutesById {
   '/repositories': typeof RepositoriesRouteRouteWithChildren
   '/sessions': typeof SessionsRouteRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/repositories/$repositoryId': typeof RepositoriesRepositoryIdRoute
+  '/repositories/$repositoryId': typeof RepositoriesRepositoryIdRouteWithChildren
   '/sessions/$sessionId': typeof SessionsSessionIdRoute
   '/repositories/': typeof RepositoriesIndexRoute
   '/sessions/': typeof SessionsIndexRoute
+  '/repositories/$repositoryId/targets/$targetId': typeof RepositoriesRepositoryIdTargetsTargetIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/sessions/$sessionId'
     | '/repositories/'
     | '/sessions/'
+    | '/repositories/$repositoryId/targets/$targetId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/sessions/$sessionId'
     | '/repositories'
     | '/sessions'
+    | '/repositories/$repositoryId/targets/$targetId'
   id:
     | '__root__'
     | '/'
@@ -118,6 +130,7 @@ export interface FileRouteTypes {
     | '/sessions/$sessionId'
     | '/repositories/'
     | '/sessions/'
+    | '/repositories/$repositoryId/targets/$targetId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -185,16 +198,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RepositoriesRepositoryIdRouteImport
       parentRoute: typeof RepositoriesRouteRoute
     }
+    '/repositories/$repositoryId/targets/$targetId': {
+      id: '/repositories/$repositoryId/targets/$targetId'
+      path: '/targets/$targetId'
+      fullPath: '/repositories/$repositoryId/targets/$targetId'
+      preLoaderRoute: typeof RepositoriesRepositoryIdTargetsTargetIdRouteImport
+      parentRoute: typeof RepositoriesRepositoryIdRoute
+    }
   }
 }
 
+interface RepositoriesRepositoryIdRouteChildren {
+  RepositoriesRepositoryIdTargetsTargetIdRoute: typeof RepositoriesRepositoryIdTargetsTargetIdRoute
+}
+
+const RepositoriesRepositoryIdRouteChildren: RepositoriesRepositoryIdRouteChildren =
+  {
+    RepositoriesRepositoryIdTargetsTargetIdRoute:
+      RepositoriesRepositoryIdTargetsTargetIdRoute,
+  }
+
+const RepositoriesRepositoryIdRouteWithChildren =
+  RepositoriesRepositoryIdRoute._addFileChildren(
+    RepositoriesRepositoryIdRouteChildren,
+  )
+
 interface RepositoriesRouteRouteChildren {
-  RepositoriesRepositoryIdRoute: typeof RepositoriesRepositoryIdRoute
+  RepositoriesRepositoryIdRoute: typeof RepositoriesRepositoryIdRouteWithChildren
   RepositoriesIndexRoute: typeof RepositoriesIndexRoute
 }
 
 const RepositoriesRouteRouteChildren: RepositoriesRouteRouteChildren = {
-  RepositoriesRepositoryIdRoute: RepositoriesRepositoryIdRoute,
+  RepositoriesRepositoryIdRoute: RepositoriesRepositoryIdRouteWithChildren,
   RepositoriesIndexRoute: RepositoriesIndexRoute,
 }
 

@@ -7,9 +7,12 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@workspace/ui/components/ui/dropdown-menu';
-import { ChevronDown, FolderGit2, Plus, Settings2 } from 'lucide-react';
+import { ChevronDown, FolderGit2, GitBranch, Plus, Settings2 } from 'lucide-react';
 
 interface RepositoryTargetPickerProps {
   repositories: Repository[];
@@ -18,8 +21,14 @@ interface RepositoryTargetPickerProps {
   activeTargetId?: string;
   onSelect: (repositoryId: string, targetId?: string) => void;
   onOpenRepository: () => void;
-  onManageTargets?: () => void;
+  onManageRepositories?: () => void;
 }
+
+const targetGroups = [
+  { kind: 'app', label: 'Apps' },
+  { kind: 'package', label: 'Packages' },
+  { kind: 'other', label: 'Other' },
+] as const;
 
 export function RepositoryTargetPicker({
   repositories,
@@ -28,7 +37,7 @@ export function RepositoryTargetPicker({
   activeTargetId,
   onSelect,
   onOpenRepository,
-  onManageTargets,
+  onManageRepositories,
 }: RepositoryTargetPickerProps) {
   const activeRepository = repositories.find((repository) => repository.id === activeRepositoryId);
   const activeTarget = activeRepositoryId
@@ -60,45 +69,94 @@ export function RepositoryTargetPicker({
         }
       />
       <DropdownMenuContent align='end' className='min-w-72'>
-        {repositories.map((repository) => {
-          const targets = targetsByRepository[repository.id]?.filter((target) => target.selected);
-          return (
-            <DropdownMenuGroup key={repository.id}>
-              <DropdownMenuLabel>{repository.name}</DropdownMenuLabel>
-              {targets?.length ? (
-                targets.map((target) => (
-                  <DropdownMenuItem
-                    key={target.id}
-                    onClick={() => onSelect(repository.id, target.id)}
-                  >
-                    <span className='min-w-0'>
-                      <span className='block truncate'>{target.name}</span>
-                      <span className='block truncate text-muted-foreground text-xs'>
-                        {target.path}
-                      </span>
-                    </span>
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <DropdownMenuItem onClick={() => onSelect(repository.id)}>
-                  <FolderGit2 />
-                  {repository.name}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuGroup>
-          );
-        })}
-        <DropdownMenuSeparator />
-        {onManageTargets ? (
-          <DropdownMenuItem onClick={onManageTargets}>
-            <Settings2 />
-            Manage targets
-          </DropdownMenuItem>
+        {activeRepository ? (
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              <span className='block truncate'>{activeRepository.name}</span>
+              <span className='text-muted-foreground block truncate text-xs'>
+                {activeRepository.path}
+              </span>
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
         ) : null}
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <GitBranch />
+              Switch target
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className='min-w-72'>
+              {repositories.map((repository) => {
+                const targets = targetsByRepository[repository.id]?.filter(
+                  (target) => target.selected,
+                );
+                return (
+                  <DropdownMenuGroup key={repository.id}>
+                    <DropdownMenuLabel>{repository.name}</DropdownMenuLabel>
+                    {targets?.length ? (
+                      targetGroups.flatMap((group) => {
+                        const groupTargets = targets.filter((target) => target.kind === group.kind);
+                        if (!groupTargets.length) return [];
+                        return [
+                          <DropdownMenuLabel key={`${repository.id}-${group.kind}`} className='pt-2'>
+                            {group.label}
+                          </DropdownMenuLabel>,
+                          ...groupTargets.map((target) => (
+                            <DropdownMenuItem
+                              key={target.id}
+                              onClick={() => onSelect(repository.id, target.id)}
+                            >
+                              <span className='min-w-0'>
+                                <span className='block truncate'>{target.name}</span>
+                                <span className='text-muted-foreground block truncate text-xs'>
+                                  {target.path}
+                                </span>
+                              </span>
+                            </DropdownMenuItem>
+                          )),
+                        ];
+                      })
+                    ) : (
+                      <DropdownMenuItem onClick={() => onSelect(repository.id)}>
+                        <FolderGit2 />
+                        {repository.name}
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuGroup>
+                );
+              })}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <FolderGit2 />
+              Switch repository
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className='min-w-64'>
+              {repositories.map((repository) => (
+                <DropdownMenuItem key={repository.id} onClick={() => onSelect(repository.id)}>
+                  <span className='min-w-0'>
+                    <span className='block truncate'>{repository.name}</span>
+                    <span className='text-muted-foreground block truncate text-xs'>
+                      {repository.path}
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onOpenRepository}>
           <Plus />
           Open repository
         </DropdownMenuItem>
+        {onManageRepositories ? (
+          <DropdownMenuItem onClick={onManageRepositories}>
+            <Settings2 />
+            Configure project map
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

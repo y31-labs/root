@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
+import { open } from '@tauri-apps/plugin-dialog';
 import type {
   AppServerConfig,
   VerificationManifest,
@@ -7,27 +8,54 @@ import type {
   ChangeSession,
   Repository,
   RepositoryTarget,
+  RepositoryTargetKind,
 } from '@workspace/code-agent-contracts/sessions';
 import { PageHeader } from '@workspace/code-workbench/page-header';
 import { Badge } from '@workspace/ui/components/ui/badge';
 import { Button } from '@workspace/ui/components/ui/button';
 import { Checkbox } from '@workspace/ui/components/ui/checkbox';
 import { Input } from '@workspace/ui/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@workspace/ui/components/ui/select';
 import { Textarea } from '@workspace/ui/components/ui/textarea';
-import { CheckCircle2, Play, Plus, RefreshCw, Settings2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Play, Plus, RefreshCw, Settings2 } from 'lucide-react';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { ChangeSessionStatusBadge } from '#/components/change-session-status';
 import { RepositoryTargetPicker } from '#/components/repository-target-picker';
-import {
-  getActiveTargetId,
-  setActiveRepositoryId,
-  setActiveTargetId,
-} from '#/lib/active-target';
+import { getActiveTargetId, setActiveRepositoryId, setActiveTargetId } from '#/lib/active-target';
 import type { PolicyProposal, SaveRepositoryTarget } from '#/lib/local-api';
 import { useLocalApi } from '#/providers/local-api-provider';
 
 type SessionSummary = ChangeSession & { repositoryName: string };
+
+const targetGroups: Array<{
+  kind: RepositoryTargetKind;
+  title: string;
+  description: string;
+}> = [
+  {
+    kind: 'app',
+    title: 'Apps',
+    description: 'Runnable products and frontends. Detected automatically, or added manually.',
+  },
+  {
+    kind: 'package',
+    title: 'Packages',
+    description:
+      'Shared libraries and workspace packages. Detected automatically, or added manually.',
+  },
+  {
+    kind: 'other',
+    title: 'Other',
+    description: 'Docs, tooling, services, and custom scopes. Added manually.',
+  },
+];
 
 export function RepositoryPage() {
   const { repositoryId } = useParams({ from: '/repositories/$repositoryId' });
@@ -41,6 +69,7 @@ export function RepositoryPage() {
   const [activeTargetId, setActiveTargetState] = useState<string>();
   const [scanAttempted, setScanAttempted] = useState(false);
   const [scanDetail, setScanDetail] = useState('');
+  const [manualTargetKind, setManualTargetKind] = useState<RepositoryTargetKind>('app');
   const [manualTargetName, setManualTargetName] = useState('');
   const [manualTargetPath, setManualTargetPath] = useState('');
   const [proposal, setProposal] = useState<PolicyProposal>();
@@ -87,21 +116,24 @@ export function RepositoryPage() {
     setScanDetail('');
   }, [repositoryId]);
 
-  const scanTargets = useCallback(async (force = false) => {
-    if (!repository || (!force && scanAttempted)) return;
-    setScanAttempted(true);
-    setPending(true);
-    try {
-      const scan = await api.scanRepositoryTargets(repository.id);
-      setTargetDrafts(scan.targets);
-      setScanDetail(scan.assistanceDetail ?? '');
-      setError('');
-    } catch (nextError) {
-      setError(errorMessage(nextError));
-    } finally {
-      setPending(false);
-    }
-  }, [api, repository, scanAttempted]);
+  const scanTargets = useCallback(
+    async (force = false) => {
+      if (!repository || (!force && scanAttempted)) return;
+      setScanAttempted(true);
+      setPending(true);
+      try {
+        const scan = await api.scanRepositoryTargets(repository.id);
+        setTargetDrafts(scan.targets);
+        setScanDetail(scan.assistanceDetail ?? '');
+        setError('');
+      } catch (nextError) {
+        setError(errorMessage(nextError));
+      } finally {
+        setPending(false);
+      }
+    },
+    [api, repository, scanAttempted],
+  );
 
   useEffect(() => {
     if (repository?.compatible && targets.length === 0 && !targetDrafts && !scanAttempted) {
@@ -115,7 +147,9 @@ export function RepositoryPage() {
 
   const visibleTargets = targetDrafts ?? targets;
   const selectedTarget = targets.find((target) => target.id === activeTargetId);
-  const targetLabel = selectedTarget ? `${repository.name} / ${selectedTarget.name}` : repository.name;
+  const targetLabel = selectedTarget
+    ? `${repository.name} / ${selectedTarget.name}`
+    : repository.name;
   const targetsByRepository = { [repository.id]: targets };
 
   const updateTargetDraft = (targetId: string, selected: boolean) => {
@@ -140,7 +174,7 @@ export function RepositoryPage() {
         repositoryId: repository.id,
         name,
         path,
-        kind: 'manual',
+        kind: manualTargetKind,
         scripts: {},
         source: 'manual',
         selected: true,
@@ -178,6 +212,12 @@ export function RepositoryPage() {
       setActiveTargetState(firstSelected?.id);
       setActiveTargetId(repository.id, firstSelected?.id);
       setError('');
+      if (firstSelected) {
+        await navigate({
+          to: '/repositories/$repositoryId/targets/$targetId',
+          params: { repositoryId: repository.id, targetId: firstSelected.id },
+        });
+      }
     } catch (nextError) {
       setError(errorMessage(nextError));
     } finally {
@@ -250,6 +290,24 @@ export function RepositoryPage() {
     }
   };
 
+  const addRepository = async () => {
+    if (pending) return;
+    const selected = window.__CODE_TEST_SELECT_DIRECTORY__
+      ? await window.__CODE_TEST_SELECT_DIRECTORY__()
+      : await open({ directory: true, multiple: false });
+    if (!selected || Array.isArray(selected)) return;
+    setPending(true);
+    try {
+      const nextRepository = await api.registerRepository(selected);
+      setActiveRepositoryId(nextRepository.id);
+      await navigate({ to: '/' });
+    } catch (nextError) {
+      setError(errorMessage(nextError));
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
     <div className='min-w-0 space-y-6 p-6'>
       <PageHeader
@@ -277,8 +335,10 @@ export function RepositoryPage() {
                     params: { repositoryId: nextRepositoryId },
                   });
               }}
-              onOpenRepository={() => navigate({ to: '/repositories' })}
-              onManageTargets={() => document.getElementById('repository-map')?.scrollIntoView()}
+              onOpenRepository={addRepository}
+              onManageRepositories={() =>
+                document.getElementById('repository-map')?.scrollIntoView()
+              }
             />
             <Button
               variant='outline'
@@ -325,38 +385,87 @@ export function RepositoryPage() {
             ) : null}
           </div>
         </div>
-        <div className='divide-y border-y'>
-          {visibleTargets.map((target) => (
-            <label
-              key={target.id}
-              className='flex cursor-pointer items-start justify-between gap-3 py-3'
-            >
-              <span className='flex min-w-0 items-start gap-3'>
-                <Checkbox
-                  checked={target.selected}
-                  onCheckedChange={(checked) => updateTargetDraft(target.id, Boolean(checked))}
-                  className='mt-0.5'
-                />
-                <span className='min-w-0'>
-                  <span className='block truncate text-sm font-medium'>{target.name}</span>
-                  <span className='text-muted-foreground block truncate text-xs'>
-                    {target.path}
-                    {target.packageName ? ` · ${target.packageName}` : ''}
-                  </span>
-                </span>
-              </span>
-              <Badge variant={target.kind === 'app' ? 'default' : 'secondary'}>
-                {target.kind}
-              </Badge>
-            </label>
-          ))}
-          {visibleTargets.length === 0 ? (
-            <p className='text-muted-foreground py-5 text-sm'>
-              No targets yet. Scan this repository or add one manually.
-            </p>
-          ) : null}
+        <div className='space-y-6'>
+          {targetGroups.map((group) => {
+            const groupTargets = visibleTargets.filter((target) => target.kind === group.kind);
+            return (
+              <section key={group.kind} className='space-y-3'>
+                <div>
+                  <h3 className='text-sm font-medium'>{group.title}</h3>
+                  <p className='text-muted-foreground text-xs'>{group.description}</p>
+                </div>
+                <div className='divide-y border-y'>
+                  {groupTargets.map((target) => (
+                    <div key={target.id} className='flex items-start justify-between gap-3 py-3'>
+                      <label className='flex min-w-0 cursor-pointer items-start gap-3'>
+                        <Checkbox
+                          checked={target.selected}
+                          onCheckedChange={(checked) =>
+                            updateTargetDraft(target.id, Boolean(checked))
+                          }
+                          className='mt-0.5'
+                        />
+                        <span className='min-w-0'>
+                          <span className='block truncate text-sm font-medium'>{target.name}</span>
+                          <span className='text-muted-foreground block truncate text-xs'>
+                            {target.path}
+                            {target.packageName ? ` · ${target.packageName}` : ''}
+                          </span>
+                        </span>
+                      </label>
+                      <span className='flex shrink-0 items-center gap-2'>
+                        <Badge variant={target.source === 'manual' ? 'outline' : 'secondary'}>
+                          {target.source}
+                        </Badge>
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='sm'
+                          disabled={Boolean(targetDrafts)}
+                          onClick={() =>
+                            navigate({
+                              to: '/repositories/$repositoryId/targets/$targetId',
+                              params: { repositoryId: repository.id, targetId: target.id },
+                            })
+                          }
+                        >
+                          Open
+                          <ArrowRight data-icon='inline-end' />
+                        </Button>
+                      </span>
+                    </div>
+                  ))}
+                  {groupTargets.length === 0 ? (
+                    <p className='text-muted-foreground py-4 text-sm'>
+                      No {group.title.toLowerCase()} selected yet.
+                    </p>
+                  ) : null}
+                </div>
+              </section>
+            );
+          })}
         </div>
-        <div className='grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]'>
+        {visibleTargets.length === 0 ? (
+          <p className='text-muted-foreground border-y py-5 text-sm'>
+            No targets yet. Scan this repository or add one manually.
+          </p>
+        ) : null}
+        <div className='grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)_auto]'>
+          <Select
+            value={manualTargetKind}
+            onValueChange={(value) => setManualTargetKind(value as RepositoryTargetKind)}
+          >
+            <SelectTrigger className='w-full'>
+              <SelectValue placeholder='Type' />
+            </SelectTrigger>
+            <SelectContent>
+              {targetGroups.map((group) => (
+                <SelectItem key={group.kind} value={group.kind}>
+                  {group.title.slice(0, -1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             placeholder='Target name'
             value={manualTargetName}
@@ -439,7 +548,8 @@ export function RepositoryPage() {
                         onBlur={(event) => {
                           const args = parseStringArray(event.target.value);
                           if (args) updateAppServer('args', args);
-                          else setError('Application server arguments must be a JSON string array.');
+                          else
+                            setError('Application server arguments must be a JSON string array.');
                         }}
                       />
                     </PolicyField>
@@ -480,7 +590,8 @@ export function RepositoryPage() {
                         onBlur={(event) => {
                           const environment = parseEnvironment(event.target.value);
                           if (environment) updateAppServer('env', environment);
-                          else setError('Application server environment must be a JSON string map.');
+                          else
+                            setError('Application server environment must be a JSON string map.');
                         }}
                       />
                     </PolicyField>

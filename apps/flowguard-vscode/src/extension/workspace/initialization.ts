@@ -28,6 +28,7 @@ export interface InitializeFlowguardRepositoryResult {
   readonly configUri: string;
   readonly flowDirectoryUri: string;
   readonly proposalDirectoryUri: string;
+  readonly coverageDirectoryUri: string;
   readonly configWritten: boolean;
   readonly message: string;
 }
@@ -40,10 +41,12 @@ export const initializeFlowguardRepository = async (
   const configUri = joinRepositoryUri(flowguardUri, FLOWGUARD_CONFIG_FILE);
   const flowDirectoryUri = joinRepositoryUri(flowguardUri, config.flowDirectory);
   const proposalDirectoryUri = joinRepositoryUri(flowguardUri, config.proposalDirectory);
+  const coverageDirectoryUri = joinRepositoryUri(flowguardUri, config.coverageDirectory);
 
   await options.fs.createDirectory(flowguardUri);
   await options.fs.createDirectory(flowDirectoryUri);
   await options.fs.createDirectory(proposalDirectoryUri);
+  await options.fs.createDirectory(coverageDirectoryUri);
 
   const configExists =
     options.overwriteConfig === true ? false : await canReadFile(options.fs, configUri);
@@ -56,6 +59,7 @@ export const initializeFlowguardRepository = async (
     configUri,
     flowDirectoryUri,
     proposalDirectoryUri,
+    coverageDirectoryUri,
     configWritten: !configExists,
     message: configExists
       ? `Flowguard already initialized in ${options.root.name}.`

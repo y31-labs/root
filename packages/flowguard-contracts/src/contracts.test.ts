@@ -3,11 +3,15 @@ import { describe, expect, test } from 'bun:test';
 import {
   applyFlowProposal,
   canonicalSerialize,
+  digestFlowCoverageDocument,
   digestFlowguardFlow,
   digestCanonicalJson,
+  makeLoginCoverageFixture,
   makeLoginFlowFixture,
   makePasswordResetProposalFixture,
   makeFlowguardConfigFixture,
+  parseFlowCoverageDocument,
+  parseFlowCoverageDocumentJson,
   parseFlowguardFlow,
   parseFlowguardFlowJson,
   parseFlowProposal,
@@ -24,6 +28,19 @@ describe('Flowguard contracts', () => {
     expect(parseFlowguardConfig(makeFlowguardConfigFixture()).ok).toBe(true);
     expect(parseFlowguardFlow(flow).ok).toBe(true);
     expect(parseFlowProposal(proposal).ok).toBe(true);
+    expect(parseFlowCoverageDocument(makeLoginCoverageFixture()).ok).toBe(true);
+  });
+
+  test('defaults missing coverageDirectory for older config files', () => {
+    const result = parseFlowguardConfig({
+      version: 1,
+      flowDirectory: 'flows',
+      proposalDirectory: 'proposals',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('Expected config parsing to succeed.');
+    expect(result.value.coverageDirectory).toBe('coverage');
   });
 
   test('reports invalid JSON with a root JSON path', () => {
@@ -93,6 +110,11 @@ describe('Flowguard contracts', () => {
       '$.version',
     );
     expectIssue(
+      parseFlowCoverageDocument({ ...makeLoginCoverageFixture(), version: 2 }).issues,
+      'UNSUPPORTED_VERSION',
+      '$.version',
+    );
+    expectIssue(
       parseFlowguardConfig({ ...config, version: 2 }).issues,
       'UNSUPPORTED_VERSION',
       '$.version',
@@ -134,6 +156,41 @@ describe('Flowguard contracts', () => {
     expect(canonicalSerialize(left)).toBe('{"a":{"c":[{"a":1,"b":2}],"d":4},"b":1}');
     expect(await digestCanonicalJson(left)).toBe(await digestCanonicalJson(right));
     expect(await digestCanonicalJson(left)).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  test('digests coverage documents with canonical JSON', async () => {
+    const coverage = makeLoginCoverageFixture();
+    const digest = await digestFlowCoverageDocument(coverage);
+
+    expect(digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(digest).toBe(await digestCanonicalJson(coverage));
+  });
+
+  test('validates coverage documents and evidence kinds', () => {
+    const coverage = makeLoginCoverageFixture();
+    coverage.covers.push({ ...coverage.covers[0] });
+
+    const duplicate = parseFlowCoverageDocument(coverage);
+    expect(duplicate.ok).toBe(false);
+    expectIssue(duplicate.issues, 'DUPLICATE_ID', '$.covers[3].id');
+
+    const empty = parseFlowCoverageDocument({
+      ...makeLoginCoverageFixture(),
+      id: 'empty-coverage',
+      covers: [],
+    });
+    expect(empty.ok).toBe(false);
+    expectIssue(empty.issues, 'EMPTY_COLLECTION', '$.covers');
+
+    const invalidEvidence = parseFlowCoverageDocumentJson(
+      JSON.stringify({
+        ...makeLoginCoverageFixture(),
+        id: 'invalid-evidence',
+        evidence: [{ kind: 'video', label: 'Replay', required: true }],
+      }),
+    );
+    expect(invalidEvidence.ok).toBe(false);
+    expectIssue(invalidEvidence.issues, 'INVALID_VALUE', '$.evidence[0].kind');
   });
 
   test('applies proposals without mutating the approved Flowguard contract', async () => {

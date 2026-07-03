@@ -18,6 +18,31 @@ The directory contains:
 Code never uses the source repository's dirty working tree as session input. Acceptance creates a
 local branch in the source repository, then removes only the app-managed worktree.
 
+## Flow Coverage Evidence
+
+E2E verification gates receive the session artifact directory mounted read/write at `/artifacts`.
+Code also sets `CODE_FLOW_COVERAGE_REPORT=/artifacts/flow-coverage.json` for those gates.
+
+Tests can write coverage evidence files under `/artifacts` and report them with this shape:
+
+```json
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "flowId": "login",
+      "scenarioId": "login-e2e",
+      "status": "passed",
+      "covers": [{ "kind": "state", "id": "start", "status": "passed" }],
+      "evidence": [{ "kind": "screenshot", "label": "Signed in", "path": "login.png" }]
+    }
+  ]
+}
+```
+
+Reported evidence paths must stay relative to `/artifacts`; absolute paths, parent segments, dot
+segments, backslashes, and drive prefixes are rejected before artifacts are inserted.
+
 ## Verifier Image
 
 The authoritative gate image is `code-agent-verifier:1`. It is local Docker state, separate from

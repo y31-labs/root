@@ -3,6 +3,8 @@ import { describe, expect, test } from 'bun:test';
 import {
   canTransitionSession,
   isFreshVerifiedSession,
+  parseRepositoryMappingMode,
+  parseRepositoryProjectMap,
   parseRepositoryTarget,
   type ChangeSession,
   type VerificationSnapshot,
@@ -54,11 +56,73 @@ describe('change session contract', () => {
 
     expect(target.path).toBe('apps/trading');
     expect(target.scripts.typecheck).toBe('tsc --noEmit');
+    expect(
+      parseRepositoryTarget({
+        ...target,
+        kind: 'manual',
+        source: 'manual',
+      }).kind,
+    ).toBe('other');
     expect(() =>
       parseRepositoryTarget({
         ...target,
         path: '../outside',
       }),
     ).toThrow('repository-relative POSIX');
+  });
+
+  test('parses repository mapping modes for local and future AI mappers', () => {
+    expect(parseRepositoryMappingMode('code')).toBe('code');
+    expect(parseRepositoryMappingMode('claude')).toBe('claude');
+    expect(parseRepositoryMappingMode('cloudApi')).toBe('cloudApi');
+    expect(() => parseRepositoryMappingMode('manual')).toThrow('mappingMode is not supported');
+  });
+
+  test('parses strict repository project maps emitted by AI mappers', () => {
+    const map = parseRepositoryProjectMap({
+      version: 1,
+      mode: 'code',
+      targets: [
+        {
+          name: 'trading',
+          path: 'apps/trading',
+          kind: 'app',
+          packageName: 'trading',
+          scripts: { dev: 'vite dev' },
+        },
+      ],
+    });
+
+    expect(map.mode).toBe('code');
+    expect(map.targets[0]).toMatchObject({
+      name: 'trading',
+      path: 'apps/trading',
+      kind: 'app',
+      selected: true,
+    });
+    expect(() =>
+      parseRepositoryProjectMap({
+        version: 1,
+        mode: 'code',
+        targets: [{ name: 'bad', path: '../bad', kind: 'app' }],
+      }),
+    ).toThrow('repository-relative POSIX');
+    expect(() =>
+      parseRepositoryProjectMap({
+        version: 1,
+        mode: 'code',
+        targets: [
+          { name: 'one', path: 'apps/code', kind: 'app' },
+          { name: 'two', path: 'apps/code', kind: 'app' },
+        ],
+      }),
+    ).toThrow('Duplicate project map target path');
+    expect(() =>
+      parseRepositoryProjectMap({
+        version: 1,
+        mode: 'code',
+        targets: [{ name: 'bad', path: 'apps/bad', kind: 'app', extra: true }],
+      }),
+    ).toThrow('projectMap.targets[0].extra is not supported');
   });
 });

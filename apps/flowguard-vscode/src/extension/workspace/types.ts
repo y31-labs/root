@@ -1,4 +1,5 @@
 import type {
+  FlowCoverageDocument,
   FlowguardFlow,
   CanonicalDigest,
   FlowProposal,
@@ -70,6 +71,7 @@ export interface FlowguardRepositorySnapshot {
   readonly config: FlowguardConfigSnapshot;
   readonly flows: readonly FlowguardFlowDocumentSnapshot[];
   readonly proposals: readonly FlowProposalDocumentSnapshot[];
+  readonly coverage: readonly FlowCoverageDocumentSnapshot[];
   readonly invalidDocuments: readonly InvalidFlowguardDocumentSnapshot[];
   readonly diagnosticDocuments: readonly FlowguardDiagnosticDocument[];
   readonly watchPatterns: readonly string[];
@@ -111,7 +113,18 @@ export interface FlowProposalDocumentSnapshot {
   readonly issues: readonly SemanticIssue[];
 }
 
-export type InvalidFlowguardDocumentKind = 'config' | 'flow' | 'proposal';
+export interface FlowCoverageDocumentSnapshot {
+  readonly kind: 'coverage';
+  readonly root: WorkspaceRoot;
+  readonly uri: string;
+  readonly relativePath: string;
+  readonly valid: true;
+  readonly document: FlowCoverageDocument;
+  readonly digest: CanonicalDigest;
+  readonly issues: readonly SemanticIssue[];
+}
+
+export type InvalidFlowguardDocumentKind = 'config' | 'flow' | 'proposal' | 'coverage';
 
 export interface InvalidFlowguardDocumentSnapshot {
   readonly kind: InvalidFlowguardDocumentKind;

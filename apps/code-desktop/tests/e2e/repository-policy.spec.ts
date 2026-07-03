@@ -25,7 +25,7 @@ function manifest() {
   };
 }
 
-test('registers a dirty repository without importing working-tree edits', async ({ page }) => {
+test('registers a local repository and prompts for project mapping', async ({ page }) => {
   await page.addInitScript(
     ({ timestamp }) => {
       let repositories: Array<Record<string, unknown>> = [];
@@ -58,12 +58,12 @@ test('registers a dirty repository without importing working-tree edits', async 
     { timestamp: now },
   );
 
-  await page.goto('/repositories');
+  await page.goto('/');
   await page.getByRole('button', { name: 'Open repository' }).click();
 
-  await expect(page.getByRole('heading', { name: 'new-repository' })).toBeVisible();
-  await expect(page.getByText(/current edits remain untouched and are excluded/i)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Start isolated session' })).toBeDisabled();
+  await expect(page.getByRole('heading', { name: 'Map new-repository' })).toBeVisible();
+  await expect(page.getByText('Mapping required')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start isolated session' })).toHaveCount(0);
 });
 
 test('proposes, edits, approves, and invalidates repository policy', async ({ page }) => {
@@ -293,6 +293,19 @@ test('scans, curates, and starts a target-scoped session', async ({ page }) => {
           return structuredClone(targets);
         }
         if (command === 'list_change_sessions') return [];
+        if (command === 'get_target_flow_overview') {
+          return {
+            snapshot: {
+              target: targets.find((target) => target.id === 'target-trading'),
+              flows: [],
+              unscopedFlows: [],
+              proposals: [],
+              invalidDocuments: [],
+              generatedAt: timestamp,
+            },
+            timeline: [],
+          };
+        }
         if (command === 'start_change_session') {
           (window as any).__START_INPUT__ = (args as any).input;
           return session.id;
@@ -320,6 +333,8 @@ test('scans, curates, and starts a target-scoped session', async ({ page }) => {
   await page.goto('/repositories/repo-1');
 
   await expect(page.getByRole('heading', { name: 'Repository map' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Apps' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Packages' })).toBeVisible();
   await expect(page.getByText('trading', { exact: true })).toBeVisible();
   await expect(page.getByText('packages/ui')).toBeVisible();
 
@@ -329,7 +344,7 @@ test('scans, curates, and starts a target-scoped session', async ({ page }) => {
   await expect(page.getByText('apps/docs')).toBeVisible();
   await page.getByRole('button', { name: 'Save map' }).click();
 
-  await expect(page.getByRole('heading', { name: 'root / trading' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'trading' })).toBeVisible();
   await page
     .getByPlaceholder('Describe the change and the behavior that should be verified.')
     .fill('Fix trading header');
@@ -338,6 +353,206 @@ test('scans, curates, and starts a target-scoped session', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Fix trading header' })).toBeVisible();
   const startInput = await page.evaluate(() => (window as any).__START_INPUT__);
   expect(startInput).toMatchObject({ targetId: 'target-trading' });
+});
+
+test('maps target flow coverage into an interactive workbench', async ({ page }) => {
+  await page.addInitScript(
+    ({ timestamp, approvedManifest }) => {
+      const repository = {
+        id: 'repo-1',
+        path: '/fixtures/root',
+        name: 'root',
+        headSha: '0123456789abcdef',
+        branch: 'main',
+        dirty: false,
+        compatible: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        policy: {
+          repositoryId: 'repo-1',
+          manifest: approvedManifest,
+          fingerprint: 'approved',
+          fingerprintPaths: ['bun.lock', 'package.json'],
+          approvedAt: timestamp,
+          valid: true,
+        },
+      };
+      const target = {
+        id: 'target-trading',
+        repositoryId: 'repo-1',
+        name: 'trading',
+        path: 'apps/trading',
+        kind: 'app',
+        packageName: 'trading',
+        scripts: { dev: 'vite dev', build: 'vite build', 'test:e2e': 'playwright test' },
+        source: 'detected',
+        selected: true,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+      const coverageSummary = (behavior: string) => ({
+        status: 'covered',
+        required: 1,
+        covered: 1,
+        missing: 0,
+        optional: 0,
+        scenarios: [
+          {
+            scenarioId: 'login-e2e',
+            title: 'Cover login',
+            behavior,
+            required: true,
+            covered: true,
+          },
+        ],
+      });
+      const evidence = {
+        scenarioId: 'login-e2e',
+        sessionId: 'session-verified',
+        artifactId: 'artifact-dashboard',
+        kind: 'screenshot',
+        label: 'Signed-in dashboard',
+        path: '/app-data/sessions/session-verified/dashboard.png',
+        createdAt: timestamp,
+        verifiedAt: timestamp,
+      };
+
+      window.__CODE_TEST_INVOKE__ = async (command, args) => {
+        if (command === 'list_repositories') return [repository];
+        if (command === 'list_repository_targets') return [target];
+        if (command === 'list_change_sessions') return [];
+        if (command === 'get_target_flow_overview') {
+          return {
+            snapshot: {
+              target,
+              flows: [
+                {
+                  flowId: 'login',
+                  name: 'Login',
+                  goal: 'User signs in',
+                  relativePath: '.flowguard/flows/login.json',
+                  digest: 'sha256:login',
+                  sourcePaths: ['apps/trading/src/Login.tsx'],
+                  coverageScenarios: [
+                    {
+                      scenarioId: 'login-e2e',
+                      flowId: 'login',
+                      title: 'Cover login',
+                      description: 'A user can sign in with valid credentials.',
+                      gate: 'e2e',
+                      relativePath: '.flowguard/coverage/login-e2e.json',
+                      digest: 'sha256:coverage',
+                      covers: [
+                        {
+                          kind: 'state',
+                          id: 'start',
+                          behavior: 'Login form is visible.',
+                          required: true,
+                          covered: true,
+                        },
+                        {
+                          kind: 'transition',
+                          id: 'submit',
+                          behavior: 'Valid credentials submit successfully.',
+                          required: true,
+                          covered: true,
+                        },
+                      ],
+                      expectedEvidence: [
+                        { kind: 'screenshot', label: 'Signed-in dashboard', required: true },
+                      ],
+                      evidence: [evidence],
+                      latestSession: {
+                        sessionId: 'session-verified',
+                        request: 'Implement login',
+                        status: 'verified',
+                        verifiedAt: timestamp,
+                      },
+                    },
+                  ],
+                  graph: {
+                    issues: [],
+                    nodes: [
+                      {
+                        id: 'state:start',
+                        stateId: 'start',
+                        label: 'Start',
+                        kind: 'page',
+                        route: '/login',
+                        status: 'unchanged',
+                        coverage: coverageSummary('Login form is visible.'),
+                      },
+                      {
+                        id: 'state:done',
+                        stateId: 'done',
+                        label: 'Done',
+                        kind: 'page',
+                        status: 'unchanged',
+                        coverage: coverageSummary('Signed-in dashboard is visible.'),
+                      },
+                    ],
+                    edges: [
+                      {
+                        id: 'transition:submit',
+                        transitionId: 'submit',
+                        source: 'state:start',
+                        target: 'state:done',
+                        label: 'Submit valid credentials',
+                        actor: 'user',
+                        status: 'unchanged',
+                        coverage: coverageSummary('Valid credentials submit successfully.'),
+                      },
+                    ],
+                  },
+                },
+              ],
+              unscopedFlows: [],
+              proposals: [],
+              invalidDocuments: [],
+              generatedAt: timestamp,
+            },
+            timeline: [],
+          };
+        }
+        if (command === 'read_artifact') {
+          (window as any).__READ_ARTIFACT__ = (args as any).path;
+          return 'data:image/png;base64,iVBORw0KGgo=';
+        }
+        if (command === 'reveal_artifact') {
+          (window as any).__REVEALED_ARTIFACT__ = (args as any).path;
+          return;
+        }
+        throw new Error(`Unhandled test command: ${command}`);
+      };
+    },
+    { timestamp: now, approvedManifest: manifest() },
+  );
+
+  await page.goto('/repositories/repo-1/targets/target-trading');
+  await page.getByRole('tab', { name: 'Flows' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Flows visualization' })).toBeVisible();
+  await expect(page.getByText('Login', { exact: true })).toBeVisible();
+  await expect(page.getByText('Submit valid credentials')).toBeVisible();
+  await expect(page.getByText('Covered').first()).toBeVisible();
+
+  await page.getByText('Start', { exact: true }).first().click();
+  await expect(page.getByText('State start')).toBeVisible();
+  await expect(page.getByText('Login form is visible.')).toBeVisible();
+  await expect(page.getByText('Implement login - verified')).toBeVisible();
+
+  await page.locator('.flow-edge-transition-submit').click({ force: true });
+  await expect(page.getByText('Transition submit')).toBeVisible();
+  await expect(page.getByText('Valid credentials submit successfully.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Preview' }).click();
+  await expect(page.getByAltText('Signed-in dashboard')).toBeVisible();
+  const readArtifact = await page.evaluate(() => (window as any).__READ_ARTIFACT__);
+  expect(readArtifact).toBe('/app-data/sessions/session-verified/dashboard.png');
+
+  await page.getByRole('button', { name: 'Reveal' }).click();
+  const revealedArtifact = await page.evaluate(() => (window as any).__REVEALED_ARTIFACT__);
+  expect(revealedArtifact).toBe('/app-data/sessions/session-verified/dashboard.png');
 });
 
 test('shows distinct setup guidance when the local runtime is unavailable', async ({ page }) => {

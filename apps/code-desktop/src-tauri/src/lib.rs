@@ -808,6 +808,7 @@ fn run_application(smoke: Option<mvp_smoke::SmokeOptions>) {
             local_sessions::list_repository_targets,
             local_sessions::scan_repository_targets,
             local_sessions::save_repository_targets,
+            local_sessions::get_target_flow_overview,
             local_sessions::propose_repository_policy,
             local_sessions::approve_repository_policy,
             local_sessions::list_change_sessions,

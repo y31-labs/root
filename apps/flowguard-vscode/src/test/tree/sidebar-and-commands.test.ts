@@ -230,6 +230,7 @@ const createSnapshot = async (
         },
         flows,
         proposals,
+        coverage: [],
         invalidDocuments: options.invalidDocuments,
         diagnosticDocuments: [],
         watchPatterns: [],

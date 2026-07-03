@@ -85,6 +85,7 @@
     "onView:flowguard.flows",
     "onView:flowguard.proposals",
     "workspaceContains:.flowguard/config.json",
+    "workspaceContains:.flowguard/coverage/*.json",
     "workspaceContains:.flowguard/flows/*.json",
     "workspaceContains:.flowguard/proposals/*.json"
   ],
