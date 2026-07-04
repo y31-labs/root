@@ -9,6 +9,7 @@
  */
 
 import type * as desktops from "../desktops.js";
+import type * as flowMemory from "../flowMemory.js";
 import type * as githubActions from "../githubActions.js";
 import type * as githubAppConfig from "../githubAppConfig.js";
 import type * as githubAuth from "../githubAuth.js";
@@ -30,6 +31,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   desktops: typeof desktops;
+  flowMemory: typeof flowMemory;
   githubActions: typeof githubActions;
   githubAppConfig: typeof githubAppConfig;
   githubAuth: typeof githubAuth;

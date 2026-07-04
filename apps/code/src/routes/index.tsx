@@ -5,15 +5,20 @@ import { useBoolean } from '@workspace/ui/hooks/use-boolean';
 import { useMutation } from 'convex/react';
 import { useCallback } from 'react';
 
+import { FlowMemoryCanvas } from '#/components/flow-memory/flow-memory-canvas';
 import { RepoSelectorDropdown } from '#/components/repos/repo-selector-dropdown';
 import { ReposDialog } from '#/components/repos/repos-dialog';
-import { repoQueries } from '#/queries';
+import { flowMemoryQueries, repoQueries } from '#/queries';
 import { api } from '#convex/_generated/api';
 import type { Id } from '#convex/_generated/dataModel';
 
 export const Route = createFileRoute('/')({
   component: HomePage,
-  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(repoQueries.list),
+  loader: async ({ context: { queryClient } }) =>
+    await Promise.all([
+      queryClient.ensureQueryData(repoQueries.list),
+      queryClient.ensureQueryData(flowMemoryQueries.graph),
+    ]),
   pendingComponent: LoadingView,
 });
 
@@ -28,11 +33,12 @@ function HomePage() {
 
   return (
     <>
-      <div className='flex flex-1 flex-col gap-6 p-4 md:p-6'>
+      <div className='flex min-h-0 flex-1 flex-col gap-6 p-4 md:p-6'>
         <PageHeader
           title='Code'
           actions={<RepoSelectorDropdown onSelectRepo={onSelectRepo} onManageRepos={setTrue} />}
         />
+        <FlowMemoryCanvas />
       </div>
       <ReposDialog open={open} onOpenChange={setOpen} />
     </>

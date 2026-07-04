@@ -10,6 +10,10 @@ export const repoQueries = {
   list: convexQuery(api.repos.list, {}),
 };
 
+export const flowMemoryQueries = {
+  graph: convexQuery(api.flowMemory.graph, {}),
+};
+
 export const githubInstallationsQueries = {
   count: convexQuery(api.githubInstallations.count, {}),
   list: convexQuery(api.githubInstallations.list, {}),
