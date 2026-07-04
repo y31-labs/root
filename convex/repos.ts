@@ -2,7 +2,7 @@ import { parseVerificationManifest } from '@workspace/code-agent-contracts/manif
 import { v } from 'convex/values';
 
 import type { Id } from '#convex/_generated/dataModel';
-import { internalQuery, mutation, query } from '#convex/_generated/server';
+import { internalQuery, mutation, query, type QueryCtx } from '#convex/_generated/server';
 import { verifyIdentity } from '#convex/utils';
 
 export const list = query({
@@ -28,13 +28,10 @@ export const listFullNamesByUserIdInternal = internalQuery({
   },
 });
 
-export const getForUserInternal = internalQuery({
-  args: { id: v.id('repos'), userId: v.string() },
-  handler: async (ctx, { id, userId }) => {
-    const repo = await ctx.db.get(id);
-    return repo?.userId === userId ? repo : null;
-  },
-});
+export const getForUser = async (ctx: QueryCtx, userId: string, repoId: Id<'repos'>) => {
+  const repo = await ctx.db.get(repoId);
+  return repo?.userId === userId ? repo : null;
+};
 
 export const getByIdInternal = internalQuery({
   args: { id: v.id('repos') },

@@ -14,6 +14,8 @@ const runStatus = v.union(
   v.literal('needs_input'),
 );
 
+const flowNodeKind = v.union(v.literal('start'), v.literal('action'));
+
 const gateKind = v.union(...verificationGateKinds.map((kind) => v.literal(kind)));
 
 export default defineSchema({
@@ -122,4 +124,20 @@ export default defineSchema({
     durationMs: v.number(),
     exitCode: v.optional(v.number()),
   }).index('by_run_kind_attempt', ['runId', 'kind', 'attempt']),
+
+  flowNode: defineTable({
+    externalId: v.string(),
+    repositoryId: v.id('repos'),
+    kind: flowNodeKind,
+    title: v.string(),
+    description: v.string(),
+    order: v.number(),
+  }).index('by_repository', ['repositoryId']),
+
+  flowEdge: defineTable({
+    externalId: v.string(),
+    repositoryId: v.id('repos'),
+    sourceNodeId: v.id('flowNode'),
+    targetNodeId: v.id('flowNode'),
+  }).index('by_repository', ['repositoryId']),
 });
