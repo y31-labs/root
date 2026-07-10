@@ -30,3 +30,92 @@
 html {
   color-scheme: dark;
 }
+
+body {
+  min-height: 100dvh;
+  background: var(--background);
+}
+
+::view-transition-old(interface-chat),
+::view-transition-new(interface-chat) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes y31-accordion-open {
+  from {
+    height: 0;
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+
+  to {
+    height: var(--collapsible-panel-height);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes y31-accordion-close {
+  from {
+    height: var(--collapsible-panel-height);
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    height: 0;
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+}
+
+.y31-accordion-panel {
+  overflow: hidden;
+  will-change: height, opacity, transform;
+}
+
+.y31-accordion-panel[data-open] {
+  animation: y31-accordion-open 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.y31-accordion-panel[data-closed] {
+  animation: y31-accordion-close 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes y31-preview-progress {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes y31-preview-ticker {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-18%);
+  }
+}
+
+.y31-preview-progress {
+  animation: y31-preview-progress 6s linear both;
+}
+
+.y31-preview-ticker {
+  animation: y31-preview-ticker 9s linear infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .y31-accordion-panel[data-open],
+  .y31-accordion-panel[data-closed],
+  .y31-preview-progress,
+  .y31-preview-ticker {
+    animation-duration: 1ms;
+  }
+}

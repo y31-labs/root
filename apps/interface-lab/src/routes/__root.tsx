@@ -1,6 +1,8 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
 import { type ReactNode } from 'react';
 
+import { APP_NAME } from '#/lib/app-config';
+
 import appCssUrl from '#/styles.css?url';
 
 export const Route = createRootRoute({
@@ -8,9 +10,13 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Interface Lab' },
+      { title: APP_NAME },
     ],
-    links: [{ rel: 'stylesheet', href: appCssUrl }],
+    links: [
+      { rel: 'icon', href: '/code-favicon.svg', type: 'image/svg+xml' },
+      { rel: 'icon', href: '/code-logo.ico', sizes: 'any' },
+      { rel: 'stylesheet', href: appCssUrl },
+    ],
   }),
   component: RootComponent,
 });
