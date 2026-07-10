@@ -10,14 +10,17 @@
     "cssVariables": true
   },
   "iconLibrary": "lucide",
+  "rtl": false,
+  "menuColor": "default-translucent",
+  "menuAccent": "subtle",
   "aliases": {
     "components": "@workspace/ui/components",
     "utils": "@workspace/ui/lib/utils",
-    "hooks": "@workspace/ui/hooks",
+    "ui": "@workspace/ui/components/ui",
     "lib": "@workspace/ui/lib",
-    "ui": "@workspace/ui/components/ui"
+    "hooks": "@workspace/ui/hooks"
   },
-  "menuColor": "default-translucent",
-  "menuAccent": "subtle",
-  "rtl": false
+  "registries": {
+    "@componentry": "https://componentry.fun/r/{name}.json"
+  }
 }
