@@ -1,4 +1,4 @@
-import type { GeneratedInterface } from '#/lib/interface-contract';
+import { generatedInterfaceSchema, type GeneratedInterface } from '#/lib/interface-contract';
 
 const isErrorResponse = (body: unknown): body is { error: string } =>
   typeof body === 'object' &&
@@ -18,5 +18,5 @@ export const generateInterface = async (brief: string): Promise<GeneratedInterfa
     throw new Error(isErrorResponse(body) ? body.error : 'Generation failed.');
   }
 
-  return body as GeneratedInterface;
+  return generatedInterfaceSchema.parse(body);
 };

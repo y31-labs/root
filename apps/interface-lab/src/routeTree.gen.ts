@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPluginsRouteImport } from './routes/api/plugins'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPluginsRoute = ApiPluginsRouteImport.update({
+  id: '/api/plugins',
+  path: '/api/plugins',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGenerateRoute = ApiGenerateRouteImport.update({
   id: '/api/generate',
   path: '/api/generate',
@@ -33,30 +39,34 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/workspace': typeof WorkspaceRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/api/plugins': typeof ApiPluginsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/workspace': typeof WorkspaceRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/api/plugins': typeof ApiPluginsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/workspace': typeof WorkspaceRoute
   '/api/generate': typeof ApiGenerateRoute
+  '/api/plugins': typeof ApiPluginsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/workspace' | '/api/generate'
+  fullPaths: '/' | '/workspace' | '/api/generate' | '/api/plugins'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/workspace' | '/api/generate'
-  id: '__root__' | '/' | '/workspace' | '/api/generate'
+  to: '/' | '/workspace' | '/api/generate' | '/api/plugins'
+  id: '__root__' | '/' | '/workspace' | '/api/generate' | '/api/plugins'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   WorkspaceRoute: typeof WorkspaceRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
+  ApiPluginsRoute: typeof ApiPluginsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/plugins': {
+      id: '/api/plugins'
+      path: '/api/plugins'
+      fullPath: '/api/plugins'
+      preLoaderRoute: typeof ApiPluginsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/generate': {
       id: '/api/generate'
       path: '/api/generate'
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   WorkspaceRoute: WorkspaceRoute,
   ApiGenerateRoute: ApiGenerateRoute,
+  ApiPluginsRoute: ApiPluginsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

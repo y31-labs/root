@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Badge } from '@workspace/ui/components/ui/badge';
 import { Button } from '@workspace/ui/components/ui/button';
 import {
   Dialog,
@@ -8,72 +7,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@workspace/ui/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@workspace/ui/components/ui/select';
 import { Textarea } from '@workspace/ui/components/ui/textarea';
 import {
   ArrowRight,
-  Check,
   CircleHelp,
-  Clock,
   Keyboard,
   LoaderCircle,
   MessageCircle,
-  Minus,
   Plane,
-  Plus,
   SlidersHorizontal,
   SquareTerminal,
   WandSparkles,
 } from 'lucide-react';
-import { type SubmitEvent, useEffect, useMemo, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 
 import { AnimatedAccordion, type AnimatedAccordionItem } from '#/components/animated-accordion';
+import { GeneratedAppSandbox } from '#/components/generated-app-sandbox';
 import { Shader14Background } from '#/components/shader14-background';
 import { APP_NAME } from '#/lib/app-config';
-import type {
-  GeneratedControl,
-  GeneratedInterface,
-  GeneratedItem,
-  GeneratedSection,
-} from '#/lib/interface-contract';
+import type { GeneratedInterface } from '#/lib/interface-contract';
 import { runViewTransition } from '#/lib/view-transition';
 
 export const Route = createFileRoute('/')({ component: HomePage });
 
 export type WorkspaceMessage = {
-  label: 'You' | 'Focus';
+  label: 'You';
   message: string;
 };
-
-const sectionIcons = {
-  decision: SlidersHorizontal,
-  timeline: Clock,
-  checklist: Check,
-  options: Plane,
-} satisfies Record<GeneratedSection['kind'], typeof Plane>;
-
-const toneClasses = {
-  neutral: 'border-border bg-muted/40 text-foreground',
-  success: 'border-success/30 bg-success/10 text-success',
-  warning: 'border-warning/30 bg-warning/10 text-warning',
-  danger: 'border-danger/30 bg-danger/10 text-danger',
-} satisfies Record<GeneratedItem['tone'], string>;
-
-const actionToneClasses = {
-  neutral: 'outline',
-  success: 'default',
-  warning: 'secondary',
-  danger: 'destructive',
-} as const satisfies Record<
-  GeneratedItem['tone'],
-  'default' | 'outline' | 'secondary' | 'destructive'
->;
 
 const quickStarts = [
   {
@@ -240,7 +200,7 @@ function FrontDoor({
             A visual interface for whatever is next
           </p>
           <h1 className='text-balance text-4xl font-semibold tracking-[-0.04em] md:text-7xl'>
-            Describe the work. Get the surface.
+            Describe the work. Get the app.
           </h1>
           <h2 className='text-muted-foreground mx-auto max-w-2xl text-base font-normal leading-7 md:text-lg'>
             Turn a messy thought, decision, or workflow into a focused interface you can use.
@@ -313,12 +273,12 @@ function HowItWorks() {
           <LandingPrinciple
             index='02'
             title='Get the right shape.'
-            detail='y31 assembles decisions, controls, context, and actions into one focused surface.'
+            detail='y31 generates the interface and interaction code, then connects it to the capabilities the task needs.'
           />
           <LandingPrinciple
             index='03'
             title='Keep moving.'
-            detail='Use the surface, adjust the inputs, and take the next action without translating your intent into app language.'
+            detail='Use the generated app, adjust its inputs, and keep working without rebuilding it on every interaction.'
           />
         </div>
       </div>
@@ -352,7 +312,7 @@ function FaqSection() {
       value: 'what-is-y31',
       title: 'What is y31?',
       content:
-        'y31 is a prompt-first interface layer. You describe the work and it generates a focused surface around the decisions and actions that matter.',
+        'y31 is a prompt-first app generator. You describe the work and it builds a focused, interactive interface for that request.',
       icon: CircleHelp,
     },
     {
@@ -373,7 +333,7 @@ function FaqSection() {
       value: 'after-submit',
       title: 'What happens after I submit?',
       content:
-        'Your prompt opens a dedicated workspace where y31 shapes the surface and keeps the conversation close to the work.',
+        'Your prompt opens a dedicated workspace where y31 generates and runs a new sandboxed application.',
       icon: ArrowRight,
     },
   ];
@@ -413,7 +373,6 @@ export function WorkspaceShell({
   chatMessages,
   error,
   onBriefChange,
-  onRefine,
   onSubmit,
   status,
   surface,
@@ -423,7 +382,6 @@ export function WorkspaceShell({
   chatMessages: WorkspaceMessage[];
   error?: string;
   onBriefChange: (brief: string) => void;
-  onRefine: (instruction: string) => void;
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   status: 'idle' | 'loading';
   surface?: GeneratedInterface;
@@ -459,15 +417,11 @@ export function WorkspaceShell({
       </aside>
 
       <section
-        className='order-1 min-w-0 overflow-visible border-t border-border bg-background/20 p-4 backdrop-blur-sm md:order-0 md:overflow-y-auto md:border-t-0 md:p-6'
+        className='order-1 min-w-0 overflow-hidden border-t border-border bg-background md:order-0 md:border-t-0'
         data-testid='app-panel'
       >
         {surface ? (
-          <GeneratedSurface
-            key={`${surface.title}-${surface.summary}`}
-            surface={surface}
-            onRefine={onRefine}
-          />
+          <GeneratedSurface key={surface.html} surface={surface} />
         ) : (
           <EmptySurface status={status} />
         )}
@@ -521,9 +475,9 @@ function PromptForm({
       />
       <p id='brief-guidance' className='px-2 text-xs text-muted-foreground'>
         {status === 'loading'
-          ? 'Updating the surface with this focus.'
+          ? 'Building a new application from this prompt.'
           : canGenerate
-            ? 'Ready to open a surface.'
+            ? 'Ready to build a new application.'
             : `Describe the task in ${remainingCharacters} more character${
                 remainingCharacters === 1 ? '' : 's'
               } to continue.`}
@@ -543,7 +497,7 @@ function PromptForm({
           ) : (
             <WandSparkles className='size-4' />
           )}
-          Open surface
+          Build app
           <ArrowRight className='size-4' />
         </Button>
       </div>
@@ -585,250 +539,17 @@ function EmptySurface({ status }: { status: 'idle' | 'loading' }) {
         ) : (
           <WandSparkles className='text-muted-foreground mx-auto size-8' />
         )}
-        <h2 className='font-medium'>{isLoading ? 'Generating surface' : 'No surface yet'}</h2>
+        <h2 className='font-medium'>{isLoading ? 'Building application' : 'No application yet'}</h2>
         <p className='text-muted-foreground text-sm'>
           {isLoading
-            ? 'The interface is being shaped from your prompt.'
-            : 'The generated interface will appear here.'}
+            ? 'Y31 is generating the interface and interaction code.'
+            : 'The generated application will appear here.'}
         </p>
       </div>
     </div>
   );
 }
 
-export function GeneratedSurface({
-  surface,
-  onRefine,
-}: {
-  surface: GeneratedInterface;
-  onRefine: (instruction: string) => void;
-}) {
-  return (
-    <div className='space-y-6'>
-      <header className='space-y-4 border-b border-border pb-5'>
-        <div className='flex flex-wrap items-start justify-between gap-3'>
-          <div className='min-w-0'>
-            <p className='text-muted-foreground text-sm'>{surface.intent}</p>
-            <h2 className='mt-1 text-2xl font-semibold tracking-normal'>{surface.title}</h2>
-          </div>
-          <div className='flex shrink-0 flex-wrap gap-2'>
-            <Badge variant='secondary'>{surface.domain}</Badge>
-            <Badge>{surface.backend.kind}</Badge>
-          </div>
-        </div>
-        <p className='text-muted-foreground max-w-3xl text-sm leading-6'>{surface.summary}</p>
-      </header>
-
-      <ControlRail controls={surface.controls} onRefine={onRefine} />
-
-      <div className='grid gap-6 xl:grid-cols-[1fr_300px]'>
-        <div className='space-y-6'>
-          {surface.sections.map((section) => (
-            <SurfaceSection key={section.id} section={section} />
-          ))}
-        </div>
-
-        <aside className='space-y-6'>
-          <ActionStack surface={surface} onRefine={onRefine} />
-        </aside>
-      </div>
-    </div>
-  );
-}
-
-export function ControlRail({
-  controls,
-  onRefine,
-}: {
-  controls: GeneratedControl[];
-  onRefine: (instruction: string) => void;
-}) {
-  const initialValues = useMemo(
-    () => Object.fromEntries(controls.map((control) => [control.id, control.value])),
-    [controls],
-  );
-  const [values, setValues] = useState<Record<string, string>>(initialValues);
-
-  useEffect(() => setValues(initialValues), [initialValues]);
-
-  const setControlValue = (control: GeneratedControl, value: string) => {
-    setValues((current) => ({ ...current, [control.id]: value }));
-    onRefine(`Update ${control.label.toLowerCase()} to ${value}.`);
-  };
-
-  return (
-    <section className='space-y-3'>
-      <div className='flex items-center gap-2'>
-        <SlidersHorizontal className='text-muted-foreground size-4' />
-        <h3 className='text-sm font-medium'>Controls</h3>
-      </div>
-      <div className='grid gap-3 border-y border-border py-3 md:grid-cols-3'>
-        {controls.map((control) => (
-          <GeneratedControlView
-            key={control.id}
-            control={control}
-            value={values[control.id] ?? control.value}
-            onChange={(value) => setControlValue(control, value)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export function GeneratedControlView({
-  control,
-  value,
-  onChange,
-}: {
-  control: GeneratedControl;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const options = control.options?.length ? control.options : [control.value];
-
-  if (control.type === 'toggle') {
-    const enabled = value === 'on';
-
-    return (
-      <div className='space-y-2'>
-        <p className='text-muted-foreground text-xs'>{control.label}</p>
-        <Button
-          type='button'
-          variant={enabled ? 'default' : 'outline'}
-          className='w-full justify-between'
-          onClick={() => onChange(enabled ? 'off' : 'on')}
-        >
-          {enabled ? 'On' : 'Off'}
-          <Check className='size-4' />
-        </Button>
-      </div>
-    );
-  }
-
-  if (control.type === 'stepper') {
-    const index = Math.max(0, options.indexOf(value));
-    const previous = options[Math.max(0, index - 1)] ?? value;
-    const next = options[Math.min(options.length - 1, index + 1)] ?? value;
-
-    return (
-      <div className='space-y-2'>
-        <p className='text-muted-foreground text-xs'>{control.label}</p>
-        <div className='grid grid-cols-[2rem_1fr_2rem] items-center gap-2'>
-          <Button
-            type='button'
-            variant='outline'
-            size='icon'
-            aria-label={`Decrease ${control.label}`}
-            onClick={() => onChange(previous)}
-            disabled={index === 0}
-          >
-            <Minus className='size-4' />
-          </Button>
-          <div className='truncate text-center text-sm font-medium'>{value}</div>
-          <Button
-            type='button'
-            variant='outline'
-            size='icon'
-            aria-label={`Increase ${control.label}`}
-            onClick={() => onChange(next)}
-            disabled={index === options.length - 1}
-          >
-            <Plus className='size-4' />
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className='space-y-2'>
-      <p className='text-muted-foreground text-xs'>{control.label}</p>
-      <Select value={value} onValueChange={(nextValue) => nextValue && onChange(nextValue)}>
-        <SelectTrigger className='w-full'>
-          <SelectValue placeholder={value} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option} value={option}>
-              {option}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
-export function SurfaceSection({ section }: { section: GeneratedSection }) {
-  const Icon = sectionIcons[section.kind];
-
-  return (
-    <section className='space-y-3'>
-      <div className='flex items-center gap-2'>
-        <Icon className='text-muted-foreground size-4' />
-        <h3 className='text-sm font-medium'>{section.title}</h3>
-      </div>
-      <div className='divide-y divide-border border-y border-border'>
-        {section.items.map((item) => (
-          <SurfaceRow key={`${item.primary}-${item.secondary ?? ''}`} item={item} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export function SurfaceRow({ item }: { item: GeneratedItem }) {
-  return (
-    <div className='grid gap-3 py-4 md:grid-cols-[minmax(150px,220px)_1fr]'>
-      <div className='space-y-1'>
-        <p className='font-medium'>{item.primary}</p>
-        <div className='flex flex-wrap gap-1.5'>
-          {item.meta.map((meta) => (
-            <span
-              key={meta}
-              className={`inline-flex h-6 items-center rounded-md border px-2 text-xs ${toneClasses[item.tone]}`}
-            >
-              {meta}
-            </span>
-          ))}
-        </div>
-      </div>
-      {item.secondary ? (
-        <p className='text-muted-foreground text-sm leading-6'>{item.secondary}</p>
-      ) : null}
-    </div>
-  );
-}
-
-export function ActionStack({
-  surface,
-  onRefine,
-}: {
-  surface: GeneratedInterface;
-  onRefine: (instruction: string) => void;
-}) {
-  return (
-    <section className='space-y-3'>
-      <h3 className='text-sm font-medium'>Actions</h3>
-      <div className='space-y-2 border-y border-border py-3'>
-        {surface.actions.map((action) => (
-          <Button
-            key={`${action.label}-${action.intent}`}
-            type='button'
-            variant={actionToneClasses[action.tone]}
-            className='h-auto w-full justify-start whitespace-normal py-2 text-left'
-            onClick={() => onRefine(action.intent)}
-          >
-            <span>
-              <span className='block'>{action.label}</span>
-              <span className='text-muted-foreground block text-xs font-normal'>
-                {action.intent}
-              </span>
-            </span>
-          </Button>
-        ))}
-      </div>
-    </section>
-  );
+export function GeneratedSurface({ surface }: { surface: GeneratedInterface }) {
+  return <GeneratedAppSandbox title={surface.title} html={surface.html} />;
 }
