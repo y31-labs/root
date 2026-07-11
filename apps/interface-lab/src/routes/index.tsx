@@ -20,7 +20,6 @@ import {
   ArrowRight,
   Check,
   CircleHelp,
-  Clipboard,
   Clock,
   Keyboard,
   LoaderCircle,
@@ -57,7 +56,6 @@ const sectionIcons = {
   timeline: Clock,
   checklist: Check,
   options: Plane,
-  sandbox: SquareTerminal,
 } satisfies Record<GeneratedSection['kind'], typeof Plane>;
 
 const toneClasses = {
@@ -615,9 +613,7 @@ export function GeneratedSurface({
           </div>
           <div className='flex shrink-0 flex-wrap gap-2'>
             <Badge variant='secondary'>{surface.domain}</Badge>
-            <Badge variant={surface.backend.kind === 'codex' ? 'default' : 'outline'}>
-              {surface.backend.kind}
-            </Badge>
+            <Badge>{surface.backend.kind}</Badge>
           </div>
         </div>
         <p className='text-muted-foreground max-w-3xl text-sm leading-6'>{surface.summary}</p>
@@ -634,7 +630,6 @@ export function GeneratedSurface({
 
         <aside className='space-y-6'>
           <ActionStack surface={surface} onRefine={onRefine} />
-          <SandboxTarget surface={surface} />
         </aside>
       </div>
     </div>
@@ -834,54 +829,6 @@ export function ActionStack({
           </Button>
         ))}
       </div>
-    </section>
-  );
-}
-
-export function SandboxTarget({ surface }: { surface: GeneratedInterface }) {
-  const [copied, setCopied] = useState(false);
-
-  const copyCommand = async () => {
-    await navigator.clipboard.writeText(surface.sandbox.command);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1200);
-  };
-
-  return (
-    <section className='space-y-3'>
-      <h3 className='text-sm font-medium'>Sandbox</h3>
-      <div className='divide-y divide-border border-y border-border text-sm'>
-        <div className='flex items-center justify-between gap-3 py-3'>
-          <span className='text-muted-foreground'>Provider</span>
-          <span>{surface.sandbox.provider}</span>
-        </div>
-        <div className='flex items-center justify-between gap-3 py-3'>
-          <span className='text-muted-foreground'>Runtime</span>
-          <span>{surface.sandbox.runtime}</span>
-        </div>
-        <div className='flex items-center justify-between gap-3 py-3'>
-          <span className='text-muted-foreground'>Port</span>
-          <span>{surface.sandbox.port}</span>
-        </div>
-        <div className='space-y-2 py-3'>
-          <span className='text-muted-foreground'>Command</span>
-          <div className='flex items-center gap-2'>
-            <code className='bg-muted min-w-0 flex-1 truncate rounded-md px-2 py-1 text-xs'>
-              {surface.sandbox.command}
-            </code>
-            <Button
-              type='button'
-              size='icon'
-              variant='outline'
-              aria-label='Copy sandbox command'
-              onClick={() => void copyCommand()}
-            >
-              {copied ? <Check className='size-4' /> : <Clipboard className='size-4' />}
-            </Button>
-          </div>
-        </div>
-      </div>
-      <p className='text-muted-foreground text-xs'>{surface.backend.detail}</p>
     </section>
   );
 }

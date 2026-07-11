@@ -1,4 +1,5 @@
 import { defineWebFoundationViteConfig } from '@workspace/web-foundation/vite';
+import { nitro } from 'nitro/vite';
 import { defineConfig, mergeConfig } from 'vite';
 
 export default defineConfig(
@@ -8,6 +9,9 @@ export default defineConfig(
       port: 3010,
       spa: false,
     }),
-    { envDir: '../..' },
+    {
+      envDir: '../..',
+      plugins: [nitro()],
+    },
   ),
 );

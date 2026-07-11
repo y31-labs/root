@@ -6,7 +6,7 @@
     "#/*": "src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 3010",
+    "dev": "vercel env pull .env.local --yes && vite dev --port 3010",
     "build": "vite build",
     "preview": "vite preview --port 3011",
     "typecheck": "bunx tsc --noEmit",
@@ -15,12 +15,14 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
-    "@tanstack/ai": "^0.39.1",
+    "@tanstack/ai": "^0.40.0",
+    "@tanstack/ai-openai": "^0.16.0",
     "@tanstack/react-router": "1.169.2",
     "@tanstack/react-start": "1.167.64",
     "@workspace/ui": "workspace:*",
     "@workspace/web-foundation": "workspace:*",
     "lucide-react": "^1.14.0",
+    "nitro": "3.0.260610-beta",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tailwindcss": "^4.2.4",
