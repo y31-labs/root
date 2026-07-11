@@ -9,7 +9,7 @@ const generatedSurface = {
   intent: 'Compare route tradeoffs',
   summary: 'A compact surface for balancing door-to-door time, baggage, and connection stress.',
   backend: {
-    kind: 'fallback',
+    kind: 'gateway',
     detail: 'Mocked in the browser flow test.',
   },
   controls: [
@@ -43,13 +43,6 @@ const generatedSurface = {
       tone: 'neutral',
     },
   ],
-  sandbox: {
-    provider: 'vercel-sandbox',
-    runtime: 'node24',
-    port: 3000,
-    command: 'bun run dev',
-    previewPath: '/',
-  },
 };
 
 test('presents a readable, scrollable y31 landing page', async ({ page }) => {
@@ -90,7 +83,9 @@ test('presents a readable, scrollable y31 landing page', async ({ page }) => {
   await expect(page.getByText('y31 is a prompt-first interface layer.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Is it another chatbot?' }).click();
-  await expect(page.getByText('No. The prompt is the entry point, but the output is an interface:')).toBeVisible();
+  await expect(
+    page.getByText('No. The prompt is the entry point, but the output is an interface:'),
+  ).toBeVisible();
   await expect(page.getByText('y31 is a prompt-first interface layer.')).not.toBeVisible();
 });
 
