@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { GeneratedInterface } from '#/lib/interface-contract';
+import { generatedAppSchema, type GeneratedInterface } from '#/lib/interface-contract';
 
 const mocks = vi.hoisted(() => ({
   generateGatewayInterface: vi.fn(),
@@ -14,44 +14,12 @@ import { generateInterface } from '#/server/interface-generator';
 
 const generatedInterface: GeneratedInterface = {
   title: 'Vendor comparison',
-  domain: 'planning',
-  intent: 'Choose a vendor with the right tradeoffs.',
-  summary: 'A focused comparison of the options that matter most.',
+  description: 'An interactive workspace for comparing vendor tradeoffs.',
+  html: '<main><h1>Vendor comparison</h1><script>window.appReady = true;</script></main>',
   backend: {
     kind: 'gateway',
-    detail: 'Generated through Vercel AI Gateway.',
+    detail: 'Application generated through Vercel AI Gateway.',
   },
-  controls: [
-    {
-      id: 'priority',
-      label: 'Priority',
-      type: 'select',
-      value: 'Long-term flexibility',
-      options: ['Long-term flexibility', 'Cost'],
-    },
-  ],
-  sections: [
-    {
-      id: 'options',
-      title: 'Options',
-      kind: 'options',
-      items: [
-        {
-          primary: 'Flexible option',
-          secondary: 'Balances cost with future adaptability.',
-          meta: ['Best fit'],
-          tone: 'success',
-        },
-      ],
-    },
-  ],
-  actions: [
-    {
-      label: 'Compare total cost',
-      intent: 'Compare the options by total cost of ownership.',
-      tone: 'neutral',
-    },
-  ],
 };
 
 describe('generateInterface', () => {
@@ -74,5 +42,19 @@ describe('generateInterface', () => {
     await expect(
       generateInterface({ brief: 'Compare two vendors for a small product team.' }),
     ).rejects.toBe(error);
+  });
+
+  it('limits model output to a generated application document', () => {
+    expect(
+      generatedAppSchema.parse({
+        title: 'Repository explorer',
+        description: 'Explore live repositories.',
+        html: '<main>App</main>',
+      }),
+    ).toEqual({
+      title: 'Repository explorer',
+      description: 'Explore live repositories.',
+      html: '<main>App</main>',
+    });
   });
 });

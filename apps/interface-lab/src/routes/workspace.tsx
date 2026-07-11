@@ -65,13 +65,6 @@ function WorkspacePage() {
     void loadSurface(nextBrief);
   };
 
-  const refineSurface = (instruction: string) => {
-    if (status === 'loading') return;
-
-    setChatMessages((current) => [...current, { label: 'Focus', message: instruction }]);
-    void loadSurface(`${brief}\n\nFocus: ${instruction}`);
-  };
-
   return (
     <main
       className='relative min-h-dvh overflow-hidden text-foreground'
@@ -85,7 +78,6 @@ function WorkspacePage() {
           chatMessages={chatMessages}
           error={error}
           onBriefChange={setBrief}
-          onRefine={refineSurface}
           onSubmit={submit}
           status={status}
           surface={surface}
@@ -127,7 +119,7 @@ function EmptyWorkspace({ onBack }: { onBack: () => void }) {
       </p>
       <h1 className='text-3xl font-semibold tracking-tight'>Start with a brief.</h1>
       <p className='text-muted-foreground max-w-md text-sm leading-6'>
-        Describe what you want to work through and {APP_NAME} will shape the surface around it.
+        Describe what you want to work through and {APP_NAME} will build an application for it.
       </p>
       <button
         type='button'
