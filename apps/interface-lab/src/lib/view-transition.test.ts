@@ -7,7 +7,7 @@ afterEach(() => {
 });
 
 test('runs the update without browser view transition support', () => {
-  vi.stubGlobal('document', undefined);
+  vi.stubGlobal('document', {});
 
   let didUpdate = false;
 

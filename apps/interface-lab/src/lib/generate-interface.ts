@@ -1,4 +1,8 @@
-import { generatedInterfaceSchema, type GeneratedInterface } from '#/lib/interface-contract';
+import {
+  generatedInterfaceSchema,
+  type GeneratedApp,
+  type GeneratedInterface,
+} from '#/lib/interface-contract';
 
 const isErrorResponse = (body: unknown): body is { error: string } =>
   typeof body === 'object' &&
@@ -6,11 +10,14 @@ const isErrorResponse = (body: unknown): body is { error: string } =>
   'error' in body &&
   typeof (body as { error?: unknown }).error === 'string';
 
-export const generateInterface = async (brief: string): Promise<GeneratedInterface> => {
+export const generateInterface = async (
+  brief: string,
+  currentApp?: GeneratedApp,
+): Promise<GeneratedInterface> => {
   const response = await fetch('/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ brief }),
+    body: JSON.stringify({ brief, currentApp }),
   });
   const body = (await response.json()) as unknown;
 

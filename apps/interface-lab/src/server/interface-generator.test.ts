@@ -44,6 +44,25 @@ describe('generateInterface', () => {
     ).rejects.toBe(error);
   });
 
+  it('passes the current application through for an incremental adjustment', async () => {
+    mocks.generateGatewayInterface.mockResolvedValue(generatedInterface);
+    const currentApp = {
+      title: generatedInterface.title,
+      description: generatedInterface.description,
+      html: generatedInterface.html,
+    };
+
+    await generateInterface({
+      brief: 'Add a compact cost filter above the comparison.',
+      currentApp,
+    });
+
+    expect(mocks.generateGatewayInterface).toHaveBeenCalledWith({
+      brief: 'Add a compact cost filter above the comparison.',
+      currentApp,
+    });
+  });
+
   it('limits model output to a generated application document', () => {
     expect(
       generatedAppSchema.parse({
