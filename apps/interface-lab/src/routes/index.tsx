@@ -22,18 +22,11 @@ import {
 import { type SubmitEvent, useState } from 'react';
 
 import { AnimatedAccordion, type AnimatedAccordionItem } from '#/components/animated-accordion';
-import { GeneratedAppSandbox } from '#/components/generated-app-sandbox';
 import { Shader14Background } from '#/components/shader14-background';
 import { APP_NAME } from '#/lib/app-config';
-import type { GeneratedInterface } from '#/lib/interface-contract';
 import { runViewTransition } from '#/lib/view-transition';
 
 export const Route = createFileRoute('/')({ component: HomePage });
-
-export type WorkspaceMessage = {
-  label: 'You';
-  message: string;
-};
 
 const quickStarts = [
   {
@@ -367,69 +360,6 @@ function LandingFooter() {
   );
 }
 
-export function WorkspaceShell({
-  brief,
-  canGenerate,
-  chatMessages,
-  error,
-  onBriefChange,
-  onSubmit,
-  status,
-  surface,
-}: {
-  brief: string;
-  canGenerate: boolean;
-  chatMessages: WorkspaceMessage[];
-  error?: string;
-  onBriefChange: (brief: string) => void;
-  onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
-  status: 'idle' | 'loading';
-  surface?: GeneratedInterface;
-}) {
-  const draft = brief.trim();
-  const draftMessage =
-    draft && !chatMessages.some((message) => message.label === 'You' && message.message === draft)
-      ? draft
-      : undefined;
-
-  return (
-    <section
-      className='relative z-10 mx-auto grid min-h-[calc(100dvh-4.5rem)] w-full max-w-7xl grid-cols-1 pt-4 md:h-[calc(100dvh-4.5rem)] md:grid-cols-[minmax(300px,360px)_1fr]'
-      data-testid='workspace-shell'
-    >
-      <aside className='order-2 flex min-w-0 flex-col border-t border-border bg-background/40 px-4 pb-4 backdrop-blur-md md:order-0 md:min-h-0 md:border-r md:border-t-0 md:px-6'>
-        <div className='border-b border-border py-4'>
-          <p className='text-muted-foreground text-sm'>A visual interface for whatever is next</p>
-          <h2 className='text-lg font-medium'>{APP_NAME}</h2>
-        </div>
-        <ChatThread draft={draftMessage} messages={chatMessages} />
-        <div className='[view-transition-name:interface-chat]' data-testid='workspace-prompt'>
-          <PromptForm
-            brief={brief}
-            canGenerate={canGenerate}
-            error={error}
-            onBriefChange={onBriefChange}
-            onSubmit={onSubmit}
-            status={status}
-            variant='rail'
-          />
-        </div>
-      </aside>
-
-      <section
-        className='order-1 min-w-0 overflow-hidden border-t border-border bg-background md:order-0 md:border-t-0'
-        data-testid='app-panel'
-      >
-        {surface ? (
-          <GeneratedSurface key={surface.html} surface={surface} />
-        ) : (
-          <EmptySurface status={status} />
-        )}
-      </section>
-    </section>
-  );
-}
-
 function PromptForm({
   brief,
   canGenerate,
@@ -503,53 +433,4 @@ function PromptForm({
       </div>
     </form>
   );
-}
-
-function ChatThread({ draft, messages }: { draft?: string; messages: WorkspaceMessage[] }) {
-  return (
-    <div className='max-h-52 min-h-0 space-y-3 overflow-y-auto py-4' data-testid='chat-thread'>
-      {messages.map((message, index) => (
-        <ChatMessage key={`${message.label}-${message.message}-${index}`} {...message} />
-      ))}
-      {draft ? <ChatMessage label='Draft' message={draft} /> : null}
-      {!messages.length && !draft ? (
-        <p className='text-muted-foreground text-sm'>Your prompt will appear here.</p>
-      ) : null}
-    </div>
-  );
-}
-
-function ChatMessage({ label, message }: { label: string; message: string }) {
-  return (
-    <div className='rounded-lg border border-border bg-background/60 p-3 text-sm'>
-      <p className='text-muted-foreground mb-1 text-xs'>{label}</p>
-      <p className='leading-6'>{message}</p>
-    </div>
-  );
-}
-
-function EmptySurface({ status }: { status: 'idle' | 'loading' }) {
-  const isLoading = status === 'loading';
-
-  return (
-    <div className='flex min-h-[calc(100dvh-8rem)] items-center justify-center border-y border-border'>
-      <div className='max-w-sm space-y-3 px-4 text-center' role='status' aria-live='polite'>
-        {isLoading ? (
-          <LoaderCircle className='text-muted-foreground mx-auto size-8 animate-spin' />
-        ) : (
-          <WandSparkles className='text-muted-foreground mx-auto size-8' />
-        )}
-        <h2 className='font-medium'>{isLoading ? 'Building application' : 'No application yet'}</h2>
-        <p className='text-muted-foreground text-sm'>
-          {isLoading
-            ? 'Y31 is generating the interface and interaction code.'
-            : 'The generated application will appear here.'}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-export function GeneratedSurface({ surface }: { surface: GeneratedInterface }) {
-  return <GeneratedAppSandbox title={surface.title} html={surface.html} />;
 }

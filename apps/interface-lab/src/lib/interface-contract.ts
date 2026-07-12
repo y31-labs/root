@@ -1,13 +1,14 @@
 import { z } from 'zod';
 
-export const interfaceRequestSchema = z.object({
-  brief: z.string().trim().min(8).max(2000),
-});
-
 export const generatedAppSchema = z.object({
   title: z.string().min(1).max(120),
   description: z.string().min(1).max(300),
   html: z.string().min(1).max(60_000),
+});
+
+export const interfaceRequestSchema = z.object({
+  brief: z.string().trim().min(8).max(2000),
+  currentApp: generatedAppSchema.optional(),
 });
 
 export const interfaceBackendSchema = z.object({

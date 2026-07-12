@@ -1,6 +1,6 @@
 export const runViewTransition = (update: () => void | Promise<void>) => {
-  if (typeof document === 'undefined') {
-    update();
+  if (typeof document === 'undefined' || !document.startViewTransition) {
+    void update();
     return;
   }
 

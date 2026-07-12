@@ -1,10 +1,14 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { type SubmitEvent, useCallback, useEffect, useState } from 'react';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { Button } from '@workspace/ui/components/ui/button';
+import { ArrowLeft, WandSparkles } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
+import { type WorkspaceMessage, WorkspaceShell } from '#/components/workspace-shell';
 import { APP_NAME } from '#/lib/app-config';
 import { generateInterface } from '#/lib/generate-interface';
 import type { GeneratedInterface } from '#/lib/interface-contract';
-import { type WorkspaceMessage, WorkspaceShell } from '#/routes/index';
+import { runViewTransition } from '#/lib/view-transition';
 
 export const Route = createFileRoute('/workspace')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -13,121 +17,127 @@ export const Route = createFileRoute('/workspace')({
   component: WorkspacePage,
 });
 
+const runWorkspaceTransition = (update: () => void) => {
+  runViewTransition(() => flushSync(update));
+};
+
 function WorkspacePage() {
   const navigate = useNavigate();
   const { brief: initialBrief } = Route.useSearch();
-  const [brief, setBrief] = useState(initialBrief);
-  const [chatMessages, setChatMessages] = useState<WorkspaceMessage[]>(
-    initialBrief ? [{ label: 'You', message: initialBrief }] : [],
+  const startedBriefRef = useRef<string | undefined>(undefined);
+  const [messages, setMessages] = useState<WorkspaceMessage[]>(
+    initialBrief ? [{ kind: 'initial', message: initialBrief }] : [],
   );
-  const [surface, setSurface] = useState<GeneratedInterface>();
+  const [versions, setVersions] = useState<GeneratedInterface[]>([]);
+  const [activeVersion, setActiveVersion] = useState(0);
   const [status, setStatus] = useState<'idle' | 'loading'>(initialBrief ? 'loading' : 'idle');
   const [error, setError] = useState<string>();
+  const surface = versions[activeVersion];
 
-  const loadSurface = useCallback(async (nextBrief: string) => {
+  const loadInitialSurface = useCallback(async (brief: string) => {
     setStatus('loading');
-    setSurface(undefined);
     setError(undefined);
+    setVersions([]);
+    setActiveVersion(0);
+    setMessages([{ kind: 'initial', message: brief }]);
 
     try {
-      setSurface(await generateInterface(nextBrief));
+      const generatedSurface = await generateInterface(brief);
+
+      runWorkspaceTransition(() => {
+        setVersions([generatedSurface]);
+        setStatus('idle');
+      });
     } catch (generationError) {
       setError(
         generationError instanceof Error
           ? generationError.message
           : 'Unable to generate an interface.',
       );
-    } finally {
       setStatus('idle');
     }
   }, []);
 
   useEffect(() => {
-    if (!initialBrief) return;
+    if (!initialBrief || startedBriefRef.current === initialBrief) return;
 
-    setBrief(initialBrief);
-    setChatMessages([{ label: 'You', message: initialBrief }]);
-    void loadSurface(initialBrief);
-  }, [initialBrief, loadSurface]);
+    startedBriefRef.current = initialBrief;
+    void loadInitialSurface(initialBrief);
+  }, [initialBrief, loadInitialSurface]);
 
-  const submit = (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formBrief = new FormData(event.currentTarget).get('brief');
-    const nextBrief = typeof formBrief === 'string' ? formBrief.trim() : brief.trim();
-    if (nextBrief.length < 8 || status === 'loading') return;
+  const refineSurface = async (instruction: string) => {
+    if (!surface || status === 'loading') return;
 
-    setBrief(nextBrief);
-    setChatMessages((current) =>
-      current.some((message) => message.label === 'You' && message.message === nextBrief)
-        ? current
-        : [...current, { label: 'You', message: nextBrief }],
-    );
-    void loadSurface(nextBrief);
+    const baseVersion = activeVersion;
+    setMessages((current) => [
+      ...current.slice(0, baseVersion + 1),
+      { kind: 'adjustment', message: instruction },
+    ]);
+    setStatus('loading');
+    setError(undefined);
+
+    try {
+      const generatedSurface = await generateInterface(instruction, surface);
+
+      runWorkspaceTransition(() => {
+        setVersions((current) => [...current.slice(0, baseVersion + 1), generatedSurface]);
+        setActiveVersion(baseVersion + 1);
+        setStatus('idle');
+      });
+    } catch (generationError) {
+      setError(
+        generationError instanceof Error
+          ? generationError.message
+          : 'Unable to adjust the interface.',
+      );
+      setStatus('idle');
+    }
   };
 
-  return (
-    <main
-      className='relative min-h-dvh overflow-hidden text-foreground'
-      style={{ backgroundColor: '#000000' }}
-    >
-      <WorkspaceNavbar onBack={() => void navigate({ to: '/' })} />
-      {initialBrief ? (
-        <WorkspaceShell
-          brief={brief}
-          canGenerate={brief.trim().length >= 8 && status !== 'loading'}
-          chatMessages={chatMessages}
-          error={error}
-          onBriefChange={setBrief}
-          onSubmit={submit}
-          status={status}
-          surface={surface}
-        />
-      ) : (
-        <EmptyWorkspace onBack={() => void navigate({ to: '/' })} />
-      )}
-    </main>
-  );
-}
+  const selectVersion = (nextVersion: number) => {
+    if (status === 'loading' || !versions[nextVersion]) return;
 
-function WorkspaceNavbar({ onBack }: { onBack: () => void }) {
+    runWorkspaceTransition(() => setActiveVersion(nextVersion));
+  };
+
+  const backToLanding = () => void navigate({ to: '/' });
+
+  if (!initialBrief) return <EmptyWorkspace onBack={backToLanding} />;
+
   return (
-    <header className='relative z-20 border-b border-border/60 bg-background/80 px-4 py-4 backdrop-blur-xl md:px-6'>
-      <div className='mx-auto flex max-w-7xl items-center justify-between gap-4'>
-        <Link to='/' className='text-sm font-semibold tracking-tight text-foreground'>
-          {APP_NAME}
-        </Link>
-        <div className='flex items-center gap-4 text-xs'>
-          <span className='text-muted-foreground'>Workspace</span>
-          <button
-            type='button'
-            onClick={onBack}
-            className='text-muted-foreground transition-colors hover:text-foreground'
-          >
-            Back to landing
-          </button>
-        </div>
-      </div>
-    </header>
+    <main className='h-dvh overflow-hidden bg-background text-foreground'>
+      <WorkspaceShell
+        activeVersion={activeVersion}
+        error={error}
+        messages={messages}
+        onBack={backToLanding}
+        onRedo={() => selectVersion(activeVersion + 1)}
+        onRefine={(instruction) => void refineSurface(instruction)}
+        onUndo={() => selectVersion(activeVersion - 1)}
+        status={status}
+        surface={surface}
+        versionCount={versions.length}
+      />
+    </main>
   );
 }
 
 function EmptyWorkspace({ onBack }: { onBack: () => void }) {
   return (
-    <section className='mx-auto flex min-h-[calc(100dvh-4.5rem)] max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center'>
-      <p className='text-muted-foreground text-xs font-medium uppercase tracking-[0.18em]'>
-        {APP_NAME} workspace
-      </p>
-      <h1 className='text-3xl font-semibold tracking-tight'>Start with a brief.</h1>
-      <p className='text-muted-foreground max-w-md text-sm leading-6'>
-        Describe what you want to work through and {APP_NAME} will build an application for it.
-      </p>
-      <button
-        type='button'
-        onClick={onBack}
-        className='rounded-xl border border-border px-4 py-2 text-sm transition-colors hover:bg-muted/50'
-      >
-        Back to landing
-      </button>
-    </section>
+    <main className='flex min-h-dvh items-center justify-center bg-background px-4 text-center text-foreground'>
+      <section className='max-w-md'>
+        <WandSparkles className='mx-auto mb-6 size-6 text-muted-foreground' />
+        <p className='mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground'>
+          {APP_NAME} workspace
+        </p>
+        <h1 className='text-3xl font-semibold tracking-tight'>Start with a brief.</h1>
+        <p className='mt-3 text-sm leading-6 text-muted-foreground'>
+          Describe the work on the landing page and the generated app will open here.
+        </p>
+        <Button type='button' variant='outline' className='mt-6' onClick={onBack}>
+          <ArrowLeft /> Back to landing
+        </Button>
+      </section>
+    </main>
   );
 }

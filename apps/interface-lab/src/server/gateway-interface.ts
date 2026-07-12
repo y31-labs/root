@@ -1,4 +1,4 @@
-import { chat, type AnyTextAdapter } from '@tanstack/ai';
+import { chat } from '@tanstack/ai';
 import { openaiCompatible } from '@tanstack/ai-openai/compatible';
 
 import {
@@ -11,12 +11,13 @@ import { pluginCatalog } from '#/server/plugins/registry';
 
 const INTERFACE_MODEL = 'openai/gpt-5.4-mini';
 
-const systemPrompt = `You build a new, focused web application for every Y31 user request.
+const systemPrompt = `You build and revise focused web applications for Y31 user requests.
 
 Return a title, a short description, and one self-contained HTML fragment. Y31 runs the fragment in an isolated browser sandbox and injects the plugin runtime before your code executes.
 
 Application rules:
 - Build the actual application the user asked for, not a generic dashboard, wireframe, plan, or prose explanation.
+- When an existing application is provided, adjust that application in place. Preserve its purpose, working behavior, data integrations, and everything the user did not ask to change.
 - The HTML must include all markup, CSS in a <style> tag, and vanilla JavaScript in a <script> tag. Do not include <html>, <head>, or <body> wrappers.
 - Use semantic HTML and polished, responsive layout. The sandbox is 900px wide on desktop and may be narrow on mobile.
 - Include the application title and task context in the visible interface.
@@ -55,13 +56,21 @@ const createGateway = () =>
     models: [INTERFACE_MODEL] as const,
   });
 
-export const generateGatewayInterface = async ({ brief }: InterfaceRequest) => {
+const createUserPrompt = ({ brief, currentApp }: InterfaceRequest) => {
+  if (!currentApp) return brief;
+
+  return `Adjust the existing application using this instruction:\n${brief}\n\nExisting application:\n${JSON.stringify(
+    currentApp,
+  )}`;
+};
+
+export const generateGatewayInterface = async (request: InterfaceRequest) => {
   const gateway = createGateway();
-  const adapter = gateway(INTERFACE_MODEL) as AnyTextAdapter;
+  const adapter = gateway(INTERFACE_MODEL);
   const app = await chat({
     adapter,
     systemPrompts: [systemPrompt],
-    messages: [{ role: 'user', content: brief }],
+    messages: [{ role: 'user', content: createUserPrompt(request) }],
     outputSchema: generatedAppSchema,
     modelOptions: {
       max_output_tokens: 6000,
