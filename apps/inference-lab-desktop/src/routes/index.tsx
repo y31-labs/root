@@ -1,169 +1,91 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
+import {
+  Conversation,
+  ConversationEmptyState,
+} from '@workspace/ui/components/ai-elements/conversation';
+import {
+  PromptInput,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+} from '@workspace/ui/components/ai-elements/prompt-input';
 import { Button } from '@workspace/ui/components/ui/button';
-import { Textarea } from '@workspace/ui/components/ui/textarea';
-import { ArrowRight, ClipboardCheck, LoaderCircle, Plus, Workflow } from 'lucide-react';
-import { type FormEvent, useEffect, useState } from 'react';
+import { Mic, Plus } from 'lucide-react';
+import { type SyntheticEvent, useState } from 'react';
 
-import type { ProjectSummary } from '#/lib/types';
-import { useLocalApi } from '#/providers/local-api-provider';
+import { ModelSelectDropdown } from '#/components/model-select-dropdown';
 
 export const Route = createFileRoute('/')({ component: HomeRoute });
 
-const examples = [
-  'Turn emailed vendor requests into an intake queue with owners, evidence, and approval status.',
-  'Track new employee onboarding across IT, finance, facilities, and each hiring manager.',
-  'Review customer contract exceptions with risk, required evidence, and a clear decision trail.',
-] as const;
-
 function HomeRoute() {
-  const api = useLocalApi();
-  const navigate = useNavigate();
-  const [brief, setBrief] = useState('');
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState('');
+  const [prompt, setPrompt] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    void api
-      .listProjects()
-      .then((nextProjects) => {
-        if (!cancelled) setProjects(nextProjects);
-      })
-      .catch((nextError: unknown) => {
-        if (!cancelled) setError(errorMessage(nextError));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [api]);
-
-  const createTool = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const instruction = brief.trim();
-    if (instruction.length < 8 || pending) return;
-
-    setPending(true);
-    setError('');
-    try {
-      const project = await api.createProject(instruction);
-      await navigate({ to: '/workspace', search: { projectId: project.id } });
-    } catch (nextError) {
-      setError(errorMessage(nextError));
-      setPending(false);
-    }
-  };
+  const submitPrompt = (event: SyntheticEvent<HTMLFormElement>) => event.preventDefault();
 
   return (
-    <main className='min-h-0 flex-1 overflow-y-auto bg-background text-foreground'>
-      <section className='mx-auto flex w-full max-w-5xl flex-col px-8 pb-16 pt-20'>
-        <div className='max-w-3xl'>
-          <p className='mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground'>
-            Operational software, inferred
-          </p>
-          <h1 className='text-balance text-4xl font-semibold tracking-[-0.04em] md:text-6xl'>
-            Describe the work that should not live in a spreadsheet.
-          </h1>
-          <p className='mt-5 max-w-2xl text-base leading-7 text-muted-foreground'>
-            y31 turns the process in your head, inbox, and files into a focused internal tool you
-            can refine and keep.
-          </p>
-        </div>
-
-        <form className='mt-10 max-w-3xl' onSubmit={createTool}>
-          <div className='border-y border-border py-4 focus-within:border-foreground/30'>
-            <label htmlFor='process-brief' className='sr-only'>
-              Describe the process or problem
-            </label>
-            <Textarea
-              id='process-brief'
-              value={brief}
-              onChange={(event) => setBrief(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key !== 'Enter' || event.shiftKey) return;
-                event.preventDefault();
-                event.currentTarget.form?.requestSubmit();
-              }}
-              className='min-h-32 resize-none border-0 bg-transparent px-0 text-base leading-7 shadow-none focus-visible:ring-0'
-              placeholder='Every purchase request arrives by email. Operations copies it into a sheet, chases finance and security, then tries to remember who still needs to approve…'
-              autoFocus
-            />
-            <div className='mt-3 flex items-center justify-between gap-4 border-t border-border pt-3'>
-              <span className='text-xs text-muted-foreground'>Shift + Enter for a new line</span>
-              <Button type='submit' disabled={brief.trim().length < 8 || pending}>
-                {pending ? <LoaderCircle className='animate-spin' /> : <Plus />}
-                {pending ? 'Opening workspace' : 'Create tool'}
-              </Button>
-            </div>
+    <main className='flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground'>
+      <Conversation className='flex'>
+        <ConversationEmptyState className='min-h-0 flex-col gap-4 pb-4'>
+          <div className='flex size-11 items-center justify-center rounded-xl border bg-muted/40'>
+            <img src='/y31-logo.svg' alt='' aria-hidden='true' className='h-6 w-auto opacity-70' />
           </div>
-          {error ? (
-            <p className='mt-3 text-sm text-danger' role='alert'>
-              {error}
+          <div>
+            <h1 className='text-xl font-medium tracking-tight text-foreground sm:text-2xl'>
+              What should we build?
+            </h1>
+            <p className='mt-2 text-sm text-muted-foreground'>
+              Describe an internal tool, workflow, or process.
             </p>
-          ) : null}
-        </form>
-
-        <section className='mt-12 max-w-3xl'>
-          <h2 className='text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground'>
-            Start from a common process
-          </h2>
-          <div className='mt-3 divide-y border-y'>
-            {examples.map((example) => (
-              <button
-                type='button'
-                key={example}
-                className='group flex w-full items-center gap-4 py-4 text-left text-sm leading-6 transition-colors hover:text-foreground'
-                onClick={() => setBrief(example)}
-              >
-                <ClipboardCheck className='size-4 shrink-0 text-muted-foreground' />
-                <span className='flex-1 text-muted-foreground group-hover:text-foreground'>
-                  {example}
-                </span>
-                <ArrowRight className='size-4 shrink-0 text-muted-foreground' />
-              </button>
-            ))}
           </div>
-        </section>
+        </ConversationEmptyState>
+      </Conversation>
 
-        {projects.length ? (
-          <section className='mt-16'>
-            <div>
-              <h2 className='font-medium'>Your tools</h2>
-              <p className='mt-1 text-sm text-muted-foreground'>
-                Local workspaces and their complete revision history.
-              </p>
-            </div>
-            <div className='mt-4 divide-y border-y'>
-              {projects.map((project) => (
-                <Link
-                  key={project.id}
-                  to='/workspace'
-                  search={{ projectId: project.id }}
-                  className='grid gap-2 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center'
-                >
-                  <div className='min-w-0'>
-                    <div className='flex items-center gap-2'>
-                      <Workflow className='size-4 shrink-0 text-muted-foreground' />
-                      <h3 className='truncate text-sm font-medium'>{project.title}</h3>
-                    </div>
-                    <p className='mt-1 truncate pl-6 text-sm text-muted-foreground'>
-                      {project.description || project.brief}
-                    </p>
-                  </div>
-                  <span className='pl-6 text-xs text-muted-foreground sm:pl-0'>
-                    {project.versionCount
-                      ? `${project.versionCount} version${project.versionCount === 1 ? '' : 's'}`
-                      : 'Ready to generate'}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        ) : null}
-      </section>
+      <div className='shrink-0 px-4 pb-4 sm:px-8 sm:pb-5'>
+        <PromptInput
+          className='mx-auto w-full max-w-3xl rounded-2xl bg-muted/40 shadow-none focus-within:border-border'
+          onSubmit={submitPrompt}
+        >
+          <label htmlFor='chat-prompt' className='sr-only'>
+            Describe what you want to build
+          </label>
+          <PromptInputTextarea
+            id='chat-prompt'
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            placeholder='What do you want to build?'
+            autoFocus
+            className='min-h-20 px-4 pb-2 pt-3.5 text-[15px] leading-6 placeholder:text-muted-foreground/80 dark:bg-transparent'
+          />
+          <PromptInputFooter className='px-2.5 pb-2.5'>
+            <PromptInputTools>
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon-sm'
+                className='rounded-full'
+                aria-label='Add context'
+              >
+                <Plus />
+              </Button>
+            </PromptInputTools>
+
+            <PromptInputTools className='gap-0.5'>
+              <ModelSelectDropdown />
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon-sm'
+                className='rounded-full'
+                aria-label='Use voice input'
+              >
+                <Mic />
+              </Button>
+              <PromptInputSubmit className='ml-1.5 rounded-full' disabled={!prompt.trim()} />
+            </PromptInputTools>
+          </PromptInputFooter>
+        </PromptInput>
+      </div>
     </main>
   );
 }
-
-const errorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : 'Something went wrong.';
