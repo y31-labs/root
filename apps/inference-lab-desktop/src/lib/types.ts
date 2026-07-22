@@ -33,3 +33,23 @@ export interface Project {
 export interface AppSettings {
   inferenceServiceUrl: string;
 }
+
+export interface CodexIntegrationStatus {
+  installed: boolean;
+  authenticated: boolean;
+  appServerAvailable: boolean;
+  connected: boolean;
+  version: string | null;
+  accountEmail: string | null;
+  planType: string | null;
+  detail: string | null;
+}
+
+export type CodexStreamEvent =
+  | { type: 'started'; threadId: string }
+  | { type: 'delta'; text: string }
+  | { type: 'completed' };
+
+export interface CodexTextResult {
+  threadId: string;
+}

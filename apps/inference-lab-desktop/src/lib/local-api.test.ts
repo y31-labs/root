@@ -25,4 +25,24 @@ describe('local API', () => {
       input: { inferenceServiceUrl: 'https://y31.example.com' },
     });
   });
+
+  it('passes Codex text updates through a Tauri channel', async () => {
+    const invoke = vi.fn(async () => ({ threadId: 'thread-1' }));
+    const channel = { id: 'channel-1' };
+    const makeChannel = vi.fn(() => channel);
+    const onEvent = vi.fn();
+    const api = createLocalApi(invoke, makeChannel);
+
+    await api.codexIntegrationStatus();
+    await api.connectCodex();
+    await api.streamCodexText('Draft an intake flow', 'thread-1', onEvent);
+
+    expect(invoke).toHaveBeenNthCalledWith(1, 'codex_integration_status', undefined);
+    expect(invoke).toHaveBeenNthCalledWith(2, 'connect_codex', undefined);
+    expect(makeChannel).toHaveBeenCalledWith(onEvent);
+    expect(invoke).toHaveBeenNthCalledWith(3, 'stream_codex_text', {
+      input: { prompt: 'Draft an intake flow', threadId: 'thread-1' },
+      onEvent: channel,
+    });
+  });
 });
