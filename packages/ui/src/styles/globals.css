@@ -9,6 +9,7 @@
 @source "../../../components/**/*.{ts,tsx}";
 @source "../../../../packages/code-workbench/src/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
+@source "../../node_modules/streamdown/dist/*.js";
 
 @theme inline {
   --font-sans: 'Inter Variable', sans-serif;

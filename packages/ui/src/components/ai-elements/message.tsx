@@ -1,5 +1,6 @@
 import { cn } from '@workspace/ui/lib/utils';
 import type { ComponentProps } from 'react';
+import { Streamdown } from 'streamdown';
 
 export function Message({
   from,
@@ -27,6 +28,16 @@ export function MessageContent({ className, ...props }: ComponentProps<'div'>) {
   );
 }
 
-export function MessageResponse(props: ComponentProps<'div'>) {
-  return <div {...props} />;
+export type MessageResponseProps = ComponentProps<typeof Streamdown>;
+
+export function MessageResponse({ className, ...props }: MessageResponseProps) {
+  return (
+    <Streamdown
+      className={cn(
+        'size-full whitespace-normal [&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
+        className,
+      )}
+      {...props}
+    />
+  );
 }

@@ -30,7 +30,14 @@ export function ChatConversation({ messages }: ChatConversationProps) {
           {messages.map((message) => (
             <Message from={message.role} key={message.id}>
               <MessageContent className='group-data-[role=user]/message:border-0 group-data-[role=user]/message:bg-muted/40'>
-                {message.text && <MessageResponse>{message.text}</MessageResponse>}
+                {message.text &&
+                  (message.role === 'assistant' ? (
+                    <MessageResponse isAnimating={message.streaming}>
+                      {message.text}
+                    </MessageResponse>
+                  ) : (
+                    message.text
+                  ))}
                 {message.streaming && !message.text && (
                   <Shimmer as='span' className='text-sm'>
                     Codex is thinking
