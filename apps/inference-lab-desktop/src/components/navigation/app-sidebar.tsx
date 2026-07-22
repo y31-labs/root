@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from '@workspace/ui/components/ui/sidebar';
-import { Home, Plus, Settings } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 
 import { APP_NAME } from '#/lib/app-config';
 
@@ -36,15 +36,9 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip='Home' render={<Link to='/' />}>
-                  <Home />
-                  <span>Home</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip='New tool' onClick={() => void navigate({ to: '/' })}>
+                <SidebarMenuButton tooltip='New chat' onClick={() => void navigate({ to: '/' })}>
                   <Plus />
-                  <span>New tool</span>
+                  <span>New chat</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
