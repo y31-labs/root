@@ -35,13 +35,34 @@ describe('local API', () => {
 
     await api.codexIntegrationStatus();
     await api.connectCodex();
-    await api.streamCodexText('Draft an intake flow', 'thread-1', onEvent);
+    await api.streamCodexText(
+      'Draft an intake flow',
+      [
+        {
+          dataUrl: 'data:application/pdf;base64,ZmlsZQ==',
+          filename: 'brief.pdf',
+          mediaType: 'application/pdf',
+        },
+      ],
+      'thread-1',
+      onEvent,
+    );
 
     expect(invoke).toHaveBeenNthCalledWith(1, 'codex_integration_status', undefined);
     expect(invoke).toHaveBeenNthCalledWith(2, 'connect_codex', undefined);
     expect(makeChannel).toHaveBeenCalledWith(onEvent);
     expect(invoke).toHaveBeenNthCalledWith(3, 'stream_codex_text', {
-      input: { prompt: 'Draft an intake flow', threadId: 'thread-1' },
+      input: {
+        prompt: 'Draft an intake flow',
+        attachments: [
+          {
+            dataUrl: 'data:application/pdf;base64,ZmlsZQ==',
+            filename: 'brief.pdf',
+            mediaType: 'application/pdf',
+          },
+        ],
+        threadId: 'thread-1',
+      },
       onEvent: channel,
     });
   });
