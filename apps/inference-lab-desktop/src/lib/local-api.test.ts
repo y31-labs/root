@@ -44,6 +44,7 @@ describe('local API', () => {
           mediaType: 'application/pdf',
         },
       ],
+      '/Users/example/project',
       'thread-1',
       onEvent,
     );
@@ -61,6 +62,7 @@ describe('local API', () => {
             mediaType: 'application/pdf',
           },
         ],
+        workingDirectory: '/Users/example/project',
         threadId: 'thread-1',
       },
       onEvent: channel,

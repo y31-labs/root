@@ -27,6 +27,7 @@ pub(crate) struct CodexTextInput {
     pub(super) prompt: String,
     #[serde(default)]
     pub(super) attachments: Vec<CodexAttachmentInput>,
+    pub(super) working_directory: Option<String>,
     pub(super) thread_id: Option<String>,
 }
 

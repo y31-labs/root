@@ -102,6 +102,7 @@
         "@tailwindcss/vite": "^4.2.4",
         "@tanstack/react-router": "1.169.2",
         "@tauri-apps/api": "2.11.0",
+        "@tauri-apps/plugin-dialog": "2.6.0",
         "@workspace/ui": "workspace:*",
         "lucide-react": "^1.14.0",
         "react": "^19.2.6",

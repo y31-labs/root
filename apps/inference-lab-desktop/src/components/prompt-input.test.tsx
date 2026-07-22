@@ -68,7 +68,15 @@ describe('PromptInput', () => {
   it('previews and submits an attached image without prompt text', async () => {
     const onSubmit = vi.fn();
 
-    render(<ChatInput pending={false} prompt='' onPromptChange={vi.fn()} onSubmit={onSubmit} />);
+    render(
+      <ChatInput
+        pending={false}
+        prompt=''
+        onPromptChange={vi.fn()}
+        onSelectWorkingDirectory={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
 
     const fileInput = screen.getByLabelText('Upload files');
     const fileInputClick = vi.spyOn(fileInput, 'click');
@@ -109,7 +117,15 @@ describe('PromptInput', () => {
 
   it('previews and submits a non-image file', async () => {
     const onSubmit = vi.fn();
-    render(<ChatInput pending={false} prompt='' onPromptChange={vi.fn()} onSubmit={onSubmit} />);
+    render(
+      <ChatInput
+        pending={false}
+        prompt=''
+        onPromptChange={vi.fn()}
+        onSelectWorkingDirectory={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
 
     const file = new File(['brief'], 'brief.pdf', { type: 'application/pdf' });
     fireEvent.change(screen.getByLabelText('Upload files'), {
@@ -135,5 +151,39 @@ describe('PromptInput', () => {
         expect.anything(),
       ),
     );
+  });
+
+  it('selects and displays the Codex working folder', () => {
+    const onSelectWorkingDirectory = vi.fn();
+
+    const { rerender } = render(
+      <ChatInput
+        pending={false}
+        prompt=''
+        onPromptChange={vi.fn()}
+        onSelectWorkingDirectory={onSelectWorkingDirectory}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select working folder' }));
+    expect(onSelectWorkingDirectory).toHaveBeenCalledOnce();
+
+    rerender(
+      <ChatInput
+        pending={false}
+        prompt=''
+        workingDirectory='/Users/example/inventory-tool'
+        onPromptChange={vi.fn()}
+        onSelectWorkingDirectory={onSelectWorkingDirectory}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Change working folder: /Users/example/inventory-tool',
+      }).textContent,
+    ).toContain('inventory-tool');
   });
 });

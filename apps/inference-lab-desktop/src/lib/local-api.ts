@@ -45,11 +45,17 @@ export const createLocalApi = (
     streamCodexText: (
       prompt: string,
       attachments: CodexAttachmentInput[],
+      workingDirectory: string | undefined,
       threadId: string | undefined,
       onEvent: (event: CodexStreamEvent) => void,
     ) =>
       request<CodexTextResult>('stream_codex_text', {
-        input: { prompt, attachments, ...(threadId ? { threadId } : {}) },
+        input: {
+          prompt,
+          attachments,
+          ...(workingDirectory ? { workingDirectory } : {}),
+          ...(threadId ? { threadId } : {}),
+        },
         onEvent: makeChannel(onEvent),
       }),
   };

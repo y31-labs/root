@@ -22,7 +22,7 @@ use crate::AppState;
 
 const CHAT_INSTRUCTIONS: &str = r#"You are the text assistant inside y31, an application for exploring and shaping internal tools and workflows.
 
-Respond directly to the user's request in clear plain text. For now, provide text only and do not create HTML or modify files. You may use read-only tools solely to inspect files explicitly attached by the user. Keep the response focused and useful."#;
+Respond directly to the user's request in clear plain text. For now, provide text only and do not create HTML or modify files. You may use read-only tools to inspect the selected working folder and files explicitly attached by the user. Keep the response focused and useful."#;
 const MAX_ATTACHMENTS: usize = 4;
 const MAX_ATTACHMENT_DATA_URL_LENGTH: usize = 14_000_000;
 
@@ -129,7 +129,7 @@ pub(crate) async fn stream_codex_text(
 
     require_chatgpt_account(&state).await?;
     let mut notifications = notifications(&state).await?;
-    let cwd = state.data_dir.to_string_lossy().to_string();
+    let cwd = resolve_working_directory(input.working_directory.as_deref(), &state.data_dir)?;
     let resumed = input.thread_id.is_some();
     let thread_id = open_thread(&state, input.thread_id, &cwd).await?;
     let PreparedTurnInput {
@@ -210,6 +210,23 @@ fn validate_attachments(attachments: &[CodexAttachmentInput]) -> Result<(), Stri
         }
     }
     Ok(())
+}
+
+fn resolve_working_directory(
+    working_directory: Option<&str>,
+    fallback: &Path,
+) -> Result<String, String> {
+    let directory = working_directory.map(Path::new).unwrap_or(fallback);
+    if !directory.is_absolute() {
+        return Err("Select an absolute working folder.".to_string());
+    }
+    let canonical = directory
+        .canonicalize()
+        .map_err(|_| "The selected working folder is unavailable.".to_string())?;
+    if !canonical.is_dir() {
+        return Err("The selected working folder is not a directory.".to_string());
+    }
+    Ok(canonical.to_string_lossy().into_owned())
 }
 
 fn prepare_turn_input(
@@ -533,6 +550,26 @@ mod tests {
         assert_eq!(
             result,
             Err("An attachment has an invalid data URL.".to_string())
+        );
+    }
+
+    #[test]
+    fn resolves_an_absolute_working_directory() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        assert_eq!(
+            resolve_working_directory(current_dir.to_str(), &current_dir).unwrap(),
+            current_dir.canonicalize().unwrap().to_string_lossy()
+        );
+    }
+
+    #[test]
+    fn rejects_a_relative_working_directory() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        assert_eq!(
+            resolve_working_directory(Some("relative/project"), &current_dir),
+            Err("Select an absolute working folder.".to_string())
         );
     }
 }
