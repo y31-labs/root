@@ -1,91 +1,89 @@
 import { createFileRoute } from '@tanstack/react-router';
-import {
-  Conversation,
-  ConversationEmptyState,
-} from '@workspace/ui/components/ai-elements/conversation';
-import {
-  PromptInput,
-  PromptInputFooter,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  PromptInputTools,
-} from '@workspace/ui/components/ai-elements/prompt-input';
-import { Button } from '@workspace/ui/components/ui/button';
-import { Mic, Plus } from 'lucide-react';
-import { type SyntheticEvent, useState } from 'react';
+import type { PromptInputMessage } from '@workspace/ui/components/ai-elements/prompt-input';
+import { useRef, useState } from 'react';
 
-import { ModelSelectDropdown } from '#/components/model-select-dropdown';
+import { ChatConversation, type ChatMessage } from '#/components/home/conversation';
+import { ChatInput } from '#/components/home/input';
+import type { CodexStreamEvent } from '#/lib/types';
+import { useLocalApi } from '#/providers/local-api-provider';
 
 export const Route = createFileRoute('/')({ component: HomeRoute });
 
 function HomeRoute() {
+  const api = useLocalApi();
   const [prompt, setPrompt] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [pending, setPending] = useState(false);
+  const threadId = useRef<string | undefined>(undefined);
+  const nextMessageId = useRef(0);
 
-  const submitPrompt = (event: SyntheticEvent<HTMLFormElement>) => event.preventDefault();
+  const submitPrompt = async ({ text: submittedText }: PromptInputMessage) => {
+    const text = submittedText.trim();
+    if (!text || pending) return;
+
+    const userMessage: ChatMessage = {
+      id: ++nextMessageId.current,
+      role: 'user',
+      text,
+    };
+    const assistantId = ++nextMessageId.current;
+    setMessages((current) => [
+      ...current,
+      userMessage,
+      { id: assistantId, role: 'assistant', text: '', streaming: true },
+    ]);
+    setPrompt('');
+    setPending(true);
+
+    const handleEvent = (streamEvent: CodexStreamEvent) => {
+      if (streamEvent.type === 'started') {
+        threadId.current = streamEvent.threadId;
+        return;
+      }
+      setMessages((current) =>
+        current.map((message) => {
+          if (message.id !== assistantId) return message;
+          if (streamEvent.type === 'delta') {
+            return { ...message, text: message.text + streamEvent.text };
+          }
+          return { ...message, streaming: false };
+        }),
+      );
+    };
+
+    try {
+      const result = await api.streamCodexText(text, threadId.current, handleEvent);
+      threadId.current = result.threadId;
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === assistantId ? { ...message, streaming: false } : message,
+        ),
+      );
+    } catch (nextError) {
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === assistantId
+            ? { ...message, streaming: false, error: errorMessage(nextError) }
+            : message,
+        ),
+      );
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
     <main className='flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground'>
-      <Conversation className='flex'>
-        <ConversationEmptyState className='min-h-0 flex-col gap-4 pb-4'>
-          <div className='flex size-11 items-center justify-center rounded-xl border bg-muted/40'>
-            <img src='/y31-logo.svg' alt='' aria-hidden='true' className='h-6 w-auto opacity-70' />
-          </div>
-          <div>
-            <h1 className='text-xl font-medium tracking-tight text-foreground sm:text-2xl'>
-              What should we build?
-            </h1>
-            <p className='mt-2 text-sm text-muted-foreground'>
-              Describe an internal tool, workflow, or process.
-            </p>
-          </div>
-        </ConversationEmptyState>
-      </Conversation>
-
-      <div className='shrink-0 px-4 pb-4 sm:px-8 sm:pb-5'>
-        <PromptInput
-          className='mx-auto w-full max-w-3xl rounded-2xl bg-muted/40 shadow-none focus-within:border-border'
-          onSubmit={submitPrompt}
-        >
-          <label htmlFor='chat-prompt' className='sr-only'>
-            Describe what you want to build
-          </label>
-          <PromptInputTextarea
-            id='chat-prompt'
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            placeholder='What do you want to build?'
-            autoFocus
-            className='min-h-20 px-4 pb-2 pt-3.5 text-[15px] leading-6 placeholder:text-muted-foreground/80 dark:bg-transparent'
-          />
-          <PromptInputFooter className='px-2.5 pb-2.5'>
-            <PromptInputTools>
-              <Button
-                type='button'
-                variant='ghost'
-                size='icon-sm'
-                className='rounded-full'
-                aria-label='Add context'
-              >
-                <Plus />
-              </Button>
-            </PromptInputTools>
-
-            <PromptInputTools className='gap-0.5'>
-              <ModelSelectDropdown />
-              <Button
-                type='button'
-                variant='ghost'
-                size='icon-sm'
-                className='rounded-full'
-                aria-label='Use voice input'
-              >
-                <Mic />
-              </Button>
-              <PromptInputSubmit className='ml-1.5 rounded-full' disabled={!prompt.trim()} />
-            </PromptInputTools>
-          </PromptInputFooter>
-        </PromptInput>
-      </div>
+      <ChatConversation messages={messages} />
+      <ChatInput
+        pending={pending}
+        prompt={prompt}
+        onPromptChange={setPrompt}
+        onSubmit={submitPrompt}
+      />
     </main>
   );
 }
+
+const errorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'Something went wrong.';

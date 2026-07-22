@@ -1,120 +1,153 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Button } from '@workspace/ui/components/ui/button';
-import { Input } from '@workspace/ui/components/ui/input';
-import { Label } from '@workspace/ui/components/ui/label';
-import { Check, LoaderCircle } from 'lucide-react';
-import { type FormEvent, useEffect, useState } from 'react';
+import { ExternalLink, LoaderCircle, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
+import type { CodexIntegrationStatus } from '#/lib/types';
 import { useLocalApi } from '#/providers/local-api-provider';
 
 export const Route = createFileRoute('/settings')({ component: SettingsRoute });
 
+const unavailableStatus: CodexIntegrationStatus = {
+  installed: false,
+  authenticated: false,
+  appServerAvailable: false,
+  connected: false,
+  version: null,
+  accountEmail: null,
+  planType: null,
+  detail: null,
+};
+
 function SettingsRoute() {
   const api = useLocalApi();
-  const [serviceUrl, setServiceUrl] = useState('');
-  const [pending, setPending] = useState(true);
-  const [saved, setSaved] = useState(false);
+  const [status, setStatus] = useState<CodexIntegrationStatus>(unavailableStatus);
+  const [checking, setChecking] = useState(true);
+  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    void api
-      .getSettings()
-      .then((settings) => {
-        if (!cancelled) setServiceUrl(settings.inferenceServiceUrl);
-      })
-      .catch((nextError: unknown) => {
-        if (!cancelled) setError(errorMessage(nextError));
-      })
-      .finally(() => {
-        if (!cancelled) setPending(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [api]);
-
-  const save = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setPending(true);
-    setSaved(false);
-    setError('');
+  const refresh = useCallback(async () => {
+    setChecking(true);
     try {
-      const settings = await api.saveSettings({ inferenceServiceUrl: serviceUrl });
-      setServiceUrl(settings.inferenceServiceUrl);
-      setSaved(true);
+      const nextStatus = await api.codexIntegrationStatus();
+      setStatus(nextStatus);
+      setError('');
+      return nextStatus;
     } catch (nextError) {
       setError(errorMessage(nextError));
     } finally {
-      setPending(false);
+      setChecking(false);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!connecting) return;
+    const interval = window.setInterval(() => {
+      void refresh().then((nextStatus) => {
+        if (nextStatus?.connected) setConnecting(false);
+      });
+    }, 2_000);
+    const stopPolling = window.setTimeout(() => setConnecting(false), 120_000);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(stopPolling);
+    };
+  }, [connecting, refresh]);
+
+  const connect = async () => {
+    setConnecting(true);
+    setError('');
+    try {
+      await api.connectCodex();
+    } catch (nextError) {
+      setConnecting(false);
+      setError(errorMessage(nextError));
     }
   };
+
+  const accountDetail = status.accountEmail
+    ? `${status.accountEmail}${status.planType ? ` · ${formatPlan(status.planType)}` : ''}`
+    : status.version;
 
   return (
     <main className='min-h-0 flex-1 overflow-y-auto bg-background p-8 text-foreground'>
       <div className='mx-auto max-w-3xl'>
         <header>
           <h1 className='text-2xl font-semibold tracking-tight'>Settings</h1>
-          <p className='mt-2 text-sm text-muted-foreground'>
-            Configure the inference service used to generate tools and run their capabilities.
-          </p>
         </header>
 
-        <form className='mt-10 space-y-4' onSubmit={save}>
-          <div>
-            <Label htmlFor='service-url'>Inference service URL</Label>
-            <Input
-              id='service-url'
-              type='url'
-              className='mt-2'
-              value={serviceUrl}
-              onChange={(event) => {
-                setServiceUrl(event.target.value);
-                setSaved(false);
-              }}
-              placeholder='http://localhost:3010'
-              disabled={pending}
-            />
-            <p className='mt-2 text-sm leading-6 text-muted-foreground'>
-              Use the root URL of an Interface Lab-compatible service. y31 calls its
-              <code className='mx-1 font-mono text-xs'>/api/generate</code>
-              and
-              <code className='mx-1 font-mono text-xs'>/api/plugins</code>
-              endpoints through the native runtime.
-            </p>
+        <section className='mt-10 space-y-2'>
+          <div className='flex items-start justify-between gap-4'>
+            <div>
+              <h2 className='font-medium text-muted-foreground'>Integrations</h2>
+            </div>
+            <Button
+              type='button'
+              variant='ghost'
+              size='sm'
+              onClick={() => void refresh()}
+              disabled={checking}
+            >
+              <RefreshCw className={checking ? 'animate-spin' : undefined} />
+              Check again
+            </Button>
           </div>
 
-          {error ? (
+          <div className='grid gap-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center'>
+            <div className='min-w-0'>
+              <div className='flex items-center gap-2'>
+                <h3 className='text-sm font-medium'>Codex</h3>
+              </div>
+              <p className='mt-1.5 text-sm text-muted-foreground'>
+                {accountDetail ?? status.detail ?? 'Checking the local Codex installation…'}
+              </p>
+              {status.detail && accountDetail && (
+                <p className='mt-1 text-xs text-muted-foreground'>{status.detail}</p>
+              )}
+            </div>
+            {status.connected ? (
+              <p className='text-sm text-success' role='status'>
+                Connected
+              </p>
+            ) : (
+              <Button
+                type='button'
+                variant='outline'
+                disabled={
+                  !status.installed || !status.appServerAvailable || connecting || checking
+                }
+                onClick={() => void connect()}
+              >
+                {connecting ? (
+                  <LoaderCircle className='animate-spin' />
+                ) : (
+                  <ExternalLink />
+                )}
+                {connecting ? 'Waiting for sign-in' : 'Connect Codex'}
+              </Button>
+            )}
+          </div>
+
+          {error && (
             <p className='text-sm text-danger' role='alert'>
               {error}
             </p>
-          ) : null}
-
-          <div className='flex items-center gap-3 border-t pt-4'>
-            <Button type='submit' disabled={pending || !serviceUrl.trim()}>
-              {pending ? <LoaderCircle className='animate-spin' /> : null}
-              Save settings
-            </Button>
-            {saved ? (
-              <span className='flex items-center gap-1.5 text-sm text-success'>
-                <Check className='size-4' /> Saved locally
-              </span>
-            ) : null}
-          </div>
-        </form>
-
-        <section className='mt-12 border-y py-5'>
-          <h2 className='font-medium'>Local data</h2>
-          <p className='mt-2 text-sm leading-6 text-muted-foreground'>
-            Project briefs, generated interfaces, and revision history stay in the y31 desktop
-            application data directory. Briefs and current interface code are sent only to the
-            inference service you configure.
-          </p>
+          )}
         </section>
       </div>
     </main>
   );
 }
+
+const formatPlan = (plan: string) =>
+  plan
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'Something went wrong.';

@@ -1,10 +1,24 @@
-import { invoke } from '@tauri-apps/api/core';
+import { Channel, invoke } from '@tauri-apps/api/core';
 
-import type { AppSettings, Project, ProjectSummary } from '#/lib/types';
+import type {
+  AppSettings,
+  CodexIntegrationStatus,
+  CodexStreamEvent,
+  CodexTextResult,
+  Project,
+  ProjectSummary,
+} from '#/lib/types';
 
 type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
+type ChannelFactory = <T>(onMessage: (message: T) => void) => unknown;
 
-export const createLocalApi = (call: Invoke = invoke) => {
+const createChannel: ChannelFactory = <T>(onMessage: (message: T) => void) =>
+  new Channel<T>(onMessage);
+
+export const createLocalApi = (
+  call: Invoke = invoke,
+  makeChannel: ChannelFactory = createChannel,
+) => {
   const request = <T>(command: string, args?: Record<string, unknown>) =>
     call(command, args) as Promise<T>;
 
@@ -21,6 +35,17 @@ export const createLocalApi = (call: Invoke = invoke) => {
     saveSettings: (settings: AppSettings) =>
       request<AppSettings>('save_settings', { input: settings }),
     runPlugin: (pluginCall: unknown) => request<unknown>('run_plugin', { call: pluginCall }),
+    codexIntegrationStatus: () => request<CodexIntegrationStatus>('codex_integration_status'),
+    connectCodex: () => request<void>('connect_codex'),
+    streamCodexText: (
+      prompt: string,
+      threadId: string | undefined,
+      onEvent: (event: CodexStreamEvent) => void,
+    ) =>
+      request<CodexTextResult>('stream_codex_text', {
+        input: { prompt, ...(threadId ? { threadId } : {}) },
+        onEvent: makeChannel(onEvent),
+      }),
   };
 };
 
