@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { open } from '@tauri-apps/plugin-dialog';
 import type { PromptInputMessage } from '@workspace/ui/components/ai-elements/prompt-input';
 import { useRef, useState } from 'react';
 
@@ -9,13 +10,29 @@ import { useLocalApi } from '#/providers/local-api-provider';
 
 export const Route = createFileRoute('/')({ component: HomeRoute });
 
+const WORKING_DIRECTORY_KEY = 'y31:working-directory';
+
 function HomeRoute() {
   const api = useLocalApi();
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pending, setPending] = useState(false);
+  const [workingDirectory, setWorkingDirectory] = useState<string | undefined>(
+    () => window.localStorage.getItem(WORKING_DIRECTORY_KEY) ?? undefined,
+  );
   const threadId = useRef<string | undefined>(undefined);
   const nextMessageId = useRef(0);
+
+  const selectWorkingDirectory = async () => {
+    const selected = await open({
+      defaultPath: workingDirectory,
+      directory: true,
+      multiple: false,
+    });
+    if (!selected || Array.isArray(selected)) return;
+    setWorkingDirectory(selected);
+    window.localStorage.setItem(WORKING_DIRECTORY_KEY, selected);
+  };
 
   const submitPrompt = ({ files, text: submittedText }: PromptInputMessage) => {
     const text = submittedText.trim();
@@ -64,6 +81,7 @@ function HomeRoute() {
             filename: file.filename ?? 'attachment',
             mediaType: file.mediaType || 'application/octet-stream',
           })),
+          workingDirectory,
           threadId.current,
           handleEvent,
         );
@@ -93,7 +111,9 @@ function HomeRoute() {
       <ChatInput
         pending={pending}
         prompt={prompt}
+        workingDirectory={workingDirectory}
         onPromptChange={setPrompt}
+        onSelectWorkingDirectory={() => void selectWorkingDirectory()}
         onSubmit={submitPrompt}
       />
     </main>
