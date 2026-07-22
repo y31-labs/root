@@ -2,16 +2,16 @@ import { Channel, invoke } from '@tauri-apps/api/core';
 
 import type {
   AppSettings,
+  ChatStreamEvent,
+  ChatTextResult,
   CodexIntegrationStatus,
-  CodexStreamEvent,
-  CodexTextResult,
   Project,
   ProjectSummary,
 } from '#/lib/types';
 
 type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
 type ChannelFactory = <T>(onMessage: (message: T) => void) => unknown;
-export interface CodexAttachmentInput {
+export interface ChatAttachmentInput {
   dataUrl: string;
   filename: string;
   mediaType: string;
@@ -42,14 +42,14 @@ export const createLocalApi = (
     runPlugin: (pluginCall: unknown) => request<unknown>('run_plugin', { call: pluginCall }),
     codexIntegrationStatus: () => request<CodexIntegrationStatus>('codex_integration_status'),
     connectCodex: () => request<void>('connect_codex'),
-    streamCodexText: (
+    streamChatText: (
       prompt: string,
-      attachments: CodexAttachmentInput[],
+      attachments: ChatAttachmentInput[],
       workingDirectory: string | undefined,
       threadId: string | undefined,
-      onEvent: (event: CodexStreamEvent) => void,
+      onEvent: (event: ChatStreamEvent) => void,
     ) =>
-      request<CodexTextResult>('stream_codex_text', {
+      request<ChatTextResult>('stream_codex_text', {
         input: {
           prompt,
           attachments,

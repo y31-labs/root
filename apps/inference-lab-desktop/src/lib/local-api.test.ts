@@ -26,7 +26,7 @@ describe('local API', () => {
     });
   });
 
-  it('passes Codex text updates through a Tauri channel', async () => {
+  it('passes chat text updates through a Tauri channel', async () => {
     const invoke = vi.fn(async () => ({ threadId: 'thread-1' }));
     const channel = { id: 'channel-1' };
     const makeChannel = vi.fn(() => channel);
@@ -35,7 +35,7 @@ describe('local API', () => {
 
     await api.codexIntegrationStatus();
     await api.connectCodex();
-    await api.streamCodexText(
+    await api.streamChatText(
       'Draft an intake flow',
       [
         {

@@ -45,11 +45,11 @@ export interface CodexIntegrationStatus {
   detail: string | null;
 }
 
-export type CodexStreamEvent =
+export type ChatStreamEvent =
   | { type: 'started'; threadId: string }
   | { type: 'delta'; text: string }
   | { type: 'completed' };
 
-export interface CodexTextResult {
+export interface ChatTextResult {
   threadId: string;
 }
