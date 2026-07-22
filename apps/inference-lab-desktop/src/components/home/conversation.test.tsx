@@ -6,7 +6,14 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ChatConversation } from '#/components/home/conversation';
 
 beforeAll(() => {
-  Element.prototype.scrollIntoView = vi.fn();
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+    },
+  );
 });
 
 afterEach(cleanup);
@@ -28,5 +35,6 @@ describe('ChatConversation', () => {
     expect(screen.getByRole('heading', { name: 'Build result' }).tagName).toBe('H2');
     expect(screen.getByText('Created').dataset.streamdown).toBe('strong');
     expect(screen.getByRole('list')).toBeTruthy();
+    expect(screen.getByRole('log').className).toContain('overflow-y-hidden');
   });
 });
