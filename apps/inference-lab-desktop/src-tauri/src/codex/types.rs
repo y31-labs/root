@@ -15,8 +15,18 @@ pub(crate) struct CodexIntegrationStatus {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct CodexAttachmentInput {
+    pub(super) data_url: String,
+    pub(super) filename: String,
+    pub(super) media_type: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct CodexTextInput {
     pub(super) prompt: String,
+    #[serde(default)]
+    pub(super) attachments: Vec<CodexAttachmentInput>,
     pub(super) thread_id: Option<String>,
 }
 

@@ -3,7 +3,7 @@ import type { PromptInputMessage } from '@workspace/ui/components/ai-elements/pr
 import { useRef, useState } from 'react';
 
 import { ChatConversation, type ChatMessage } from '#/components/home/conversation';
-import { ChatInput } from '#/components/home/input';
+import { ChatInput } from '#/components/prompt-input/chat-input';
 import type { CodexStreamEvent } from '#/lib/types';
 import { useLocalApi } from '#/providers/local-api-provider';
 
@@ -17,11 +17,15 @@ function HomeRoute() {
   const threadId = useRef<string | undefined>(undefined);
   const nextMessageId = useRef(0);
 
-  const submitPrompt = async ({ text: submittedText }: PromptInputMessage) => {
+  const submitPrompt = ({ files, text: submittedText }: PromptInputMessage) => {
     const text = submittedText.trim();
-    if (!text || pending) return;
+    if ((!text && files.length === 0) || pending) return;
 
     const userMessage: ChatMessage = {
+      attachments: files.map((file, index) => ({
+        ...file,
+        id: `message-${nextMessageId.current + 1}-file-${index}`,
+      })),
       id: ++nextMessageId.current,
       role: 'user',
       text,
@@ -51,25 +55,36 @@ function HomeRoute() {
       );
     };
 
-    try {
-      const result = await api.streamCodexText(text, threadId.current, handleEvent);
-      threadId.current = result.threadId;
-      setMessages((current) =>
-        current.map((message) =>
-          message.id === assistantId ? { ...message, streaming: false } : message,
-        ),
-      );
-    } catch (nextError) {
-      setMessages((current) =>
-        current.map((message) =>
-          message.id === assistantId
-            ? { ...message, streaming: false, error: errorMessage(nextError) }
-            : message,
-        ),
-      );
-    } finally {
-      setPending(false);
-    }
+    void (async () => {
+      try {
+        const result = await api.streamCodexText(
+          text,
+          files.map((file) => ({
+            dataUrl: file.url,
+            filename: file.filename ?? 'attachment',
+            mediaType: file.mediaType || 'application/octet-stream',
+          })),
+          threadId.current,
+          handleEvent,
+        );
+        threadId.current = result.threadId;
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId ? { ...message, streaming: false } : message,
+          ),
+        );
+      } catch (nextError) {
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === assistantId
+              ? { ...message, streaming: false, error: errorMessage(nextError) }
+              : message,
+          ),
+        );
+      } finally {
+        setPending(false);
+      }
+    })();
   };
 
   return (

@@ -1,16 +1,15 @@
 import {
   PromptInput,
   PromptInputBody,
-  PromptInputButton,
-  PromptInputFooter,
   type PromptInputProps,
-  PromptInputSubmit,
   PromptInputTextarea,
-  PromptInputTools,
 } from '@workspace/ui/components/ai-elements/prompt-input';
-import { Mic, Plus } from 'lucide-react';
 
-import { ModelSelectDropdown } from '#/components/model-select-dropdown';
+import { ChatInputFooter } from '#/components/prompt-input/chat-input-footer';
+import { PromptAttachments } from '#/components/prompt-input/prompt-attachments';
+
+const MAX_ATTACHMENT_FILES = 4;
+const MAX_ATTACHMENT_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per file, up to 40 MB total.
 
 interface ChatInputProps {
   pending: boolean;
@@ -24,8 +23,12 @@ export function ChatInput({ pending, prompt, onPromptChange, onSubmit }: ChatInp
     <div className='shrink-0 px-4 pb-4 sm:px-8 sm:pb-5'>
       <PromptInput
         className='mx-auto w-full max-w-3xl *:data-[slot=input-group]:rounded-2xl *:data-[slot=input-group]:bg-muted/40 *:data-[slot=input-group]:shadow-none *:data-[slot=input-group]:focus-within:border-border dark:*:data-[slot=input-group]:bg-muted/40'
+        maxFiles={MAX_ATTACHMENT_FILES}
+        maxFileSize={MAX_ATTACHMENT_FILE_SIZE_BYTES}
+        multiple
         onSubmit={onSubmit}
       >
+        <PromptAttachments />
         <label htmlFor='chat-prompt' className='sr-only'>
           Describe what you want to build
         </label>
@@ -40,25 +43,7 @@ export function ChatInput({ pending, prompt, onPromptChange, onSubmit }: ChatInp
             className='min-h-20 px-4 pb-2 pt-3.5 text-[15px] leading-6 placeholder:text-muted-foreground/80 disabled:opacity-100 dark:bg-transparent'
           />
         </PromptInputBody>
-        <PromptInputFooter className='px-2.5 pb-2.5'>
-          <PromptInputTools>
-            <PromptInputButton className='rounded-full' aria-label='Add context'>
-              <Plus />
-            </PromptInputButton>
-          </PromptInputTools>
-
-          <PromptInputTools className='gap-0.5'>
-            <ModelSelectDropdown />
-            <PromptInputButton className='rounded-full' aria-label='Use voice input'>
-              <Mic />
-            </PromptInputButton>
-            <PromptInputSubmit
-              className='ml-1.5 rounded-full'
-              disabled={pending || !prompt.trim()}
-              status={pending ? 'submitted' : 'ready'}
-            />
-          </PromptInputTools>
-        </PromptInputFooter>
+        <ChatInputFooter pending={pending} prompt={prompt} />
       </PromptInput>
     </div>
   );

@@ -7,10 +7,13 @@ import {
 import { Shimmer } from '@workspace/ui/components/ai-elements/shimmer';
 import { StickToBottom } from 'use-stick-to-bottom';
 
+import { FileAttachments, type FileAttachment } from '#/components/file-attachments';
+
 export interface ChatMessage {
   id: number;
   role: 'user' | 'assistant';
   text: string;
+  attachments?: FileAttachment[];
   streaming?: boolean;
   error?: string;
 }
@@ -33,6 +36,13 @@ export function ChatConversation({ messages }: ChatConversationProps) {
           messages.map((message) => (
             <Message from={message.role} key={message.id}>
               <MessageContent className='group-data-[role=user]/message:border-0 group-data-[role=user]/message:bg-muted/40'>
+                {message.attachments?.length ? (
+                  <FileAttachments
+                    attachments={message.attachments}
+                    className='mb-2'
+                    variant='message'
+                  />
+                ) : null}
                 {message.text &&
                   (message.role === 'assistant' ? (
                     <MessageResponse isAnimating={message.streaming}>

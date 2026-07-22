@@ -11,6 +11,11 @@ import type {
 
 type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
 type ChannelFactory = <T>(onMessage: (message: T) => void) => unknown;
+export interface CodexAttachmentInput {
+  dataUrl: string;
+  filename: string;
+  mediaType: string;
+}
 
 const createChannel: ChannelFactory = <T>(onMessage: (message: T) => void) =>
   new Channel<T>(onMessage);
@@ -39,11 +44,12 @@ export const createLocalApi = (
     connectCodex: () => request<void>('connect_codex'),
     streamCodexText: (
       prompt: string,
+      attachments: CodexAttachmentInput[],
       threadId: string | undefined,
       onEvent: (event: CodexStreamEvent) => void,
     ) =>
       request<CodexTextResult>('stream_codex_text', {
-        input: { prompt, ...(threadId ? { threadId } : {}) },
+        input: { prompt, attachments, ...(threadId ? { threadId } : {}) },
         onEvent: makeChannel(onEvent),
       }),
   };

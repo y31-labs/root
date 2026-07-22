@@ -18,6 +18,12 @@ pub fn run() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
+            let attachment_dir = data_dir.join("attachments");
+            if attachment_dir.exists() {
+                if let Err(error) = std::fs::remove_dir_all(&attachment_dir) {
+                    eprintln!("failed to clean up stale attachments: {error}");
+                }
+            }
             let logging_guard = match logging::initialize(&data_dir.join("logs"), Vec::new()) {
                 Ok(guard) => Some(guard),
                 Err(error) => {

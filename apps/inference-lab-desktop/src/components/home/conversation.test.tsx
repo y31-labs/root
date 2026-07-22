@@ -37,4 +37,38 @@ describe('ChatConversation', () => {
     expect(screen.getByRole('list')).toBeTruthy();
     expect(screen.getByRole('log').className).toContain('overflow-y-hidden');
   });
+
+  it('renders file attachments in user messages', () => {
+    render(
+      <ChatConversation
+        messages={[
+          {
+            attachments: [
+              {
+                filename: 'layout.png',
+                id: 'image-1',
+                mediaType: 'image/png',
+                type: 'file',
+                url: 'data:image/png;base64,aW1hZ2U=',
+              },
+              {
+                filename: 'brief.pdf',
+                id: 'file-2',
+                mediaType: 'application/pdf',
+                type: 'file',
+                url: 'data:application/pdf;base64,ZmlsZQ==',
+              },
+            ],
+            id: 1,
+            role: 'user',
+            text: 'Match this layout',
+          },
+        ]}
+      />,
+    );
+
+    const image = screen.getByRole('img', { name: 'layout.png' });
+    expect(image.getAttribute('src')).toBe('data:image/png;base64,aW1hZ2U=');
+    expect(screen.getByText('brief.pdf')).toBeTruthy();
+  });
 });
