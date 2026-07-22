@@ -40,7 +40,7 @@ export function ChatConversation({ messages }: ChatConversationProps) {
                   ))}
                 {message.streaming && !message.text && (
                   <Shimmer as='span' className='text-sm'>
-                    Codex is thinking
+                    Thinking
                   </Shimmer>
                 )}
                 {message.error && (
