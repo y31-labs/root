@@ -12,10 +12,8 @@ const models: Model[] = [
   {
     model: 'balanced-model',
     displayName: 'Balanced Model',
-    supportedReasoningEfforts: [{ reasoningEffort: 'low' }, { reasoningEffort: 'medium' }],
-    defaultReasoningEffort: 'medium',
-    serviceTiers: [{ id: 'priority', name: 'Fast' }],
-    defaultServiceTier: null,
+    reason: { options: ['low', 'medium'], default: 'medium' },
+    speed: { options: ['standard', 'fast'], default: 'standard' },
     isDefault: true,
   },
 ];
@@ -28,18 +26,18 @@ describe('useModelSettings', () => {
     await waitFor(() =>
       expect(result.current.settings).toEqual({
         model: 'balanced-model',
-        effort: 'medium',
-        serviceTier: null,
+        reason: 'medium',
+        speed: 'standard',
       }),
     );
 
-    act(() => result.current.selectEffort('low'));
-    act(() => result.current.selectServiceTier('priority'));
+    act(() => result.current.selectReason('low'));
+    act(() => result.current.selectSpeed('fast'));
 
     expect(result.current.settings).toEqual({
       model: 'balanced-model',
-      effort: 'low',
-      serviceTier: 'priority',
+      reason: 'low',
+      speed: 'fast',
     });
     expect(result.current.selectedModel).toBe(models[0]);
     expect(loadModels).toHaveBeenCalledOnce();

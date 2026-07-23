@@ -541,16 +541,13 @@ mod tests {
             "id": "gpt-5.6-terra",
             "model": "gpt-5.6-terra",
             "displayName": "GPT-5.6 Terra",
-            "description": "Balanced model",
             "supportedReasoningEfforts": [{
-                "reasoningEffort": "medium",
-                "description": "Balanced reasoning"
+                "reasoningEffort": "medium"
             }],
             "defaultReasoningEffort": "medium",
             "serviceTiers": [{
                 "id": "priority",
-                "name": "Fast",
-                "description": "Faster responses"
+                "name": "Fast"
             }],
             "defaultServiceTier": null,
             "isDefault": true

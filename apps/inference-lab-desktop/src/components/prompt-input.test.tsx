@@ -15,9 +15,9 @@ const ignoreSelection = () => undefined;
 const modelSettings: ModelSettingsState = {
   loading: false,
   models: [],
-  selectEffort: ignoreSelection,
+  selectReason: ignoreSelection,
   selectModel: ignoreSelection,
-  selectServiceTier: ignoreSelection,
+  selectSpeed: ignoreSelection,
 };
 
 beforeEach(() => {

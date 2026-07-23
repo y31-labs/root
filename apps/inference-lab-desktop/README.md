@@ -4,9 +4,9 @@
 
 ## Architecture
 
-- The Rust crate only starts the Tauri application.
-- There are no native commands, managed state, persistence, or network clients yet.
-- Features can be added to the native boundary as their requirements become clear.
+- The Rust crate manages the local Codex app-server connection, attachment cleanup, and logging.
+- The frontend uses four native commands: Codex status, connection, model listing, and streamed text.
+- Project generation, generated-app plugins, and inference-service settings are not part of this app.
 
 ## Commands
 
