@@ -13,36 +13,48 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@workspace/ui/components/ui/dropdown-menu';
-import { ChevronDown, Zap } from 'lucide-react';
-import { type ComponentProps, useState } from 'react';
+import type { ComponentProps } from 'react';
 
-interface CodexSettings {
-  model: string;
-  effort: string;
-  speed: string;
+import type { ModelSettingsState } from '#/hooks/use-model-settings';
+
+const STANDARD_SERVICE_TIER = '__standard__';
+
+interface ModelSelectDropdownProps {
+  disabled?: boolean;
+  modelSettings: ModelSettingsState;
+}
+
+interface MenuOption {
+  description?: string;
+  label: string;
+  value: string;
 }
 
 interface Menu {
-  id: keyof CodexSettings;
+  id: 'model' | 'effort' | 'speed';
   label: string;
-  options: string[];
+  options: MenuOption[];
+  selectedLabel: string;
+  value: string;
+  onValueChange: (value: string) => void;
 }
 
 type ModelSelectTriggerProps = ComponentProps<typeof Button> & {
-  settings: CodexSettings;
+  modelLabel: string;
 };
 
-const menus: Menu[] = [
-  { id: 'model', label: 'Model', options: ['5.6 Sol', '5.6 Terra', '5.6 Luna'] },
-  {
-    id: 'effort',
-    label: 'Effort',
-    options: ['Light', 'Medium', 'High', 'Extra High', 'Ultra'],
-  },
-  { id: 'speed', label: 'Speed', options: ['Standard', 'Fast'] },
-];
+const effortLabels: Record<string, string> = {
+  low: 'Light',
+  medium: 'Medium',
+  high: 'High',
+  xhigh: 'Extra High',
+  max: 'Max',
+  ultra: 'Ultra',
+};
 
-function ModelSelectTrigger({ settings, ...props }: ModelSelectTriggerProps) {
+const formatEffort = (effort: string) => effortLabels[effort] ?? effort;
+
+function ModelSelectTrigger({ modelLabel, ...props }: ModelSelectTriggerProps) {
   return (
     <Button
       {...props}
@@ -50,70 +62,120 @@ function ModelSelectTrigger({ settings, ...props }: ModelSelectTriggerProps) {
       variant='ghost'
       size='sm'
       className={
-        'relative isolate gap-0 rounded-full before:pointer-events-none before:absolute before:inset-y-0 before:right-[calc(100%-1rem)] before:-z-10 before:w-0 before:rounded-l-full before:bg-muted before:content-[""] before:transition-[width] before:duration-150 before:ease-[cubic-bezier(0.25,0.1,0.25,1)] data-popup-open:bg-muted! data-popup-open:before:w-[max(0px,calc(15rem-100%))] data-popup-open:[&>span]:translate-x-[calc(50%-5.25rem)] motion-reduce:before:transition-none'
+        'grow-0 justify-center rounded-full transition-[flex-grow,background-color] duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] data-popup-open:grow data-popup-open:bg-muted! motion-reduce:transition-none'
       }
     >
-      <span className='inline-flex items-center gap-1 transition-transform duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] motion-reduce:transition-none'>
-        {settings.speed === 'Fast' ? (
-          <Zap
-            aria-label='Fast mode enabled'
-            className='size-3 fill-current text-muted-foreground'
-          />
-        ) : null}
-        <span>{settings.model}</span>
-        <span className='text-muted-foreground'>{settings.effort}</span>
-      </span>
-      <ChevronDown className='ml-1.5 size-3 text-muted-foreground' />
+      <span>{modelLabel}</span>
     </Button>
   );
 }
 
-export function ModelSelectDropdown() {
-  const [settings, setSettings] = useState<CodexSettings>({
-    model: '5.6 Sol',
-    effort: 'Extra High',
-    speed: 'Standard',
-  });
+export function ModelSelectDropdown({
+  disabled,
+  modelSettings: {
+    catalogError,
+    loading,
+    models,
+    selectedModel,
+    settings,
+    selectEffort,
+    selectModel,
+    selectServiceTier,
+  },
+}: ModelSelectDropdownProps) {
+  const selectedServiceTier = selectedModel?.serviceTiers.find(
+    (tier) => tier.id === settings?.serviceTier,
+  );
+  const menus: Menu[] =
+    selectedModel && settings
+      ? [
+          {
+            id: 'model',
+            label: 'Model',
+            options: models.map((model) => ({ label: model.displayName, value: model.model })),
+            selectedLabel: selectedModel.displayName,
+            value: selectedModel.model,
+            onValueChange: selectModel,
+          },
+          {
+            id: 'effort',
+            label: 'Effort',
+            options: selectedModel.supportedReasoningEfforts.map((option) => ({
+              label: formatEffort(option.reasoningEffort),
+              value: option.reasoningEffort,
+            })),
+            selectedLabel: formatEffort(settings.effort),
+            value: settings.effort,
+            onValueChange: selectEffort,
+          },
+          {
+            id: 'speed',
+            label: 'Speed',
+            options: [
+              { label: 'Standard', value: STANDARD_SERVICE_TIER },
+              ...selectedModel.serviceTiers.map((tier) => ({
+                description: tier.name === 'Fast' ? '1.5x faster, higher usage' : undefined,
+                label: tier.name,
+                value: tier.id,
+              })),
+            ],
+            selectedLabel: selectedServiceTier?.name ?? 'Standard',
+            value: settings.serviceTier ?? STANDARD_SERVICE_TIER,
+            onValueChange: (serviceTier) =>
+              selectServiceTier(serviceTier === STANDARD_SERVICE_TIER ? null : serviceTier),
+          },
+        ]
+      : [];
+
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<ModelSelectTrigger settings={settings} />} />
+      <DropdownMenuTrigger
+        render={
+          <ModelSelectTrigger
+            disabled={disabled}
+            modelLabel={selectedModel?.displayName ?? (loading ? 'Loading models' : 'Models')}
+          />
+        }
+      />
       <DropdownMenuContent
         side='top'
-        align='end'
-        className={'w-56 rounded-md border bg-popover shadow-md ring-0 before:hidden'}
+        align='start'
+        className='w-56 rounded-md border bg-popover shadow-md ring-0 before:hidden'
       >
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Codex</DropdownMenuLabel>
+          <DropdownMenuLabel>Models</DropdownMenuLabel>
           {menus.map((menu) => (
             <DropdownMenuSub key={menu.id}>
               <DropdownMenuSubTrigger className='grid grid-cols-[1fr_auto_auto] gap-2'>
                 <span>{menu.label}</span>
-                <span className='text-muted-foreground'>{settings[menu.id]}</span>
+                <span className='text-muted-foreground'>{menu.selectedLabel}</span>
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent
                 side='right'
                 sideOffset={4}
                 align='start'
-                className={'w-56 rounded-md border bg-popover shadow-md ring-0 before:hidden'}
+                className='w-56 rounded-md border bg-popover shadow-md ring-0 before:hidden'
               >
-                <DropdownMenuRadioGroup
-                  value={settings[menu.id]}
-                  onValueChange={(value) =>
-                    setSettings((currentSettings) => ({
-                      ...currentSettings,
-                      [menu.id]: value,
-                    }))
-                  }
-                >
+                <DropdownMenuRadioGroup value={menu.value} onValueChange={menu.onValueChange}>
                   {menu.options.map((option) => (
-                    <DropdownMenuRadioItem key={option} value={option}>
-                      {option}
+                    <DropdownMenuRadioItem key={option.value} value={option.value}>
+                      <span className='grid'>
+                        <span>{option.label}</span>
+                        {option.description && (
+                          <span className='text-xs text-muted-foreground'>
+                            {option.description}
+                          </span>
+                        )}
+                      </span>
                     </DropdownMenuRadioItem>
                   ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           ))}
+          {!loading && menus.length === 0 && (
+            <DropdownMenuItem disabled>{catalogError ?? 'No models available'}</DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>

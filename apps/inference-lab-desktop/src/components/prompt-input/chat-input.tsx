@@ -8,11 +8,13 @@ import {
 import { ChatInputFooter } from '#/components/prompt-input/chat-input-footer';
 import { FolderPicker } from '#/components/prompt-input/folder-picker';
 import { PromptAttachments } from '#/components/prompt-input/prompt-attachments';
+import type { ModelSettingsState } from '#/hooks/use-model-settings';
 
 const MAX_ATTACHMENT_FILES = 4;
 const MAX_ATTACHMENT_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per file, up to 40 MB total.
 
 interface ChatInputProps {
+  modelSettings: ModelSettingsState;
   pending: boolean;
   prompt: string;
   workingDirectory?: string;
@@ -22,6 +24,7 @@ interface ChatInputProps {
 }
 
 export function ChatInput({
+  modelSettings,
   pending,
   prompt,
   workingDirectory,
@@ -56,10 +59,10 @@ export function ChatInput({
               placeholder='What do you want to build?'
               autoFocus
               disabled={pending}
-              className='min-h-20 px-4 pb-2 pt-3.5 text-[15px] leading-6 placeholder:text-muted-foreground/80 disabled:opacity-100 dark:bg-transparent'
+              className='min-h-20 px-4 pb-1 pt-3.5 text-[15px] leading-6 placeholder:text-muted-foreground/80 disabled:opacity-100 dark:bg-transparent'
             />
           </PromptInputBody>
-          <ChatInputFooter pending={pending} prompt={prompt} />
+          <ChatInputFooter modelSettings={modelSettings} pending={pending} prompt={prompt} />
         </PromptInput>
       </div>
     </div>
