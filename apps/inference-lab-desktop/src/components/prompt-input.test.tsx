@@ -19,6 +19,10 @@ const modelSettings: ModelSettingsState = {
   selectModel: ignoreSelection,
   selectSpeed: ignoreSelection,
 };
+const permissionProps = {
+  permissionMode: 'read-only' as const,
+  onPermissionModeChange: vi.fn(),
+};
 
 beforeEach(() => {
   vi.spyOn(URL, 'createObjectURL').mockImplementation((object) => {
@@ -80,6 +84,7 @@ describe('PromptInput', () => {
 
     render(
       <ChatInput
+        {...permissionProps}
         modelSettings={modelSettings}
         pending={false}
         prompt=''
@@ -130,6 +135,7 @@ describe('PromptInput', () => {
     const onSubmit = vi.fn();
     render(
       <ChatInput
+        {...permissionProps}
         modelSettings={modelSettings}
         pending={false}
         prompt=''
@@ -170,6 +176,7 @@ describe('PromptInput', () => {
 
     const { rerender } = render(
       <ChatInput
+        {...permissionProps}
         modelSettings={modelSettings}
         pending={false}
         prompt=''
@@ -184,6 +191,7 @@ describe('PromptInput', () => {
 
     rerender(
       <ChatInput
+        {...permissionProps}
         modelSettings={modelSettings}
         pending={false}
         prompt=''

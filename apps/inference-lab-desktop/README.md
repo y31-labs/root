@@ -5,7 +5,8 @@
 ## Architecture
 
 - The Rust crate manages the local Codex app-server connection, attachment cleanup, and logging.
-- The frontend uses four native commands: Codex status, connection, model listing, and streamed text.
+- The frontend uses native commands for Codex status, connection, model listing, streamed text,
+  and approval responses.
 - Project generation, generated-app plugins, and inference-service settings are not part of this app.
 
 ## Commands

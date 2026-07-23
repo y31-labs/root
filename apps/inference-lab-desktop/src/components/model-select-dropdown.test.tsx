@@ -50,8 +50,14 @@ describe('ModelSelectDropdown', () => {
     expect(getByText('Medium')).toBeTruthy();
     expect(queryByLabelText('Fast mode')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'GPT-5.6 Terra Medium' }));
+    const trigger = screen.getByRole('button', { name: 'GPT-5.6 Terra Medium' });
+    expect(trigger.hasAttribute('data-popup-open')).toBe(false);
+
+    fireEvent.click(trigger);
     expect(await screen.findByText('ChatGPT')).toBeTruthy();
+    expect(trigger.hasAttribute('data-popup-open')).toBe(true);
+    expect(trigger.className).not.toMatch(/\b(?:basis|grow)-/);
+    expect(trigger.className).not.toMatch(/data-popup-open:(?:basis|grow)/);
     expect(screen.getByText('API')).toBeTruthy();
     expect(screen.getByText('Coming soon')).toBeTruthy();
 

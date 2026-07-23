@@ -50,6 +50,7 @@ pub fn run() {
             codex::codex_integration_status,
             codex::connect_codex,
             codex::list_codex_models,
+            codex::resolve_codex_approval,
             codex::stream_codex_text
         ])
         .run(tauri::generate_context!())

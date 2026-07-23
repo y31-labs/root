@@ -53,6 +53,7 @@ describe('local API', () => {
       '/Users/example/project',
       'thread-1',
       { model: 'gpt-5.6-terra', effort: 'medium', speed: 'fast' },
+      'workspace-write',
       onEvent,
     );
 
@@ -77,8 +78,16 @@ describe('local API', () => {
           effort: 'medium',
           speed: 'fast',
         },
+        permissionMode: 'workspace-write',
       },
       onEvent: channel,
+    });
+
+    await api.resolveCodexApproval(42, 'item/commandExecution/requestApproval', 'acceptForSession');
+    expect(invoke).toHaveBeenNthCalledWith(5, 'resolve_codex_approval', {
+      requestId: 42,
+      method: 'item/commandExecution/requestApproval',
+      decision: 'acceptForSession',
     });
   });
 });

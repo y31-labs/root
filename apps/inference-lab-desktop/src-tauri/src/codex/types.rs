@@ -1,4 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 
 fn normalize_model_display_name(display_name: String) -> String {
     display_name
@@ -44,6 +45,46 @@ pub(crate) struct CodexTextInput {
     pub(super) working_directory: Option<String>,
     pub(super) thread_id: Option<String>,
     pub(super) settings: Option<ModelSettings>,
+    #[serde(default)]
+    pub(super) permission_mode: PermissionMode,
+}
+
+#[derive(Clone, Copy, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum PermissionMode {
+    #[default]
+    ReadOnly,
+    WorkspaceWrite,
+    DangerFullAccess,
+}
+
+impl PermissionMode {
+    pub(super) fn approval_policy(self) -> &'static str {
+        match self {
+            Self::WorkspaceWrite => "on-request",
+            Self::ReadOnly | Self::DangerFullAccess => "never",
+        }
+    }
+
+    pub(super) fn sandbox(self) -> &'static str {
+        match self {
+            Self::ReadOnly => "read-only",
+            Self::WorkspaceWrite => "workspace-write",
+            Self::DangerFullAccess => "danger-full-access",
+        }
+    }
+
+    pub(super) fn requires_working_directory(self) -> bool {
+        !matches!(self, Self::ReadOnly)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum CodexApprovalDecision {
+    Accept,
+    AcceptForSession,
+    Decline,
 }
 
 #[derive(Deserialize)]
@@ -99,6 +140,13 @@ pub(crate) enum CodexStreamEvent {
     },
     Delta {
         text: String,
+    },
+    Approval {
+        #[serde(rename = "requestId")]
+        request_id: Value,
+        method: String,
+        title: String,
+        detail: Option<String>,
     },
     Completed,
 }

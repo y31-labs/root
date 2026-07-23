@@ -152,6 +152,10 @@ impl CodexClient {
         result
     }
 
+    pub(super) async fn respond(&self, id: Value, result: Value) -> Result<(), String> {
+        self.write(&json!({ "id": id, "result": result })).await
+    }
+
     async fn write(&self, message: &Value) -> Result<(), String> {
         let mut stdin = self.stdin.lock().await;
         stdin

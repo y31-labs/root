@@ -29,6 +29,10 @@ pub(super) async fn stream_turn(
             if message.get("method").and_then(Value::as_str) == Some("server/stopped") {
                 return Err("Codex app-server stopped".to_string());
             }
+            if let Some(approval) = approval_event(&message, thread_id, turn_id) {
+                on_event.send(approval).map_err(display_error)?;
+                continue;
+            }
             if let Some((item_id, delta)) = agent_message_delta(&message, thread_id, turn_id) {
                 if streamed_text && last_item_id.as_deref() != Some(item_id) {
                     on_event
@@ -88,6 +92,50 @@ pub(super) async fn stream_turn(
             .await;
             Err("Codex response timed out after five minutes.".to_string())
         }
+    }
+}
+
+fn approval_event(message: &Value, thread_id: &str, turn_id: &str) -> Option<CodexStreamEvent> {
+    let method = message.get("method")?.as_str()?;
+    let title = match method {
+        "item/commandExecution/requestApproval" => "Allow command?",
+        "item/fileChange/requestApproval" => "Allow file changes?",
+        _ => return None,
+    };
+    if message.pointer("/params/threadId").and_then(Value::as_str) != Some(thread_id)
+        || message.pointer("/params/turnId").and_then(Value::as_str) != Some(turn_id)
+    {
+        return None;
+    }
+    let request_id = message.get("id")?;
+    if !request_id.is_string() && !request_id.is_i64() && !request_id.is_u64() {
+        return None;
+    }
+
+    Some(CodexStreamEvent::Approval {
+        request_id: request_id.clone(),
+        method: method.to_string(),
+        title: title.to_string(),
+        detail: approval_detail(message, method),
+    })
+}
+
+fn approval_detail(message: &Value, method: &str) -> Option<String> {
+    let params = message.get("params")?;
+    let reason = params.get("reason").and_then(Value::as_str);
+    let primary = match method {
+        "item/commandExecution/requestApproval" => params.get("command").and_then(Value::as_str),
+        "item/fileChange/requestApproval" => params.get("grantRoot").and_then(Value::as_str),
+        _ => None,
+    };
+
+    match (primary, reason) {
+        (Some(primary), Some(reason)) if primary != reason => {
+            Some(format!("{primary}\n\nReason: {reason}"))
+        }
+        (Some(primary), _) => Some(primary.to_string()),
+        (None, Some(reason)) => Some(reason.to_string()),
+        (None, None) => None,
     }
 }
 
@@ -185,5 +233,33 @@ mod tests {
             .unwrap(),
             json!({ "type": "delta", "text": "Hello" })
         );
+    }
+
+    #[test]
+    fn maps_matching_approval_requests_to_stream_events() {
+        let message = json!({
+            "id": 42,
+            "method": "item/commandExecution/requestApproval",
+            "params": {
+                "threadId": "thread-1",
+                "turnId": "turn-1",
+                "itemId": "item-1",
+                "command": "bun test",
+                "reason": "Run the project tests"
+            }
+        });
+
+        let event = approval_event(&message, "thread-1", "turn-1").unwrap();
+        assert_eq!(
+            serde_json::to_value(event).unwrap(),
+            json!({
+                "type": "approval",
+                "requestId": 42,
+                "method": "item/commandExecution/requestApproval",
+                "title": "Allow command?",
+                "detail": "bun test\n\nReason: Run the project tests"
+            })
+        );
+        assert!(approval_event(&message, "thread-2", "turn-1").is_none());
     }
 }

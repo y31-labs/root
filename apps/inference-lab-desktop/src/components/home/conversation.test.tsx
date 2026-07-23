@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { ChatConversation } from '#/components/home/conversation';
@@ -70,5 +70,38 @@ describe('ChatConversation', () => {
     const image = screen.getByRole('img', { name: 'layout.png' });
     expect(image.getAttribute('src')).toBe('data:image/png;base64,aW1hZ2U=');
     expect(screen.getByText('brief.pdf')).toBeTruthy();
+  });
+
+  it('renders approval controls and returns the selected decision', () => {
+    const onApprovalDecision = vi.fn();
+    render(
+      <ChatConversation
+        messages={[
+          {
+            approvals: [
+              {
+                requestId: 42,
+                method: 'item/commandExecution/requestApproval',
+                title: 'Allow command?',
+                detail: 'bun test',
+                status: 'pending',
+              },
+            ],
+            id: 1,
+            role: 'assistant',
+            text: '',
+          },
+        ]}
+        onApprovalDecision={onApprovalDecision}
+      />,
+    );
+
+    expect(screen.getByText('bun test')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Allow for session' }));
+    expect(onApprovalDecision).toHaveBeenCalledWith(
+      42,
+      'item/commandExecution/requestApproval',
+      'acceptForSession',
+    );
   });
 });

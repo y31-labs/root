@@ -4,6 +4,7 @@ import { ChatConversation } from '#/components/home/conversation';
 import { ChatInput } from '#/components/prompt-input/chat-input';
 import { useChat } from '#/hooks/use-chat';
 import { useModelSettings } from '#/hooks/use-model-settings';
+import { usePermissionMode } from '#/hooks/use-permission-mode';
 import { useWorkingDirectory } from '#/hooks/use-working-directory';
 import { useLocalApi } from '#/providers/local-api-provider';
 
@@ -13,20 +14,24 @@ function HomeRoute() {
   const api = useLocalApi();
   const { selectWorkingDirectory, workingDirectory } = useWorkingDirectory();
   const modelSettings = useModelSettings(api.listModels);
-  const { messages, pending, prompt, setPrompt, submitPrompt } = useChat({
+  const { permissionMode, setPermissionMode } = usePermissionMode();
+  const { messages, pending, prompt, resolveApproval, setPrompt, submitPrompt } = useChat({
+    permissionMode,
     settings: modelSettings.settings,
     workingDirectory,
   });
 
   return (
     <main className='flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground'>
-      <ChatConversation messages={messages} />
+      <ChatConversation messages={messages} onApprovalDecision={resolveApproval} />
       <ChatInput
         modelSettings={modelSettings}
         pending={pending}
+        permissionMode={permissionMode}
         prompt={prompt}
         workingDirectory={workingDirectory}
         onPromptChange={setPrompt}
+        onPermissionModeChange={setPermissionMode}
         onSelectWorkingDirectory={selectWorkingDirectory}
         onSubmit={submitPrompt}
       />
