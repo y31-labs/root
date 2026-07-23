@@ -2,14 +2,15 @@ import type { PromptInputMessage } from '@workspace/ui/components/ai-elements/pr
 import { useRef, useState } from 'react';
 
 import type { ChatMessage } from '#/components/home/conversation';
-import type { ChatStreamEvent } from '#/lib/types';
+import type { ChatStreamEvent, ModelSettings } from '#/lib/types';
 import { useLocalApi } from '#/providers/local-api-provider';
 
 interface UseChatOptions {
   workingDirectory?: string;
+  settings?: ModelSettings;
 }
 
-export const useChat = ({ workingDirectory }: UseChatOptions) => {
+export const useChat = ({ settings, workingDirectory }: UseChatOptions) => {
   const api = useLocalApi();
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -66,6 +67,7 @@ export const useChat = ({ workingDirectory }: UseChatOptions) => {
           })),
           workingDirectory,
           threadId.current,
+          settings,
           handleEvent,
         );
         threadId.current = result.threadId;

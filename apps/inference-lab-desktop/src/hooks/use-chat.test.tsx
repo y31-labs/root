@@ -28,9 +28,18 @@ describe('useChat', () => {
       return <LocalApiProvider api={api}>{children}</LocalApiProvider>;
     }
 
-    const { result } = renderHook(() => useChat({ workingDirectory: '/Users/example/project' }), {
-      wrapper: Wrapper,
-    });
+    const { result } = renderHook(
+      () =>
+        useChat({
+          settings: {
+            model: 'gpt-5.6-terra',
+            effort: 'medium',
+            serviceTier: null,
+          },
+          workingDirectory: '/Users/example/project',
+        }),
+      { wrapper: Wrapper },
+    );
 
     act(() =>
       result.current.submitPrompt({
@@ -82,6 +91,11 @@ describe('useChat', () => {
           },
         ],
         prompt: 'Build an intake flow',
+        settings: {
+          model: 'gpt-5.6-terra',
+          effort: 'medium',
+          serviceTier: null,
+        },
         workingDirectory: '/Users/example/project',
       },
       onEvent: { id: 'channel-1' },

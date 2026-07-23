@@ -29,6 +29,40 @@ pub(crate) struct CodexTextInput {
     pub(super) attachments: Vec<CodexAttachmentInput>,
     pub(super) working_directory: Option<String>,
     pub(super) thread_id: Option<String>,
+    pub(super) settings: Option<ModelSettings>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ModelSettings {
+    pub(super) model: String,
+    pub(super) effort: String,
+    pub(super) service_tier: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ReasoningEffort {
+    pub(super) reasoning_effort: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ServiceTier {
+    pub(super) id: String,
+    pub(super) name: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct Model {
+    pub(super) model: String,
+    pub(super) display_name: String,
+    pub(super) supported_reasoning_efforts: Vec<ReasoningEffort>,
+    pub(super) default_reasoning_effort: String,
+    pub(super) service_tiers: Vec<ServiceTier>,
+    pub(super) default_service_tier: Option<String>,
+    pub(super) is_default: bool,
 }
 
 #[derive(Clone, Serialize)]

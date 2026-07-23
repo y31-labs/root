@@ -15,7 +15,8 @@ use stream::stream_turn;
 use tauri::{ipc::Channel, State};
 use tokio::sync::broadcast;
 use types::{
-    CodexAttachmentInput, CodexIntegrationStatus, CodexStreamEvent, CodexTextInput, CodexTextResult,
+    CodexAttachmentInput, CodexIntegrationStatus, CodexStreamEvent, CodexTextInput,
+    CodexTextResult, Model, ModelSettings,
 };
 
 use crate::AppState;
@@ -113,6 +114,40 @@ pub(crate) async fn connect_codex(state: State<'_, AppState>) -> Result<(), Stri
 }
 
 #[tauri::command]
+pub(crate) async fn list_codex_models(state: State<'_, AppState>) -> Result<Vec<Model>, String> {
+    require_chatgpt_account(&state).await?;
+    let mut models = Vec::new();
+    let mut cursor: Option<String> = None;
+
+    loop {
+        let response = request(
+            &state,
+            "model/list",
+            json!({ "cursor": cursor, "includeHidden": false }),
+        )
+        .await?;
+        let page = response
+            .get("data")
+            .and_then(Value::as_array)
+            .ok_or_else(|| "Provider returned an invalid model catalog".to_string())?;
+        models.extend(
+            page.iter()
+                .cloned()
+                .map(serde_json::from_value)
+                .collect::<Result<Vec<Model>, _>>()
+                .map_err(display_error)?,
+        );
+        cursor = response
+            .get("nextCursor")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        if cursor.is_none() {
+            return Ok(models);
+        }
+    }
+}
+
+#[tauri::command]
 pub(crate) async fn stream_codex_text(
     state: State<'_, AppState>,
     input: CodexTextInput,
@@ -146,24 +181,17 @@ pub(crate) async fn stream_codex_text(
         return Err(error);
     }
 
-    let turn_id = match request(
-        &state,
-        "turn/start",
-        json!({
-            "threadId": thread_id,
-            "input": turn_input,
-            "cwd": cwd,
-            "approvalPolicy": "never"
-        }),
-    )
-    .await
-    .and_then(|response| {
-        response
-            .pointer("/turn/id")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .ok_or_else(|| "Codex did not return a turn id".to_string())
-    }) {
+    let turn_params = turn_start_params(&thread_id, turn_input, &cwd, input.settings);
+
+    let turn_id = match request(&state, "turn/start", turn_params)
+        .await
+        .and_then(|response| {
+            response
+                .pointer("/turn/id")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .ok_or_else(|| "Codex did not return a turn id".to_string())
+        }) {
         Ok(turn_id) => turn_id,
         Err(error) => {
             cleanup_attachment_dir(attachment_dir.as_deref());
@@ -210,6 +238,26 @@ fn validate_attachments(attachments: &[CodexAttachmentInput]) -> Result<(), Stri
         }
     }
     Ok(())
+}
+
+fn turn_start_params(
+    thread_id: &str,
+    input: Vec<Value>,
+    cwd: &str,
+    settings: Option<ModelSettings>,
+) -> Value {
+    let mut params = json!({
+        "threadId": thread_id,
+        "input": input,
+        "cwd": cwd,
+        "approvalPolicy": "never"
+    });
+    if let Some(settings) = settings {
+        params["model"] = json!(settings.model);
+        params["effort"] = json!(settings.effort);
+        params["serviceTier"] = json!(settings.service_tier);
+    }
+    params
 }
 
 fn resolve_working_directory(
@@ -457,6 +505,65 @@ mod tests {
             filename: filename.to_string(),
             media_type: media_type.to_string(),
         }
+    }
+
+    #[test]
+    fn applies_selected_model_settings_to_the_turn() {
+        let settings = serde_json::from_value(json!({
+            "model": "gpt-5.6-terra",
+            "effort": "medium",
+            "serviceTier": null
+        }))
+        .unwrap();
+
+        assert_eq!(
+            turn_start_params(
+                "thread-1",
+                vec![json!({ "type": "text", "text": "Hello" })],
+                "/project",
+                Some(settings)
+            ),
+            json!({
+                "threadId": "thread-1",
+                "input": [{ "type": "text", "text": "Hello" }],
+                "cwd": "/project",
+                "approvalPolicy": "never",
+                "model": "gpt-5.6-terra",
+                "effort": "medium",
+                "serviceTier": null
+            })
+        );
+    }
+
+    #[test]
+    fn reads_the_model_catalog_contract() {
+        let model: Model = serde_json::from_value(json!({
+            "id": "gpt-5.6-terra",
+            "model": "gpt-5.6-terra",
+            "displayName": "GPT-5.6 Terra",
+            "description": "Balanced model",
+            "supportedReasoningEfforts": [{
+                "reasoningEffort": "medium",
+                "description": "Balanced reasoning"
+            }],
+            "defaultReasoningEffort": "medium",
+            "serviceTiers": [{
+                "id": "priority",
+                "name": "Fast",
+                "description": "Faster responses"
+            }],
+            "defaultServiceTier": null,
+            "isDefault": true
+        }))
+        .unwrap();
+
+        assert_eq!(model.model, "gpt-5.6-terra");
+        assert_eq!(
+            model.supported_reasoning_efforts[0].reasoning_effort,
+            "medium"
+        );
+        assert_eq!(model.service_tiers[0].id, "priority");
+        assert!(model.is_default);
     }
 
     #[test]

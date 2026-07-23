@@ -45,6 +45,31 @@ export interface CodexIntegrationStatus {
   detail: string | null;
 }
 
+export interface ReasoningEffort {
+  reasoningEffort: string;
+}
+
+export interface ServiceTier {
+  id: string;
+  name: string;
+}
+
+export interface Model {
+  model: string;
+  displayName: string;
+  supportedReasoningEfforts: ReasoningEffort[];
+  defaultReasoningEffort: string;
+  serviceTiers: ServiceTier[];
+  defaultServiceTier: string | null;
+  isDefault: boolean;
+}
+
+export interface ModelSettings {
+  model: string;
+  effort: string;
+  serviceTier: string | null;
+}
+
 export type ChatStreamEvent =
   | { type: 'started'; threadId: string }
   | { type: 'delta'; text: string }

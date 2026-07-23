@@ -5,6 +5,8 @@ import type {
   ChatStreamEvent,
   ChatTextResult,
   CodexIntegrationStatus,
+  Model,
+  ModelSettings,
   Project,
   ProjectSummary,
 } from '#/lib/types';
@@ -42,11 +44,13 @@ export const createLocalApi = (
     runPlugin: (pluginCall: unknown) => request<unknown>('run_plugin', { call: pluginCall }),
     codexIntegrationStatus: () => request<CodexIntegrationStatus>('codex_integration_status'),
     connectCodex: () => request<void>('connect_codex'),
+    listModels: () => request<Model[]>('list_codex_models'),
     streamChatText: (
       prompt: string,
       attachments: ChatAttachmentInput[],
       workingDirectory: string | undefined,
       threadId: string | undefined,
+      settings: ModelSettings | undefined,
       onEvent: (event: ChatStreamEvent) => void,
     ) =>
       request<ChatTextResult>('stream_codex_text', {
@@ -55,6 +59,7 @@ export const createLocalApi = (
           attachments,
           ...(workingDirectory ? { workingDirectory } : {}),
           ...(threadId ? { threadId } : {}),
+          ...(settings ? { settings } : {}),
         },
         onEvent: makeChannel(onEvent),
       }),

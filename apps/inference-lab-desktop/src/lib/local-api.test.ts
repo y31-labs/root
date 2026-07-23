@@ -35,6 +35,7 @@ describe('local API', () => {
 
     await api.codexIntegrationStatus();
     await api.connectCodex();
+    await api.listModels();
     await api.streamChatText(
       'Draft an intake flow',
       [
@@ -46,13 +47,15 @@ describe('local API', () => {
       ],
       '/Users/example/project',
       'thread-1',
+      { model: 'gpt-5.6-terra', effort: 'medium', serviceTier: 'priority' },
       onEvent,
     );
 
     expect(invoke).toHaveBeenNthCalledWith(1, 'codex_integration_status', undefined);
     expect(invoke).toHaveBeenNthCalledWith(2, 'connect_codex', undefined);
+    expect(invoke).toHaveBeenNthCalledWith(3, 'list_codex_models', undefined);
     expect(makeChannel).toHaveBeenCalledWith(onEvent);
-    expect(invoke).toHaveBeenNthCalledWith(3, 'stream_codex_text', {
+    expect(invoke).toHaveBeenNthCalledWith(4, 'stream_codex_text', {
       input: {
         prompt: 'Draft an intake flow',
         attachments: [
@@ -64,6 +67,11 @@ describe('local API', () => {
         ],
         workingDirectory: '/Users/example/project',
         threadId: 'thread-1',
+        settings: {
+          model: 'gpt-5.6-terra',
+          effort: 'medium',
+          serviceTier: 'priority',
+        },
       },
       onEvent: channel,
     });

@@ -9,6 +9,16 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatInput } from '#/components/prompt-input/chat-input';
+import type { ModelSettingsState } from '#/hooks/use-model-settings';
+
+const ignoreSelection = () => undefined;
+const modelSettings: ModelSettingsState = {
+  loading: false,
+  models: [],
+  selectEffort: ignoreSelection,
+  selectModel: ignoreSelection,
+  selectServiceTier: ignoreSelection,
+};
 
 beforeEach(() => {
   vi.spyOn(URL, 'createObjectURL').mockImplementation((object) => {
@@ -70,6 +80,7 @@ describe('PromptInput', () => {
 
     render(
       <ChatInput
+        modelSettings={modelSettings}
         pending={false}
         prompt=''
         onPromptChange={vi.fn()}
@@ -119,6 +130,7 @@ describe('PromptInput', () => {
     const onSubmit = vi.fn();
     render(
       <ChatInput
+        modelSettings={modelSettings}
         pending={false}
         prompt=''
         onPromptChange={vi.fn()}
@@ -153,11 +165,12 @@ describe('PromptInput', () => {
     );
   });
 
-  it('selects and displays the Codex working folder', () => {
+  it('selects and displays the working folder', () => {
     const onSelectWorkingDirectory = vi.fn();
 
     const { rerender } = render(
       <ChatInput
+        modelSettings={modelSettings}
         pending={false}
         prompt=''
         onPromptChange={vi.fn()}
@@ -171,6 +184,7 @@ describe('PromptInput', () => {
 
     rerender(
       <ChatInput
+        modelSettings={modelSettings}
         pending={false}
         prompt=''
         workingDirectory='/Users/example/inventory-tool'
