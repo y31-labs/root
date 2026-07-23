@@ -558,6 +558,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(model.model, "gpt-5.6-terra");
+        assert_eq!(model.display_name, "5.6 Terra");
         assert_eq!(
             model.supported_reasoning_efforts[0].reasoning_effort,
             "medium"

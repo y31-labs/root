@@ -1,4 +1,18 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+fn normalize_model_display_name(display_name: String) -> String {
+    display_name
+        .strip_prefix("GPT-")
+        .unwrap_or(&display_name)
+        .replace('-', " ")
+}
+
+fn deserialize_model_display_name<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    String::deserialize(deserializer).map(normalize_model_display_name)
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,6 +71,7 @@ pub(crate) struct ServiceTier {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Model {
     pub(super) model: String,
+    #[serde(deserialize_with = "deserialize_model_display_name")]
     pub(super) display_name: String,
     pub(super) supported_reasoning_efforts: Vec<ReasoningEffort>,
     pub(super) default_reasoning_effort: String,
@@ -82,4 +97,21 @@ pub(crate) enum CodexStreamEvent {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CodexTextResult {
     pub(super) thread_id: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_model_display_name;
+
+    #[test]
+    fn normalizes_model_display_names() {
+        assert_eq!(
+            normalize_model_display_name("GPT-5.6-Sol".to_string()),
+            "5.6 Sol"
+        );
+        assert_eq!(
+            normalize_model_display_name("Custom-Model".to_string()),
+            "Custom Model"
+        );
+    }
 }
