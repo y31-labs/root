@@ -1,18 +1,58 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
 
 import type {
-  AppSettings,
   ChatStreamEvent,
   ChatTextResult,
   CodexIntegrationStatus,
   Model,
   ModelSettings,
-  Project,
-  ProjectSummary,
 } from '#/lib/types';
 
 type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
 type ChannelFactory = <T>(onMessage: (message: T) => void) => unknown;
+type ProviderServiceTier = { id: 'priority'; name: 'Fast' };
+
+interface ProviderModel {
+  model: string;
+  displayName: string;
+  supportedReasoningEfforts: { reasoningEffort: string }[];
+  defaultReasoningEffort: string;
+  serviceTiers: ProviderServiceTier[];
+  defaultServiceTier: ProviderServiceTier['id'] | null;
+  isDefault: boolean;
+}
+
+interface ProviderModelSettings {
+  model: string;
+  effort: string;
+  serviceTier: 'priority' | null;
+}
+
+const toModelSpeed = (serviceTier: ProviderServiceTier['id'] | null): string =>
+  serviceTier === 'priority' ? 'fast' : 'standard';
+
+const toModel = (model: ProviderModel): Model => ({
+  model: model.model,
+  displayName: model.displayName,
+  reason: {
+    options: model.supportedReasoningEfforts.map((option) => option.reasoningEffort),
+    default: model.defaultReasoningEffort,
+  },
+  speed: {
+    options: model.serviceTiers.some((tier) => tier.id === 'priority')
+      ? ['standard', 'fast']
+      : ['standard'],
+    default: toModelSpeed(model.defaultServiceTier),
+  },
+  isDefault: model.isDefault,
+});
+
+const toProviderModelSettings = (settings: ModelSettings): ProviderModelSettings => ({
+  model: settings.model,
+  effort: settings.reason,
+  serviceTier: settings.speed === 'fast' ? 'priority' : null,
+});
+
 export interface ChatAttachmentInput {
   dataUrl: string;
   filename: string;
@@ -30,21 +70,10 @@ export const createLocalApi = (
     call(command, args) as Promise<T>;
 
   return {
-    listProjects: () => request<ProjectSummary[]>('list_projects'),
-    getProject: (projectId: string) => request<Project | null>('get_project', { projectId }),
-    createProject: (brief: string) => request<Project>('create_project', { brief }),
-    generateProjectRevision: (projectId: string, instruction: string, baseVersionId?: string) =>
-      request<Project>('generate_project_revision', {
-        input: { projectId, instruction, ...(baseVersionId ? { baseVersionId } : {}) },
-      }),
-    deleteProject: (projectId: string) => request<void>('delete_project', { projectId }),
-    getSettings: () => request<AppSettings>('get_settings'),
-    saveSettings: (settings: AppSettings) =>
-      request<AppSettings>('save_settings', { input: settings }),
-    runPlugin: (pluginCall: unknown) => request<unknown>('run_plugin', { call: pluginCall }),
     codexIntegrationStatus: () => request<CodexIntegrationStatus>('codex_integration_status'),
     connectCodex: () => request<void>('connect_codex'),
-    listModels: () => request<Model[]>('list_codex_models'),
+    listModels: () =>
+      request<ProviderModel[]>('list_codex_models').then((models) => models.map(toModel)),
     streamChatText: (
       prompt: string,
       attachments: ChatAttachmentInput[],
@@ -59,7 +88,7 @@ export const createLocalApi = (
           attachments,
           ...(workingDirectory ? { workingDirectory } : {}),
           ...(threadId ? { threadId } : {}),
-          ...(settings ? { settings } : {}),
+          ...(settings ? { settings: toProviderModelSettings(settings) } : {}),
         },
         onEvent: makeChannel(onEvent),
       }),

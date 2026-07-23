@@ -4,13 +4,10 @@ import { DesktopLogger, sanitizeLogEvent } from '#/lib/logging';
 
 describe('desktop logging', () => {
   it('is a no-op without a configured client', async () => {
-    const installationId = vi.fn(async () => 'installation-1');
-    await new DesktopLogger(undefined, installationId).write({
+    await new DesktopLogger().write({
       level: 'info',
       message: 'application started',
     });
-
-    expect(installationId).not.toHaveBeenCalled();
   });
 
   it('filters messages and attributes to metadata allowlists', () => {
@@ -38,12 +35,9 @@ describe('desktop logging', () => {
     ).toBeUndefined();
   });
 
-  it('enriches records with the installation id and application context', async () => {
+  it('enriches records with application context', async () => {
     const info = vi.fn();
-    const logger = new DesktopLogger(
-      { logger: { info, warn: vi.fn(), error: vi.fn() } },
-      async () => 'installation-1',
-    );
+    const logger = new DesktopLogger({ logger: { info, warn: vi.fn(), error: vi.fn() } });
 
     await logger.write({
       level: 'info',
@@ -54,17 +48,13 @@ describe('desktop logging', () => {
     expect(info).toHaveBeenCalledWith('application started', {
       application: 'code-desktop',
       source: 'frontend',
-      installationId: 'installation-1',
       operation: 'startup',
     });
   });
 
   it('accepts sanitized engine event payloads', async () => {
     const error = vi.fn();
-    const logger = new DesktopLogger(
-      { logger: { info: vi.fn(), warn: vi.fn(), error } },
-      async () => 'installation-1',
-    );
+    const logger = new DesktopLogger({ logger: { info: vi.fn(), warn: vi.fn(), error } });
 
     await logger.write({
       level: 'error',
@@ -80,7 +70,6 @@ describe('desktop logging', () => {
     expect(error).toHaveBeenCalledWith('codex request failed', {
       application: 'code-desktop',
       source: 'engine',
-      installationId: 'installation-1',
       operation: 'turn/start',
       errorCategory: 'timeout',
     });

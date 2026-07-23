@@ -17,36 +17,11 @@ import { Zap } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
 import type { ModelSettingsState } from '#/hooks/use-model-settings';
+import type { Model } from '#/lib/types';
 
-const STANDARD_SERVICE_TIER = '__standard__';
-
-interface ModelSelectDropdownProps {
-  disabled?: boolean;
-  modelSettings: ModelSettingsState;
-}
-
-interface MenuOption {
-  description?: string;
-  label: string;
-  value: string;
-}
-
-interface Menu {
-  id: 'model' | 'effort' | 'speed';
-  label: string;
-  options: MenuOption[];
-  selectedLabel: string;
-  value: string;
-  onValueChange: (value: string) => void;
-}
-
-type ModelSelectTriggerProps = ComponentProps<typeof Button> & {
-  fast: boolean;
-  modelLabel: string;
-  reasoningLabel?: string;
-};
-
-const effortLabels: Record<string, string> = {
+const reasonLabels: Record<string, string> = {
+  none: 'None',
+  minimal: 'Minimal',
   low: 'Light',
   medium: 'Medium',
   high: 'High',
@@ -55,7 +30,161 @@ const effortLabels: Record<string, string> = {
   ultra: 'Ultra',
 };
 
-const formatEffort = (effort: string) => effortLabels[effort] ?? effort;
+const formatReason = (reason: string) => reasonLabels[reason] ?? reason;
+
+const hasReasoning = (model: Model) => model.reason.options.some((reason) => reason !== 'none');
+
+const getReason = (model: Model, value: string) =>
+  model.reason.options.find((reason) => reason === value);
+
+const getSpeed = (model: Model, value: string) =>
+  model.speed.options.find((speed) => speed === value);
+
+interface ModelSelectDropdownProps {
+  disabled?: boolean;
+  modelSettings: ModelSettingsState;
+}
+
+export function ModelSelectDropdown({
+  disabled,
+  modelSettings: {
+    catalogError,
+    loading,
+    models,
+    selectedModel,
+    settings,
+    selectReason,
+    selectModel,
+    selectSpeed,
+  },
+}: ModelSelectDropdownProps) {
+  const selectModelReason = (model: Model, reason: string) => {
+    if (settings?.model !== model.model) selectModel(model.model);
+    selectReason(reason);
+  };
+
+  const selectModelSpeed = (model: Model, speed: string) => {
+    if (settings?.model !== model.model) selectModel(model.model);
+    selectSpeed(speed);
+  };
+
+  if (loading) return null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <ModelSelectTrigger
+            disabled={disabled}
+            fast={settings?.speed === 'fast'}
+            modelLabel={selectedModel?.displayName ?? 'Unkown'}
+            reasoningLabel={settings && formatReason(settings.reason)}
+          />
+        }
+      />
+      <DropdownMenuContent
+        side='top'
+        align='start'
+        className='w-56 rounded-md border bg-popover shadow-md ring-0 before:hidden'
+      >
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>ChatGPT</DropdownMenuLabel>
+          {models.map((model) => {
+            const isSelected = model.model === settings?.model;
+            const reason = isSelected ? settings.reason : model.reason.default;
+            const speed = isSelected ? settings.speed : model.speed.default;
+            const showReasoning = hasReasoning(model);
+            const showSpeed = model.speed.options.length > 1;
+
+            return (
+              <DropdownMenuSub key={model.model}>
+                <DropdownMenuSubTrigger
+                  className={
+                    isSelected
+                      ? 'text-foreground'
+                      : 'text-muted-foreground focus:text-foreground data-highlighted:text-foreground data-popup-open:text-foreground'
+                  }
+                  onClick={() => {
+                    if (!isSelected) selectModel(model.model);
+                  }}
+                >
+                  <span>{model.displayName}</span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent
+                  side='right'
+                  sideOffset={4}
+                  align='start'
+                  className='w-72 rounded-md border bg-popover shadow-md ring-0 before:hidden'
+                >
+                  {showReasoning && (
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>Reasoning</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={reason}
+                        onValueChange={(value) => {
+                          const selectedReason = getReason(model, value);
+                          if (selectedReason) selectModelReason(model, selectedReason);
+                        }}
+                      >
+                        {model.reason.options.map((option) => (
+                          <DropdownMenuRadioItem key={option} value={option}>
+                            {formatReason(option)}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuGroup>
+                  )}
+                  {showSpeed && (
+                    <>
+                      {showReasoning && <DropdownMenuSeparator />}
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel>Speed</DropdownMenuLabel>
+                        <DropdownMenuRadioGroup
+                          value={speed}
+                          onValueChange={(value) => {
+                            const selectedSpeed = getSpeed(model, value);
+                            if (selectedSpeed) selectModelSpeed(model, selectedSpeed);
+                          }}
+                        >
+                          {model.speed.options.map((option) => (
+                            <DropdownMenuRadioItem key={option} value={option}>
+                              <span className='grid'>
+                                <span>{option === 'fast' ? 'Fast' : 'Standard'}</span>
+                                {option === 'fast' && (
+                                  <span className='text-xs text-muted-foreground'>
+                                    1.5x faster, higher usage
+                                  </span>
+                                )}
+                              </span>
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuGroup>
+                    </>
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            );
+          })}
+          {!loading && models.length === 0 && (
+            <DropdownMenuItem disabled>{catalogError ?? 'No models available'}</DropdownMenuItem>
+          )}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>API</DropdownMenuLabel>
+          <DropdownMenuItem disabled>Coming soon</DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+interface ModelSelectTriggerProps extends ComponentProps<typeof Button> {
+  fast: boolean;
+  modelLabel: string;
+  reasoningLabel?: string;
+}
 
 function ModelSelectTrigger({
   fast,
@@ -82,124 +211,5 @@ function ModelSelectTrigger({
       <span className='text-foreground'>{modelLabel}</span>
       {reasoningLabel && <span className='text-muted-foreground'>{reasoningLabel}</span>}
     </Button>
-  );
-}
-
-export function ModelSelectDropdown({
-  disabled,
-  modelSettings: {
-    catalogError,
-    loading,
-    models,
-    selectedModel,
-    settings,
-    selectEffort,
-    selectModel,
-    selectServiceTier,
-  },
-}: ModelSelectDropdownProps) {
-  const selectedServiceTier = selectedModel?.serviceTiers.find(
-    (tier) => tier.id === settings?.serviceTier,
-  );
-  const menus: Menu[] =
-    selectedModel && settings
-      ? [
-          {
-            id: 'model',
-            label: 'Model',
-            options: models.map((model) => ({ label: model.displayName, value: model.model })),
-            selectedLabel: selectedModel.displayName,
-            value: selectedModel.model,
-            onValueChange: selectModel,
-          },
-          {
-            id: 'effort',
-            label: 'Effort',
-            options: selectedModel.supportedReasoningEfforts.map((option) => ({
-              label: formatEffort(option.reasoningEffort),
-              value: option.reasoningEffort,
-            })),
-            selectedLabel: formatEffort(settings.effort),
-            value: settings.effort,
-            onValueChange: selectEffort,
-          },
-          {
-            id: 'speed',
-            label: 'Speed',
-            options: [
-              { label: 'Standard', value: STANDARD_SERVICE_TIER },
-              ...selectedModel.serviceTiers.map((tier) => ({
-                description: tier.name === 'Fast' ? '1.5x faster, higher usage' : undefined,
-                label: tier.name,
-                value: tier.id,
-              })),
-            ],
-            selectedLabel: selectedServiceTier?.name ?? 'Standard',
-            value: settings.serviceTier ?? STANDARD_SERVICE_TIER,
-            onValueChange: (serviceTier) =>
-              selectServiceTier(serviceTier === STANDARD_SERVICE_TIER ? null : serviceTier),
-          },
-        ]
-      : [];
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <ModelSelectTrigger
-            disabled={disabled}
-            fast={selectedServiceTier?.name === 'Fast'}
-            modelLabel={selectedModel?.displayName ?? (loading ? 'Loading models' : 'Models')}
-            reasoningLabel={settings ? formatEffort(settings.effort) : undefined}
-          />
-        }
-      />
-      <DropdownMenuContent
-        side='top'
-        align='start'
-        className='w-56 rounded-md border bg-popover shadow-md ring-0 before:hidden'
-      >
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Models</DropdownMenuLabel>
-          {menus.map((menu) => (
-            <DropdownMenuSub key={menu.id}>
-              <DropdownMenuSubTrigger className='grid grid-cols-[1fr_auto_auto] gap-2'>
-                <span>{menu.label}</span>
-                <span className='text-muted-foreground'>{menu.selectedLabel}</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent
-                side='right'
-                sideOffset={4}
-                align='start'
-                className='w-56 rounded-md border bg-popover shadow-md ring-0 before:hidden'
-              >
-                <DropdownMenuRadioGroup value={menu.value} onValueChange={menu.onValueChange}>
-                  {menu.options.map((option) => (
-                    <DropdownMenuRadioItem key={option.value} value={option.value}>
-                      <span className='grid'>
-                        <span>{option.label}</span>
-                        {option.description && (
-                          <span className='text-xs text-muted-foreground'>
-                            {option.description}
-                          </span>
-                        )}
-                      </span>
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          ))}
-          {!loading && menus.length === 0 && (
-            <DropdownMenuItem disabled>{catalogError ?? 'No models available'}</DropdownMenuItem>
-          )}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>API</DropdownMenuLabel>
-          <DropdownMenuItem disabled>Coming soon</DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

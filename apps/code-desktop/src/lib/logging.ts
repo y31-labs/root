@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import posthog from 'posthog-js';
 
@@ -45,7 +44,6 @@ const allowedAttributeKeys = new Set([
   'exitCode',
   'gate',
   'hasLocalPatch',
-  'installationId',
   'operation',
   'provider',
   'required',
@@ -79,13 +77,7 @@ export function errorCategory(error: unknown) {
 }
 
 export class DesktopLogger {
-  private installationId?: Promise<string | undefined>;
-
-  constructor(
-    private readonly client?: LogClient,
-    private readonly getInstallationId: () => Promise<string> = () =>
-      invoke<string>('installation_id'),
-  ) {}
+  constructor(private readonly client?: LogClient) {}
 
   info(message: string, attributes?: LogAttributes) {
     void this.write({ level: 'info', message, attributes });
@@ -103,14 +95,11 @@ export class DesktopLogger {
     if (!this.client) return;
     const sanitized = sanitizeLogEvent(event);
     if (!sanitized) return;
-    this.installationId ??= this.getInstallationId().catch(() => undefined);
-    const installationId = await this.installationId;
     try {
       this.client.logger[sanitized.level](sanitized.message, {
         application: 'code-desktop',
         source: 'frontend',
         ...sanitized.attributes,
-        ...(installationId ? { installationId } : {}),
       });
     } catch {
       // Observability must never affect application behavior.

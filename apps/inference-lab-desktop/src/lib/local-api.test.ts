@@ -3,31 +3,36 @@ import { describe, expect, it, vi } from 'vitest';
 import { createLocalApi } from '#/lib/local-api';
 
 describe('local API', () => {
-  it('maps project and generation calls to structured Tauri commands', async () => {
-    const invoke = vi.fn(async () => undefined);
-    const api = createLocalApi(invoke);
-
-    await api.createProject('Coordinate the monthly vendor review');
-    await api.generateProjectRevision('project-1', 'Show overdue owners first', 'version-1');
-    await api.saveSettings({ inferenceServiceUrl: 'https://y31.example.com' });
-
-    expect(invoke).toHaveBeenNthCalledWith(1, 'create_project', {
-      brief: 'Coordinate the monthly vendor review',
-    });
-    expect(invoke).toHaveBeenNthCalledWith(2, 'generate_project_revision', {
-      input: {
-        projectId: 'project-1',
-        instruction: 'Show overdue owners first',
-        baseVersionId: 'version-1',
+  it('maps provider model fields to reason and speed', async () => {
+    const invoke = vi.fn(async () => [
+      {
+        model: 'gpt-5.6-terra',
+        displayName: 'GPT-5.6 Terra',
+        supportedReasoningEfforts: [{ reasoningEffort: 'low' }, { reasoningEffort: 'medium' }],
+        defaultReasoningEffort: 'medium',
+        serviceTiers: [{ id: 'priority', name: 'Fast' }],
+        defaultServiceTier: null,
+        isDefault: true,
       },
-    });
-    expect(invoke).toHaveBeenNthCalledWith(3, 'save_settings', {
-      input: { inferenceServiceUrl: 'https://y31.example.com' },
-    });
+    ]);
+
+    const models = await createLocalApi(invoke).listModels();
+
+    expect(models).toEqual([
+      {
+        model: 'gpt-5.6-terra',
+        displayName: 'GPT-5.6 Terra',
+        reason: { options: ['low', 'medium'], default: 'medium' },
+        speed: { options: ['standard', 'fast'], default: 'standard' },
+        isDefault: true,
+      },
+    ]);
   });
 
   it('passes chat text updates through a Tauri channel', async () => {
-    const invoke = vi.fn(async () => ({ threadId: 'thread-1' }));
+    const invoke = vi.fn(async (command: string) =>
+      command === 'list_codex_models' ? [] : { threadId: 'thread-1' },
+    );
     const channel = { id: 'channel-1' };
     const makeChannel = vi.fn(() => channel);
     const onEvent = vi.fn();
@@ -47,7 +52,7 @@ describe('local API', () => {
       ],
       '/Users/example/project',
       'thread-1',
-      { model: 'gpt-5.6-terra', effort: 'medium', serviceTier: 'priority' },
+      { model: 'gpt-5.6-terra', reason: 'medium', speed: 'fast' },
       onEvent,
     );
 

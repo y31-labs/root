@@ -6,21 +6,18 @@ const findDefaultModel = (models: Model[]) =>
   models.find(({ isDefault }) => isDefault) ?? models[0];
 
 const settingsForModel = (model: Model, currentSettings?: ModelSettings): ModelSettings => {
-  const currentEffort = currentSettings?.effort;
-  const effort =
-    currentEffort !== undefined &&
-    model.supportedReasoningEfforts.some((option) => option.reasoningEffort === currentEffort)
-      ? currentEffort
-      : model.defaultReasoningEffort;
-  const currentServiceTier = currentSettings?.serviceTier;
-  const serviceTier =
-    currentServiceTier === null ||
-    (currentServiceTier !== undefined &&
-      model.serviceTiers.some((tier) => tier.id === currentServiceTier))
-      ? currentServiceTier
-      : model.defaultServiceTier;
+  const currentReason = currentSettings?.reason;
+  const reason =
+    currentReason !== undefined && model.reason.options.includes(currentReason)
+      ? currentReason
+      : model.reason.default;
+  const currentSpeed = currentSettings?.speed;
+  const speed =
+    currentSpeed !== undefined && model.speed.options.includes(currentSpeed)
+      ? currentSpeed
+      : model.speed.default;
 
-  return { model: model.model, effort, serviceTier };
+  return { model: model.model, reason, speed };
 };
 
 export interface ModelSettingsState {
@@ -29,9 +26,9 @@ export interface ModelSettingsState {
   models: Model[];
   selectedModel?: Model;
   settings?: ModelSettings;
-  selectEffort: (effort: string) => void;
+  selectReason: (reason: string) => void;
   selectModel: (model: string) => void;
-  selectServiceTier: (serviceTier: string | null) => void;
+  selectSpeed: (speed: string) => void;
 }
 
 export const useModelSettings = (loadModels: () => Promise<Model[]>): ModelSettingsState => {
@@ -82,36 +79,27 @@ export const useModelSettings = (loadModels: () => Promise<Model[]>): ModelSetti
     [models],
   );
 
-  const selectEffort = useCallback(
-    (effort: string) => {
+  const selectReason = useCallback(
+    (reason: string) => {
       setSettings((currentSettings) => {
         const selectedModel = models.find((model) => model.model === currentSettings?.model);
-        if (
-          !currentSettings ||
-          !selectedModel?.supportedReasoningEfforts.some(
-            (option) => option.reasoningEffort === effort,
-          )
-        ) {
+        if (!currentSettings || !selectedModel?.reason.options.includes(reason)) {
           return currentSettings;
         }
-        return { ...currentSettings, effort };
+        return { ...currentSettings, reason };
       });
     },
     [models],
   );
 
-  const selectServiceTier = useCallback(
-    (serviceTier: string | null) => {
+  const selectSpeed = useCallback(
+    (speed: string) => {
       setSettings((currentSettings) => {
         const selectedModel = models.find((model) => model.model === currentSettings?.model);
-        if (
-          !currentSettings ||
-          (serviceTier !== null &&
-            !selectedModel?.serviceTiers.some((tier) => tier.id === serviceTier))
-        ) {
+        if (!currentSettings || !selectedModel?.speed.options.includes(speed)) {
           return currentSettings;
         }
-        return { ...currentSettings, serviceTier };
+        return { ...currentSettings, speed };
       });
     },
     [models],
@@ -123,8 +111,8 @@ export const useModelSettings = (loadModels: () => Promise<Model[]>): ModelSetti
     models,
     selectedModel: models.find((model) => model.model === settings?.model),
     settings,
-    selectEffort,
+    selectReason,
     selectModel,
-    selectServiceTier,
+    selectSpeed,
   };
 };
