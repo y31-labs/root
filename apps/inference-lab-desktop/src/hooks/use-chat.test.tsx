@@ -18,7 +18,9 @@ describe('useChat', () => {
     const request = new Promise<unknown>((resolve) => {
       resolveRequest = resolve;
     });
-    const invoke = vi.fn(() => request);
+    const invoke = vi.fn((command: string) =>
+      command === 'resolve_codex_approval' ? Promise.resolve() : request,
+    );
     const api = createLocalApi(invoke, (onMessage) => {
       emit = onMessage as (event: ChatStreamEvent) => void;
       return { id: 'channel-1' };
@@ -31,6 +33,7 @@ describe('useChat', () => {
     const { result } = renderHook(
       () =>
         useChat({
+          permissionMode: 'workspace-write',
           settings: {
             model: 'gpt-5.6-terra',
             effort: 'medium',
@@ -77,6 +80,46 @@ describe('useChat', () => {
     act(() => emit?.({ type: 'delta', text: 'Done' }));
     expect(result.current.messages[1]).toMatchObject({ streaming: true, text: 'Done' });
 
+    act(() =>
+      emit?.({
+        type: 'approval',
+        requestId: 42,
+        method: 'item/commandExecution/requestApproval',
+        title: 'Allow command?',
+        detail: 'bun test',
+      }),
+    );
+    expect(result.current.messages[1]).toMatchObject({
+      approvals: [
+        {
+          requestId: 42,
+          method: 'item/commandExecution/requestApproval',
+          title: 'Allow command?',
+          detail: 'bun test',
+          status: 'pending',
+        },
+      ],
+    });
+
+    act(() =>
+      result.current.resolveApproval(
+        42,
+        'item/commandExecution/requestApproval',
+        'acceptForSession',
+      ),
+    );
+    await waitFor(() =>
+      expect(result.current.messages[1]?.approvals?.[0]).toMatchObject({
+        decision: 'acceptForSession',
+        status: 'resolved',
+      }),
+    );
+    expect(invoke).toHaveBeenCalledWith('resolve_codex_approval', {
+      requestId: 42,
+      method: 'item/commandExecution/requestApproval',
+      decision: 'acceptForSession',
+    });
+
     act(() => resolveRequest({ threadId: 'thread-1' }));
     await waitFor(() => expect(result.current.pending).toBe(false));
 
@@ -96,6 +139,7 @@ describe('useChat', () => {
           effort: 'medium',
           speed: 'standard',
         },
+        permissionMode: 'workspace-write',
         workingDirectory: '/Users/example/project',
       },
       onEvent: { id: 'channel-1' },

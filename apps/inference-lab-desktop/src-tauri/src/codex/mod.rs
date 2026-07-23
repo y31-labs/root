@@ -15,15 +15,15 @@ use stream::stream_turn;
 use tauri::{ipc::Channel, State};
 use tokio::sync::broadcast;
 use types::{
-    CodexAttachmentInput, CodexIntegrationStatus, CodexStreamEvent, CodexTextInput,
-    CodexTextResult, Model, ModelSettings, ModelSpeed,
+    CodexApprovalDecision, CodexAttachmentInput, CodexIntegrationStatus, CodexStreamEvent,
+    CodexTextInput, CodexTextResult, Model, ModelSettings, ModelSpeed, PermissionMode,
 };
 
 use crate::AppState;
 
 const CHAT_INSTRUCTIONS: &str = r#"You are the text assistant inside y31, an application for exploring and shaping internal tools and workflows.
 
-Respond directly to the user's request in clear plain text. For now, provide text only and do not create HTML or modify files. You may use read-only tools to inspect the selected working folder and files explicitly attached by the user. Keep the response focused and useful."#;
+Respond directly to the user's request in clear plain text. You may use tools to inspect and, when the active permission setting allows it, modify the selected working folder. Respect approval decisions and keep the response focused and useful."#;
 const MAX_ATTACHMENTS: usize = 4;
 const MAX_ATTACHMENT_DATA_URL_LENGTH: usize = 14_000_000;
 
@@ -160,13 +160,16 @@ pub(crate) async fn stream_codex_text(
     if prompt.chars().count() > 20_000 {
         return Err("The message is too long. Keep it under 20,000 characters.".to_string());
     }
+    if input.permission_mode.requires_working_directory() && input.working_directory.is_none() {
+        return Err("Select a working folder before granting write access.".to_string());
+    }
     validate_attachments(&input.attachments)?;
 
     require_chatgpt_account(&state).await?;
     let mut notifications = notifications(&state).await?;
     let cwd = resolve_working_directory(input.working_directory.as_deref(), &state.data_dir)?;
     let resumed = input.thread_id.is_some();
-    let thread_id = open_thread(&state, input.thread_id, &cwd).await?;
+    let thread_id = open_thread(&state, input.thread_id, &cwd, input.permission_mode).await?;
     let PreparedTurnInput {
         input: turn_input,
         attachment_dir,
@@ -181,7 +184,13 @@ pub(crate) async fn stream_codex_text(
         return Err(error);
     }
 
-    let turn_params = turn_start_params(&thread_id, turn_input, &cwd, input.settings);
+    let turn_params = turn_start_params(
+        &thread_id,
+        turn_input,
+        &cwd,
+        input.settings,
+        input.permission_mode,
+    );
 
     let turn_id = match request(&state, "turn/start", turn_params)
         .await
@@ -223,6 +232,37 @@ pub(crate) async fn stream_codex_text(
     Ok(CodexTextResult { thread_id })
 }
 
+#[tauri::command]
+pub(crate) async fn resolve_codex_approval(
+    state: State<'_, AppState>,
+    request_id: Value,
+    method: String,
+    decision: CodexApprovalDecision,
+) -> Result<(), String> {
+    if !request_id.is_string() && !request_id.is_i64() && !request_id.is_u64() {
+        return Err("Codex returned an invalid approval request id".to_string());
+    }
+    let result = approval_result(&method, decision)?;
+    let mut guard = state.codex.lock().await;
+    let client = guard
+        .as_mut()
+        .ok_or_else(|| "The Codex session is no longer available".to_string())?;
+    if let Err(error) = client.respond(request_id, result).await {
+        *guard = None;
+        return Err(error);
+    }
+    Ok(())
+}
+
+fn approval_result(method: &str, decision: CodexApprovalDecision) -> Result<Value, String> {
+    match method {
+        "item/commandExecution/requestApproval" | "item/fileChange/requestApproval" => {
+            Ok(json!({ "decision": decision }))
+        }
+        _ => Err(format!("Unsupported approval request: {method}")),
+    }
+}
+
 fn validate_attachments(attachments: &[CodexAttachmentInput]) -> Result<(), String> {
     if attachments.len() > MAX_ATTACHMENTS {
         return Err(format!("Attach no more than {MAX_ATTACHMENTS} files."));
@@ -245,12 +285,15 @@ fn turn_start_params(
     input: Vec<Value>,
     cwd: &str,
     settings: Option<ModelSettings>,
+    permission_mode: PermissionMode,
 ) -> Value {
     let mut params = json!({
         "threadId": thread_id,
         "input": input,
         "cwd": cwd,
-        "approvalPolicy": "never"
+        "runtimeWorkspaceRoots": [cwd],
+        "approvalPolicy": permission_mode.approval_policy(),
+        "approvalsReviewer": "user"
     });
     if let Some(settings) = settings {
         params["model"] = json!(settings.model);
@@ -401,6 +444,7 @@ async fn open_thread(
     state: &AppState,
     thread_id: Option<String>,
     cwd: &str,
+    permission_mode: PermissionMode,
 ) -> Result<String, String> {
     let response = match thread_id {
         Some(thread_id) => {
@@ -410,8 +454,10 @@ async fn open_thread(
                 json!({
                     "threadId": thread_id,
                     "cwd": cwd,
-                    "approvalPolicy": "never",
-                    "sandbox": "read-only"
+                    "runtimeWorkspaceRoots": [cwd],
+                    "approvalPolicy": permission_mode.approval_policy(),
+                    "approvalsReviewer": "user",
+                    "sandbox": permission_mode.sandbox()
                 }),
             )
             .await?
@@ -422,8 +468,10 @@ async fn open_thread(
                 "thread/start",
                 json!({
                     "cwd": cwd,
-                    "approvalPolicy": "never",
-                    "sandbox": "read-only",
+                    "runtimeWorkspaceRoots": [cwd],
+                    "approvalPolicy": permission_mode.approval_policy(),
+                    "approvalsReviewer": "user",
+                    "sandbox": permission_mode.sandbox(),
                     "developerInstructions": CHAT_INSTRUCTIONS,
                     "serviceName": "y31-desktop"
                 }),
@@ -524,13 +572,16 @@ mod tests {
                 "thread-1",
                 vec![json!({ "type": "text", "text": "Hello" })],
                 "/project",
-                Some(settings)
+                Some(settings),
+                PermissionMode::ReadOnly,
             ),
             json!({
                 "threadId": "thread-1",
                 "input": [{ "type": "text", "text": "Hello" }],
                 "cwd": "/project",
+                "runtimeWorkspaceRoots": ["/project"],
                 "approvalPolicy": "never",
+                "approvalsReviewer": "user",
                 "model": "gpt-5.6-terra",
                 "effort": "medium",
                 "serviceTier": null
@@ -547,10 +598,64 @@ mod tests {
         }))
         .unwrap();
 
-        let params = turn_start_params("thread-1", Vec::new(), "/project", Some(settings));
+        let params = turn_start_params(
+            "thread-1",
+            Vec::new(),
+            "/project",
+            Some(settings),
+            PermissionMode::ReadOnly,
+        );
 
         assert_eq!(params["effort"], "high");
         assert_eq!(params["serviceTier"], "priority");
+    }
+
+    #[test]
+    fn maps_permission_modes_to_sandbox_and_approval_policies() {
+        assert_eq!(PermissionMode::ReadOnly.sandbox(), "read-only");
+        assert_eq!(PermissionMode::ReadOnly.approval_policy(), "never");
+        assert!(!PermissionMode::ReadOnly.requires_working_directory());
+        assert_eq!(PermissionMode::WorkspaceWrite.sandbox(), "workspace-write");
+        assert_eq!(
+            PermissionMode::WorkspaceWrite.approval_policy(),
+            "on-request"
+        );
+        assert!(PermissionMode::WorkspaceWrite.requires_working_directory());
+        assert_eq!(
+            PermissionMode::DangerFullAccess.sandbox(),
+            "danger-full-access"
+        );
+        assert_eq!(PermissionMode::DangerFullAccess.approval_policy(), "never");
+
+        let params = turn_start_params(
+            "thread-1",
+            Vec::new(),
+            "/project",
+            None,
+            PermissionMode::WorkspaceWrite,
+        );
+        assert_eq!(params["approvalPolicy"], "on-request");
+        assert_eq!(params["approvalsReviewer"], "user");
+    }
+
+    #[test]
+    fn builds_supported_approval_responses() {
+        assert_eq!(
+            approval_result(
+                "item/commandExecution/requestApproval",
+                CodexApprovalDecision::AcceptForSession,
+            )
+            .unwrap(),
+            json!({ "decision": "acceptForSession" })
+        );
+        assert_eq!(
+            approval_result(
+                "item/fileChange/requestApproval",
+                CodexApprovalDecision::Decline,
+            )
+            .unwrap(),
+            json!({ "decision": "decline" })
+        );
     }
 
     #[test]

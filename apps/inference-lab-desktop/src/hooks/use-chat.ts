@@ -2,15 +2,22 @@ import type { PromptInputMessage } from '@workspace/ui/components/ai-elements/pr
 import { useRef, useState } from 'react';
 
 import type { ChatMessage } from '#/components/home/conversation';
-import type { ChatStreamEvent, ModelSettings } from '#/lib/types';
+import type {
+  ChatStreamEvent,
+  CodexApprovalDecision,
+  CodexApprovalMethod,
+  ModelSettings,
+  PermissionMode,
+} from '#/lib/types';
 import { useLocalApi } from '#/providers/local-api-provider';
 
 interface UseChatOptions {
+  permissionMode: PermissionMode;
   workingDirectory?: string;
   settings?: ModelSettings;
 }
 
-export const useChat = ({ settings, workingDirectory }: UseChatOptions) => {
+export const useChat = ({ permissionMode, settings, workingDirectory }: UseChatOptions) => {
   const api = useLocalApi();
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -45,6 +52,22 @@ export const useChat = ({ settings, workingDirectory }: UseChatOptions) => {
         threadId.current = streamEvent.threadId;
         return;
       }
+      if (streamEvent.type === 'approval') {
+        setMessages((current) =>
+          current.map((message) => {
+            if (message.id !== assistantId) return message;
+            const approvals = message.approvals ?? [];
+            if (approvals.some((approval) => approval.requestId === streamEvent.requestId)) {
+              return message;
+            }
+            return {
+              ...message,
+              approvals: [...approvals, { ...streamEvent, status: 'pending' }],
+            };
+          }),
+        );
+        return;
+      }
       setMessages((current) =>
         current.map((message) => {
           if (message.id !== assistantId) return message;
@@ -68,6 +91,7 @@ export const useChat = ({ settings, workingDirectory }: UseChatOptions) => {
           workingDirectory,
           threadId.current,
           settings,
+          permissionMode,
           handleEvent,
         );
         threadId.current = result.threadId;
@@ -90,7 +114,35 @@ export const useChat = ({ settings, workingDirectory }: UseChatOptions) => {
     })();
   };
 
-  return { messages, pending, prompt, setPrompt, submitPrompt };
+  const resolveApproval = (
+    requestId: string | number,
+    method: CodexApprovalMethod,
+    decision: CodexApprovalDecision,
+  ) => {
+    updateApproval(requestId, { error: undefined, status: 'submitting' });
+    void api
+      .resolveCodexApproval(requestId, method, decision)
+      .then(() => updateApproval(requestId, { decision, status: 'resolved' }))
+      .catch((error: unknown) =>
+        updateApproval(requestId, { error: errorMessage(error), status: 'pending' }),
+      );
+  };
+
+  const updateApproval = (
+    requestId: string | number,
+    update: Partial<NonNullable<ChatMessage['approvals']>[number]>,
+  ) => {
+    setMessages((current) =>
+      current.map((message) => ({
+        ...message,
+        approvals: message.approvals?.map((approval) =>
+          approval.requestId === requestId ? { ...approval, ...update } : approval,
+        ),
+      })),
+    );
+  };
+
+  return { messages, pending, prompt, resolveApproval, setPrompt, submitPrompt };
 };
 
 const errorMessage = (error: unknown) =>

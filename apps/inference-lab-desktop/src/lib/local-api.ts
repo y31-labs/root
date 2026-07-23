@@ -1,12 +1,15 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
 
 import type {
+  CodexApprovalDecision,
+  CodexApprovalMethod,
   ChatStreamEvent,
   ChatTextResult,
   CodexIntegrationStatus,
   Model,
   ModelSettings,
   ModelSpeed,
+  PermissionMode,
 } from '#/lib/types';
 
 type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -69,6 +72,7 @@ export const createLocalApi = (
       workingDirectory: string | undefined,
       threadId: string | undefined,
       settings: ModelSettings | undefined,
+      permissionMode: PermissionMode,
       onEvent: (event: ChatStreamEvent) => void,
     ) =>
       request<ChatTextResult>('stream_codex_text', {
@@ -78,9 +82,15 @@ export const createLocalApi = (
           ...(workingDirectory ? { workingDirectory } : {}),
           ...(threadId ? { threadId } : {}),
           ...(settings ? { settings } : {}),
+          permissionMode,
         },
         onEvent: makeChannel(onEvent),
       }),
+    resolveCodexApproval: (
+      requestId: string | number,
+      method: CodexApprovalMethod,
+      decision: CodexApprovalDecision,
+    ) => request<void>('resolve_codex_approval', { requestId, method, decision }),
   };
 };
 

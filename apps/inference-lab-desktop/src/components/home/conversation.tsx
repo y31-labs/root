@@ -1,3 +1,7 @@
+import {
+  ApprovalRow,
+  type ApprovalDecision,
+} from '@workspace/ui/components/ai-elements/approval-row';
 import { ConversationEmptyState } from '@workspace/ui/components/ai-elements/conversation';
 import {
   Message,
@@ -8,21 +12,34 @@ import { Shimmer } from '@workspace/ui/components/ai-elements/shimmer';
 import { StickToBottom } from 'use-stick-to-bottom';
 
 import { FileAttachments, type FileAttachment } from '#/components/file-attachments';
+import type { CodexApprovalDecision, CodexApprovalMethod, CodexApprovalRequest } from '#/lib/types';
+
+interface ChatApproval extends CodexApprovalRequest {
+  decision?: CodexApprovalDecision;
+  error?: string;
+  status: 'pending' | 'submitting' | 'resolved';
+}
 
 export interface ChatMessage {
   id: number;
   role: 'user' | 'assistant';
   text: string;
   attachments?: FileAttachment[];
+  approvals?: ChatApproval[];
   streaming?: boolean;
   error?: string;
 }
 
 interface ChatConversationProps {
   messages: ChatMessage[];
+  onApprovalDecision?: (
+    requestId: string | number,
+    method: CodexApprovalMethod,
+    decision: CodexApprovalDecision,
+  ) => void;
 }
 
-export function ChatConversation({ messages }: ChatConversationProps) {
+export function ChatConversation({ messages, onApprovalDecision }: ChatConversationProps) {
   return (
     <StickToBottom
       aria-live='polite'
@@ -61,6 +78,23 @@ export function ChatConversation({ messages }: ChatConversationProps) {
                     {message.error}
                   </p>
                 )}
+                {message.approvals?.map((approval) => (
+                  <div key={`${approval.method}-${approval.requestId}`}>
+                    <ApprovalRow
+                      detail={approval.detail}
+                      disabled={approval.status !== 'pending'}
+                      title={approvalTitle(approval)}
+                      onDecision={(decision: ApprovalDecision) =>
+                        onApprovalDecision?.(approval.requestId, approval.method, decision)
+                      }
+                    />
+                    {approval.error ? (
+                      <p className='mb-2 text-sm text-danger' role='alert'>
+                        {approval.error}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
               </MessageContent>
             </Message>
           ))
@@ -88,3 +122,10 @@ export function ChatConversation({ messages }: ChatConversationProps) {
     </StickToBottom>
   );
 }
+
+const approvalTitle = (approval: ChatApproval) => {
+  if (approval.status !== 'resolved') return approval.title;
+  if (approval.decision === 'accept') return 'Allowed once';
+  if (approval.decision === 'acceptForSession') return 'Allowed for session';
+  return 'Denied';
+};

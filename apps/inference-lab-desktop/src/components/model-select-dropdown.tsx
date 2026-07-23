@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from '@workspace/ui/components/ui/dropdown-menu';
 import { Zap } from 'lucide-react';
-import type { ComponentProps } from 'react';
 
 import type { ModelSettingsState } from '#/hooks/use-model-settings';
 import type { Model, ModelSpeed } from '#/lib/types';
@@ -48,7 +47,6 @@ interface ModelSelectDropdownProps {
 export function ModelSelectDropdown({
   disabled,
   modelSettings: {
-    catalogError,
     loading,
     models,
     selectedModel,
@@ -70,22 +68,36 @@ export function ModelSelectDropdown({
 
   if (loading) return null;
 
+  const modelLabel = selectedModel?.displayName ?? 'Unknown';
+  const effortLabel = settings ? formatEffort(settings.effort) : undefined;
+  const fast = settings?.speed === 'fast';
+  const triggerLabel = [modelLabel, effortLabel, fast ? 'Fast mode' : undefined]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         render={
-          <ModelSelectTrigger
+          <Button
+            aria-label={triggerLabel}
+            className='justify-center rounded-full dark:aria-expanded:bg-muted/50'
             disabled={disabled}
-            fast={settings?.speed === 'fast'}
-            modelLabel={selectedModel?.displayName ?? 'Unkown'}
-            effortLabel={settings && formatEffort(settings.effort)}
-          />
+            size='sm'
+            type='button'
+            variant='ghost'
+          >
+            {fast && <Zap aria-label='Fast mode' className='fill-current text-foreground' />}
+            <span className='text-foreground'>{modelLabel}</span>
+            {effortLabel && <span className='text-muted-foreground'>{effortLabel}</span>}
+          </Button>
         }
       />
       <DropdownMenuContent
-        side='top'
         align='start'
         className='w-56 rounded-md border bg-popover shadow-md ring-0 before:hidden'
+        finalFocus={(interactionType) => interactionType === 'keyboard'}
+        side='top'
       >
         <DropdownMenuGroup>
           <DropdownMenuLabel>ChatGPT</DropdownMenuLabel>
@@ -99,14 +111,8 @@ export function ModelSelectDropdown({
             return (
               <DropdownMenuSub key={model.model}>
                 <DropdownMenuSubTrigger
-                  className={
-                    isSelected
-                      ? 'text-foreground'
-                      : 'text-muted-foreground focus:text-foreground data-highlighted:text-foreground data-popup-open:text-foreground'
-                  }
-                  onClick={() => {
-                    if (!isSelected) selectModel(model.model);
-                  }}
+                  className={isSelected ? 'text-foreground' : 'text-muted-foreground'}
+                  onClick={() => isSelected || selectModel(model.model)}
                 >
                   <span>{model.displayName}</span>
                 </DropdownMenuSubTrigger>
@@ -166,9 +172,6 @@ export function ModelSelectDropdown({
               </DropdownMenuSub>
             );
           })}
-          {!loading && models.length === 0 && (
-            <DropdownMenuItem disabled>{catalogError ?? 'No models available'}</DropdownMenuItem>
-          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
@@ -177,39 +180,5 @@ export function ModelSelectDropdown({
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-interface ModelSelectTriggerProps extends ComponentProps<typeof Button> {
-  fast: boolean;
-  modelLabel: string;
-  effortLabel?: string;
-}
-
-function ModelSelectTrigger({
-  fast,
-  modelLabel,
-  effortLabel,
-  ...props
-}: ModelSelectTriggerProps) {
-  const accessibleLabel = [modelLabel, effortLabel, fast ? 'Fast mode' : undefined]
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <Button
-      {...props}
-      aria-label={accessibleLabel}
-      type='button'
-      variant='ghost'
-      size='sm'
-      className={
-        'grow-0 justify-center rounded-full transition-[flex-grow,background-color] duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] data-popup-open:grow data-popup-open:bg-muted! motion-reduce:transition-none'
-      }
-    >
-      {fast && <Zap aria-label='Fast mode' className='fill-current text-foreground' />}
-      <span className='text-foreground'>{modelLabel}</span>
-      {effortLabel && <span className='text-muted-foreground'>{effortLabel}</span>}
-    </Button>
   );
 }

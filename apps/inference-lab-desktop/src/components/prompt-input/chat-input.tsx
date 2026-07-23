@@ -9,6 +9,7 @@ import { ChatInputFooter } from '#/components/prompt-input/chat-input-footer';
 import { FolderPicker } from '#/components/prompt-input/folder-picker';
 import { PromptAttachments } from '#/components/prompt-input/prompt-attachments';
 import type { ModelSettingsState } from '#/hooks/use-model-settings';
+import type { PermissionMode } from '#/lib/types';
 
 const MAX_ATTACHMENT_FILES = 4;
 const MAX_ATTACHMENT_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per file, up to 40 MB total.
@@ -16,9 +17,11 @@ const MAX_ATTACHMENT_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per file, up t
 interface ChatInputProps {
   modelSettings: ModelSettingsState;
   pending: boolean;
+  permissionMode: PermissionMode;
   prompt: string;
   workingDirectory?: string;
   onPromptChange: (prompt: string) => void;
+  onPermissionModeChange: (permissionMode: PermissionMode) => void;
   onSelectWorkingDirectory: () => void;
   onSubmit: PromptInputProps['onSubmit'];
 }
@@ -26,9 +29,11 @@ interface ChatInputProps {
 export function ChatInput({
   modelSettings,
   pending,
+  permissionMode,
   prompt,
   workingDirectory,
   onPromptChange,
+  onPermissionModeChange,
   onSelectWorkingDirectory,
   onSubmit,
 }: ChatInputProps) {
@@ -62,7 +67,13 @@ export function ChatInput({
               className='min-h-20 px-4 pb-1 pt-3.5 text-[15px] leading-6 placeholder:text-muted-foreground/80 disabled:opacity-100 dark:bg-transparent'
             />
           </PromptInputBody>
-          <ChatInputFooter modelSettings={modelSettings} pending={pending} prompt={prompt} />
+          <ChatInputFooter
+            modelSettings={modelSettings}
+            pending={pending}
+            permissionMode={permissionMode}
+            prompt={prompt}
+            onPermissionModeChange={onPermissionModeChange}
+          />
         </PromptInput>
       </div>
     </div>

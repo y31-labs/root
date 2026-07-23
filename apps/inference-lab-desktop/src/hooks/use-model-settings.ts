@@ -21,7 +21,6 @@ const settingsForModel = (model: Model, currentSettings?: ModelSettings): ModelS
 };
 
 export interface ModelSettingsState {
-  catalogError?: string;
   loading: boolean;
   models: Model[];
   selectedModel?: Model;
@@ -34,14 +33,12 @@ export interface ModelSettingsState {
 export const useModelSettings = (loadModels: () => Promise<Model[]>): ModelSettingsState => {
   const [models, setModels] = useState<Model[]>([]);
   const [settings, setSettings] = useState<ModelSettings>();
-  const [catalogError, setCatalogError] = useState<string>();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     setModels([]);
     setSettings(undefined);
-    setCatalogError(undefined);
     setLoading(true);
 
     void loadModels()
@@ -54,13 +51,12 @@ export const useModelSettings = (loadModels: () => Promise<Model[]>): ModelSetti
             findDefaultModel(nextModels);
           return selectedModel ? settingsForModel(selectedModel, currentSettings) : undefined;
         });
-        setCatalogError(undefined);
       })
       .catch((error: unknown) => {
         if (!active) return;
         setModels([]);
         setSettings(undefined);
-        setCatalogError(error instanceof Error ? error.message : String(error));
+        console.error(error);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -106,7 +102,6 @@ export const useModelSettings = (loadModels: () => Promise<Model[]>): ModelSetti
   );
 
   return {
-    catalogError,
     loading,
     models,
     selectedModel: models.find((model) => model.model === settings?.model),
