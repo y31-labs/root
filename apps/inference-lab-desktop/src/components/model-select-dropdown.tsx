@@ -13,6 +13,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@workspace/ui/components/ui/dropdown-menu';
+import { Zap } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
 import type { ModelSettingsState } from '#/hooks/use-model-settings';
@@ -40,7 +41,9 @@ interface Menu {
 }
 
 type ModelSelectTriggerProps = ComponentProps<typeof Button> & {
+  fast: boolean;
   modelLabel: string;
+  reasoningLabel?: string;
 };
 
 const effortLabels: Record<string, string> = {
@@ -54,10 +57,20 @@ const effortLabels: Record<string, string> = {
 
 const formatEffort = (effort: string) => effortLabels[effort] ?? effort;
 
-function ModelSelectTrigger({ modelLabel, ...props }: ModelSelectTriggerProps) {
+function ModelSelectTrigger({
+  fast,
+  modelLabel,
+  reasoningLabel,
+  ...props
+}: ModelSelectTriggerProps) {
+  const accessibleLabel = [modelLabel, reasoningLabel, fast ? 'Fast mode' : undefined]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <Button
       {...props}
+      aria-label={accessibleLabel}
       type='button'
       variant='ghost'
       size='sm'
@@ -65,7 +78,9 @@ function ModelSelectTrigger({ modelLabel, ...props }: ModelSelectTriggerProps) {
         'grow-0 justify-center rounded-full transition-[flex-grow,background-color] duration-150 ease-[cubic-bezier(0.25,0.1,0.25,1)] data-popup-open:grow data-popup-open:bg-muted! motion-reduce:transition-none'
       }
     >
-      <span>{modelLabel}</span>
+      {fast && <Zap aria-label='Fast mode' className='fill-current text-foreground' />}
+      <span className='text-foreground'>{modelLabel}</span>
+      {reasoningLabel && <span className='text-muted-foreground'>{reasoningLabel}</span>}
     </Button>
   );
 }
@@ -133,7 +148,9 @@ export function ModelSelectDropdown({
         render={
           <ModelSelectTrigger
             disabled={disabled}
+            fast={selectedServiceTier?.name === 'Fast'}
             modelLabel={selectedModel?.displayName ?? (loading ? 'Loading models' : 'Models')}
+            reasoningLabel={settings ? formatEffort(settings.effort) : undefined}
           />
         }
       />
