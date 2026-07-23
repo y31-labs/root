@@ -9,24 +9,26 @@ export interface CodexIntegrationStatus {
   detail: string | null;
 }
 
+export type ModelSpeed = 'standard' | 'fast';
+
 export interface Model {
   model: string;
   displayName: string;
-  reason: {
+  effort: {
     options: string[];
     default: string;
   };
   speed: {
-    options: string[];
-    default: string;
+    options: ModelSpeed[];
+    default: ModelSpeed;
   };
   isDefault: boolean;
 }
 
 export interface ModelSettings {
   model: string;
-  reason: string;
-  speed: string;
+  effort: string;
+  speed: ModelSpeed;
 }
 
 export type ChatStreamEvent =

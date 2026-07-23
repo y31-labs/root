@@ -17,9 +17,9 @@ import { Zap } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
 import type { ModelSettingsState } from '#/hooks/use-model-settings';
-import type { Model } from '#/lib/types';
+import type { Model, ModelSpeed } from '#/lib/types';
 
-const reasonLabels: Record<string, string> = {
+const effortLabels: Record<string, string> = {
   none: 'None',
   minimal: 'Minimal',
   low: 'Light',
@@ -30,12 +30,12 @@ const reasonLabels: Record<string, string> = {
   ultra: 'Ultra',
 };
 
-const formatReason = (reason: string) => reasonLabels[reason] ?? reason;
+const formatEffort = (effort: string) => effortLabels[effort] ?? effort;
 
-const hasReasoning = (model: Model) => model.reason.options.some((reason) => reason !== 'none');
+const hasEffort = (model: Model) => model.effort.options.some((effort) => effort !== 'none');
 
-const getReason = (model: Model, value: string) =>
-  model.reason.options.find((reason) => reason === value);
+const getEffort = (model: Model, value: string) =>
+  model.effort.options.find((effort) => effort === value);
 
 const getSpeed = (model: Model, value: string) =>
   model.speed.options.find((speed) => speed === value);
@@ -53,17 +53,17 @@ export function ModelSelectDropdown({
     models,
     selectedModel,
     settings,
-    selectReason,
+    selectEffort,
     selectModel,
     selectSpeed,
   },
 }: ModelSelectDropdownProps) {
-  const selectModelReason = (model: Model, reason: string) => {
+  const selectModelEffort = (model: Model, effort: string) => {
     if (settings?.model !== model.model) selectModel(model.model);
-    selectReason(reason);
+    selectEffort(effort);
   };
 
-  const selectModelSpeed = (model: Model, speed: string) => {
+  const selectModelSpeed = (model: Model, speed: ModelSpeed) => {
     if (settings?.model !== model.model) selectModel(model.model);
     selectSpeed(speed);
   };
@@ -78,7 +78,7 @@ export function ModelSelectDropdown({
             disabled={disabled}
             fast={settings?.speed === 'fast'}
             modelLabel={selectedModel?.displayName ?? 'Unkown'}
-            reasoningLabel={settings && formatReason(settings.reason)}
+            effortLabel={settings && formatEffort(settings.effort)}
           />
         }
       />
@@ -91,9 +91,9 @@ export function ModelSelectDropdown({
           <DropdownMenuLabel>ChatGPT</DropdownMenuLabel>
           {models.map((model) => {
             const isSelected = model.model === settings?.model;
-            const reason = isSelected ? settings.reason : model.reason.default;
+            const effort = isSelected ? settings.effort : model.effort.default;
             const speed = isSelected ? settings.speed : model.speed.default;
-            const showReasoning = hasReasoning(model);
+            const showEffort = hasEffort(model);
             const showSpeed = model.speed.options.length > 1;
 
             return (
@@ -116,19 +116,19 @@ export function ModelSelectDropdown({
                   align='start'
                   className='w-72 rounded-md border bg-popover shadow-md ring-0 before:hidden'
                 >
-                  {showReasoning && (
+                  {showEffort && (
                     <DropdownMenuGroup>
-                      <DropdownMenuLabel>Reasoning</DropdownMenuLabel>
+                      <DropdownMenuLabel>Effort</DropdownMenuLabel>
                       <DropdownMenuRadioGroup
-                        value={reason}
+                        value={effort}
                         onValueChange={(value) => {
-                          const selectedReason = getReason(model, value);
-                          if (selectedReason) selectModelReason(model, selectedReason);
+                          const selectedEffort = getEffort(model, value);
+                          if (selectedEffort) selectModelEffort(model, selectedEffort);
                         }}
                       >
-                        {model.reason.options.map((option) => (
+                        {model.effort.options.map((option) => (
                           <DropdownMenuRadioItem key={option} value={option}>
-                            {formatReason(option)}
+                            {formatEffort(option)}
                           </DropdownMenuRadioItem>
                         ))}
                       </DropdownMenuRadioGroup>
@@ -136,7 +136,7 @@ export function ModelSelectDropdown({
                   )}
                   {showSpeed && (
                     <>
-                      {showReasoning && <DropdownMenuSeparator />}
+                      {showEffort && <DropdownMenuSeparator />}
                       <DropdownMenuGroup>
                         <DropdownMenuLabel>Speed</DropdownMenuLabel>
                         <DropdownMenuRadioGroup
@@ -183,16 +183,16 @@ export function ModelSelectDropdown({
 interface ModelSelectTriggerProps extends ComponentProps<typeof Button> {
   fast: boolean;
   modelLabel: string;
-  reasoningLabel?: string;
+  effortLabel?: string;
 }
 
 function ModelSelectTrigger({
   fast,
   modelLabel,
-  reasoningLabel,
+  effortLabel,
   ...props
 }: ModelSelectTriggerProps) {
-  const accessibleLabel = [modelLabel, reasoningLabel, fast ? 'Fast mode' : undefined]
+  const accessibleLabel = [modelLabel, effortLabel, fast ? 'Fast mode' : undefined]
     .filter(Boolean)
     .join(' ');
 
@@ -209,7 +209,7 @@ function ModelSelectTrigger({
     >
       {fast && <Zap aria-label='Fast mode' className='fill-current text-foreground' />}
       <span className='text-foreground'>{modelLabel}</span>
-      {reasoningLabel && <span className='text-muted-foreground'>{reasoningLabel}</span>}
+      {effortLabel && <span className='text-muted-foreground'>{effortLabel}</span>}
     </Button>
   );
 }

@@ -13,14 +13,14 @@ const models: Model[] = [
   {
     model: 'gpt-5.6-terra',
     displayName: 'GPT-5.6 Terra',
-    reason: { options: ['low', 'medium'], default: 'medium' },
+    effort: { options: ['low', 'medium'], default: 'medium' },
     speed: { options: ['standard', 'fast'], default: 'standard' },
     isDefault: true,
   },
   {
     model: 'gpt-5.6-sol',
     displayName: 'GPT-5.6 Sol',
-    reason: { options: ['high'], default: 'high' },
+    effort: { options: ['high'], default: 'high' },
     speed: { options: ['standard'], default: 'standard' },
     isDefault: false,
   },
@@ -34,10 +34,10 @@ describe('ModelSelectDropdown', () => {
       selectedModel: models[0],
       settings: {
         model: 'gpt-5.6-terra',
-        reason: 'medium',
+        effort: 'medium',
         speed: 'standard',
       },
-      selectReason: vi.fn(),
+      selectEffort: vi.fn(),
       selectModel: vi.fn(),
       selectSpeed: vi.fn(),
     };
@@ -62,7 +62,7 @@ describe('ModelSelectDropdown', () => {
 
     fireEvent.click(selectedModelItem);
 
-    expect(await screen.findByText('Reasoning')).toBeTruthy();
+    expect(await screen.findByText('Effort')).toBeTruthy();
     expect(screen.getByText('Speed')).toBeTruthy();
     expect(await screen.findByText('1.5x faster, higher usage')).toBeTruthy();
   });
@@ -75,10 +75,10 @@ describe('ModelSelectDropdown', () => {
       selectedModel: models[0],
       settings: {
         model: 'gpt-5.6-terra',
-        reason: 'medium',
+        effort: 'medium',
         speed: 'standard',
       },
-      selectReason: vi.fn(),
+      selectEffort: vi.fn(),
       selectModel,
       selectSpeed: vi.fn(),
     };
@@ -89,28 +89,28 @@ describe('ModelSelectDropdown', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'GPT-5.6 Sol' }));
 
     expect(selectModel).toHaveBeenCalledWith('gpt-5.6-sol');
-    expect(await screen.findByText('Reasoning')).toBeTruthy();
+    expect(await screen.findByText('Effort')).toBeTruthy();
     expect(screen.queryByText('Speed')).toBeNull();
   });
 
-  it('hides reasoning when the model has no reasoning mode', async () => {
-    const modelWithoutReasoning: Model = {
+  it('hides effort when the model has no effort mode', async () => {
+    const modelWithoutEffort: Model = {
       model: 'basic-model',
       displayName: 'Basic Model',
-      reason: { options: ['none'], default: 'none' },
+      effort: { options: ['none'], default: 'none' },
       speed: { options: ['standard', 'fast'], default: 'standard' },
       isDefault: true,
     };
     const modelSettings: ModelSettingsState = {
       loading: false,
-      models: [modelWithoutReasoning],
-      selectedModel: modelWithoutReasoning,
+      models: [modelWithoutEffort],
+      selectedModel: modelWithoutEffort,
       settings: {
         model: 'basic-model',
-        reason: 'none',
+        effort: 'none',
         speed: 'standard',
       },
-      selectReason: vi.fn(),
+      selectEffort: vi.fn(),
       selectModel: vi.fn(),
       selectSpeed: vi.fn(),
     };
@@ -121,7 +121,7 @@ describe('ModelSelectDropdown', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Basic Model' }));
 
     expect(await screen.findByText('Speed')).toBeTruthy();
-    expect(screen.queryByText('Reasoning')).toBeNull();
+    expect(screen.queryByText('Effort')).toBeNull();
   });
 
   it('shows the fast mode icon in the trigger when fast mode is selected', () => {
@@ -131,10 +131,10 @@ describe('ModelSelectDropdown', () => {
       selectedModel: models[0],
       settings: {
         model: 'gpt-5.6-terra',
-        reason: 'low',
+        effort: 'low',
         speed: 'fast',
       },
-      selectReason: vi.fn(),
+      selectEffort: vi.fn(),
       selectModel: vi.fn(),
       selectSpeed: vi.fn(),
     };

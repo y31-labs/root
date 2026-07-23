@@ -16,7 +16,7 @@ use tauri::{ipc::Channel, State};
 use tokio::sync::broadcast;
 use types::{
     CodexAttachmentInput, CodexIntegrationStatus, CodexStreamEvent, CodexTextInput,
-    CodexTextResult, Model, ModelSettings,
+    CodexTextResult, Model, ModelSettings, ModelSpeed,
 };
 
 use crate::AppState;
@@ -255,7 +255,10 @@ fn turn_start_params(
     if let Some(settings) = settings {
         params["model"] = json!(settings.model);
         params["effort"] = json!(settings.effort);
-        params["serviceTier"] = json!(settings.service_tier);
+        params["serviceTier"] = match settings.speed {
+            ModelSpeed::Standard => Value::Null,
+            ModelSpeed::Fast => json!("priority"),
+        };
     }
     params
 }
@@ -512,7 +515,7 @@ mod tests {
         let settings = serde_json::from_value(json!({
             "model": "gpt-5.6-terra",
             "effort": "medium",
-            "serviceTier": null
+            "speed": "standard"
         }))
         .unwrap();
 
@@ -536,6 +539,32 @@ mod tests {
     }
 
     #[test]
+    fn maps_fast_model_speed_to_the_priority_service_tier() {
+        let settings = serde_json::from_value(json!({
+            "model": "gpt-5.6-terra",
+            "effort": "high",
+            "speed": "fast"
+        }))
+        .unwrap();
+
+        let params = turn_start_params("thread-1", Vec::new(), "/project", Some(settings));
+
+        assert_eq!(params["effort"], "high");
+        assert_eq!(params["serviceTier"], "priority");
+    }
+
+    #[test]
+    fn rejects_unknown_model_speeds() {
+        let settings = serde_json::from_value::<ModelSettings>(json!({
+            "model": "gpt-5.6-terra",
+            "effort": "medium",
+            "speed": "turbo"
+        }));
+
+        assert!(settings.is_err());
+    }
+
+    #[test]
     fn reads_the_model_catalog_contract() {
         let model: Model = serde_json::from_value(json!({
             "id": "gpt-5.6-terra",
@@ -556,10 +585,14 @@ mod tests {
 
         assert_eq!(model.model, "gpt-5.6-terra");
         assert_eq!(model.display_name, "5.6 Terra");
+        assert_eq!(model.supported_efforts[0].effort, "medium");
+        assert_eq!(model.default_effort, "medium");
+        let serialized = serde_json::to_value(&model).unwrap();
         assert_eq!(
-            model.supported_reasoning_efforts[0].reasoning_effort,
-            "medium"
+            serialized["supportedEfforts"],
+            json!([{ "effort": "medium" }])
         );
+        assert_eq!(serialized["defaultEffort"], "medium");
         assert_eq!(model.service_tiers[0].id, "priority");
         assert!(model.is_default);
     }

@@ -3,13 +3,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { createLocalApi } from '#/lib/local-api';
 
 describe('local API', () => {
-  it('maps provider model fields to reason and speed', async () => {
+  it('maps provider model fields to effort and speed', async () => {
     const invoke = vi.fn(async () => [
       {
         model: 'gpt-5.6-terra',
         displayName: 'GPT-5.6 Terra',
-        supportedReasoningEfforts: [{ reasoningEffort: 'low' }, { reasoningEffort: 'medium' }],
-        defaultReasoningEffort: 'medium',
+        supportedEfforts: [{ effort: 'low' }, { effort: 'medium' }],
+        defaultEffort: 'medium',
         serviceTiers: [{ id: 'priority', name: 'Fast' }],
         defaultServiceTier: null,
         isDefault: true,
@@ -22,7 +22,7 @@ describe('local API', () => {
       {
         model: 'gpt-5.6-terra',
         displayName: 'GPT-5.6 Terra',
-        reason: { options: ['low', 'medium'], default: 'medium' },
+        effort: { options: ['low', 'medium'], default: 'medium' },
         speed: { options: ['standard', 'fast'], default: 'standard' },
         isDefault: true,
       },
@@ -52,7 +52,7 @@ describe('local API', () => {
       ],
       '/Users/example/project',
       'thread-1',
-      { model: 'gpt-5.6-terra', reason: 'medium', speed: 'fast' },
+      { model: 'gpt-5.6-terra', effort: 'medium', speed: 'fast' },
       onEvent,
     );
 
@@ -75,7 +75,7 @@ describe('local API', () => {
         settings: {
           model: 'gpt-5.6-terra',
           effort: 'medium',
-          serviceTier: 'priority',
+          speed: 'fast',
         },
       },
       onEvent: channel,

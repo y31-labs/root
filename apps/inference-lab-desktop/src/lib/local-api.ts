@@ -6,6 +6,7 @@ import type {
   CodexIntegrationStatus,
   Model,
   ModelSettings,
+  ModelSpeed,
 } from '#/lib/types';
 
 type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -15,28 +16,22 @@ type ProviderServiceTier = { id: 'priority'; name: 'Fast' };
 interface ProviderModel {
   model: string;
   displayName: string;
-  supportedReasoningEfforts: { reasoningEffort: string }[];
-  defaultReasoningEffort: string;
+  supportedEfforts: { effort: string }[];
+  defaultEffort: string;
   serviceTiers: ProviderServiceTier[];
   defaultServiceTier: ProviderServiceTier['id'] | null;
   isDefault: boolean;
 }
 
-interface ProviderModelSettings {
-  model: string;
-  effort: string;
-  serviceTier: 'priority' | null;
-}
-
-const toModelSpeed = (serviceTier: ProviderServiceTier['id'] | null): string =>
+const toModelSpeed = (serviceTier: ProviderServiceTier['id'] | null): ModelSpeed =>
   serviceTier === 'priority' ? 'fast' : 'standard';
 
 const toModel = (model: ProviderModel): Model => ({
   model: model.model,
   displayName: model.displayName,
-  reason: {
-    options: model.supportedReasoningEfforts.map((option) => option.reasoningEffort),
-    default: model.defaultReasoningEffort,
+  effort: {
+    options: model.supportedEfforts.map((option) => option.effort),
+    default: model.defaultEffort,
   },
   speed: {
     options: model.serviceTiers.some((tier) => tier.id === 'priority')
@@ -45,12 +40,6 @@ const toModel = (model: ProviderModel): Model => ({
     default: toModelSpeed(model.defaultServiceTier),
   },
   isDefault: model.isDefault,
-});
-
-const toProviderModelSettings = (settings: ModelSettings): ProviderModelSettings => ({
-  model: settings.model,
-  effort: settings.reason,
-  serviceTier: settings.speed === 'fast' ? 'priority' : null,
 });
 
 export interface ChatAttachmentInput {
@@ -88,7 +77,7 @@ export const createLocalApi = (
           attachments,
           ...(workingDirectory ? { workingDirectory } : {}),
           ...(threadId ? { threadId } : {}),
-          ...(settings ? { settings: toProviderModelSettings(settings) } : {}),
+          ...(settings ? { settings } : {}),
         },
         onEvent: makeChannel(onEvent),
       }),
