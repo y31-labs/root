@@ -15,7 +15,7 @@ const ignoreSelection = () => undefined;
 const modelSettings: ModelSettingsState = {
   loading: false,
   models: [],
-  selectReason: ignoreSelection,
+  selectEffort: ignoreSelection,
   selectModel: ignoreSelection,
   selectSpeed: ignoreSelection,
 };

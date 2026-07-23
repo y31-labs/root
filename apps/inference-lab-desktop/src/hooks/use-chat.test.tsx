@@ -33,7 +33,7 @@ describe('useChat', () => {
         useChat({
           settings: {
             model: 'gpt-5.6-terra',
-            reason: 'medium',
+            effort: 'medium',
             speed: 'standard',
           },
           workingDirectory: '/Users/example/project',
@@ -94,7 +94,7 @@ describe('useChat', () => {
         settings: {
           model: 'gpt-5.6-terra',
           effort: 'medium',
-          serviceTier: null,
+          speed: 'standard',
         },
         workingDirectory: '/Users/example/project',
       },

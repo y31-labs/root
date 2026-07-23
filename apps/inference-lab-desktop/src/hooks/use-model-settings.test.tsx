@@ -12,7 +12,7 @@ const models: Model[] = [
   {
     model: 'balanced-model',
     displayName: 'Balanced Model',
-    reason: { options: ['low', 'medium'], default: 'medium' },
+    effort: { options: ['low', 'medium'], default: 'medium' },
     speed: { options: ['standard', 'fast'], default: 'standard' },
     isDefault: true,
   },
@@ -26,17 +26,17 @@ describe('useModelSettings', () => {
     await waitFor(() =>
       expect(result.current.settings).toEqual({
         model: 'balanced-model',
-        reason: 'medium',
+        effort: 'medium',
         speed: 'standard',
       }),
     );
 
-    act(() => result.current.selectReason('low'));
+    act(() => result.current.selectEffort('low'));
     act(() => result.current.selectSpeed('fast'));
 
     expect(result.current.settings).toEqual({
       model: 'balanced-model',
-      reason: 'low',
+      effort: 'low',
       speed: 'fast',
     });
     expect(result.current.selectedModel).toBe(models[0]);

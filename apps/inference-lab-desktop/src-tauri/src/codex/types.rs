@@ -51,13 +51,21 @@ pub(crate) struct CodexTextInput {
 pub(crate) struct ModelSettings {
     pub(super) model: String,
     pub(super) effort: String,
-    pub(super) service_tier: Option<String>,
+    pub(super) speed: ModelSpeed,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) enum ModelSpeed {
+    Standard,
+    Fast,
 }
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ReasoningEffort {
-    pub(super) reasoning_effort: String,
+pub(crate) struct EffortOption {
+    #[serde(rename(deserialize = "reasoningEffort"))]
+    pub(super) effort: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -73,8 +81,10 @@ pub(crate) struct Model {
     pub(super) model: String,
     #[serde(deserialize_with = "deserialize_model_display_name")]
     pub(super) display_name: String,
-    pub(super) supported_reasoning_efforts: Vec<ReasoningEffort>,
-    pub(super) default_reasoning_effort: String,
+    #[serde(rename(deserialize = "supportedReasoningEfforts"))]
+    pub(super) supported_efforts: Vec<EffortOption>,
+    #[serde(rename(deserialize = "defaultReasoningEffort"))]
+    pub(super) default_effort: String,
     pub(super) service_tiers: Vec<ServiceTier>,
     pub(super) default_service_tier: Option<String>,
     pub(super) is_default: bool,

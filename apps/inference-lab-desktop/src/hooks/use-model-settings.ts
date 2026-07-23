@@ -1,23 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import type { Model, ModelSettings } from '#/lib/types';
+import type { Model, ModelSettings, ModelSpeed } from '#/lib/types';
 
 const findDefaultModel = (models: Model[]) =>
   models.find(({ isDefault }) => isDefault) ?? models[0];
 
 const settingsForModel = (model: Model, currentSettings?: ModelSettings): ModelSettings => {
-  const currentReason = currentSettings?.reason;
-  const reason =
-    currentReason !== undefined && model.reason.options.includes(currentReason)
-      ? currentReason
-      : model.reason.default;
+  const currentEffort = currentSettings?.effort;
+  const effort =
+    currentEffort !== undefined && model.effort.options.includes(currentEffort)
+      ? currentEffort
+      : model.effort.default;
   const currentSpeed = currentSettings?.speed;
   const speed =
     currentSpeed !== undefined && model.speed.options.includes(currentSpeed)
       ? currentSpeed
       : model.speed.default;
 
-  return { model: model.model, reason, speed };
+  return { model: model.model, effort, speed };
 };
 
 export interface ModelSettingsState {
@@ -26,9 +26,9 @@ export interface ModelSettingsState {
   models: Model[];
   selectedModel?: Model;
   settings?: ModelSettings;
-  selectReason: (reason: string) => void;
+  selectEffort: (effort: string) => void;
   selectModel: (model: string) => void;
-  selectSpeed: (speed: string) => void;
+  selectSpeed: (speed: ModelSpeed) => void;
 }
 
 export const useModelSettings = (loadModels: () => Promise<Model[]>): ModelSettingsState => {
@@ -79,21 +79,21 @@ export const useModelSettings = (loadModels: () => Promise<Model[]>): ModelSetti
     [models],
   );
 
-  const selectReason = useCallback(
-    (reason: string) => {
+  const selectEffort = useCallback(
+    (effort: string) => {
       setSettings((currentSettings) => {
         const selectedModel = models.find((model) => model.model === currentSettings?.model);
-        if (!currentSettings || !selectedModel?.reason.options.includes(reason)) {
+        if (!currentSettings || !selectedModel?.effort.options.includes(effort)) {
           return currentSettings;
         }
-        return { ...currentSettings, reason };
+        return { ...currentSettings, effort };
       });
     },
     [models],
   );
 
   const selectSpeed = useCallback(
-    (speed: string) => {
+    (speed: ModelSpeed) => {
       setSettings((currentSettings) => {
         const selectedModel = models.find((model) => model.model === currentSettings?.model);
         if (!currentSettings || !selectedModel?.speed.options.includes(speed)) {
@@ -111,7 +111,7 @@ export const useModelSettings = (loadModels: () => Promise<Model[]>): ModelSetti
     models,
     selectedModel: models.find((model) => model.model === settings?.model),
     settings,
-    selectReason,
+    selectEffort,
     selectModel,
     selectSpeed,
   };
