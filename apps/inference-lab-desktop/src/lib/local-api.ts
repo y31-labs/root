@@ -72,6 +72,19 @@ export const createLocalApi = (
     chatHistoryStatus: () => request<ChatHistoryStatus>('chat_history_status'),
     getChat: (chatId: string) => request<ChatRecord | null>('get_chat', { chatId }),
     listChats: () => request<ChatSummary[]>('list_chats'),
+    generateChatTitle: (
+      firstPrompt: string,
+      filenames: string[],
+      settings: ModelSettings | undefined,
+    ) =>
+      request<string>('generate_chat_title', {
+        input: {
+          firstPrompt,
+          filenames,
+          ...(settings ? { settings } : {}),
+        },
+      }),
+    renameChat: (chatId: string, title: string) => request<void>('rename_chat', { chatId, title }),
     saveChat: (chat: ChatRecord) => request<ChatSaveResult>('save_chat', { chat }),
     codexIntegrationStatus: () => request<CodexIntegrationStatus>('codex_integration_status'),
     connectCodex: () => request<void>('connect_codex'),

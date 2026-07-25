@@ -42,6 +42,11 @@ describe('local API', () => {
     await api.codexIntegrationStatus();
     await api.connectCodex();
     await api.listModels();
+    await api.generateChatTitle('Draft an intake flow', ['brief.pdf'], {
+      model: 'gpt-5.6-terra',
+      effort: 'medium',
+      speed: 'fast',
+    });
     await api.streamChatText(
       'Draft an intake flow',
       [
@@ -61,8 +66,19 @@ describe('local API', () => {
     expect(invoke).toHaveBeenNthCalledWith(1, 'codex_integration_status', undefined);
     expect(invoke).toHaveBeenNthCalledWith(2, 'connect_codex', undefined);
     expect(invoke).toHaveBeenNthCalledWith(3, 'list_codex_models', undefined);
+    expect(invoke).toHaveBeenNthCalledWith(4, 'generate_chat_title', {
+      input: {
+        firstPrompt: 'Draft an intake flow',
+        filenames: ['brief.pdf'],
+        settings: {
+          model: 'gpt-5.6-terra',
+          effort: 'medium',
+          speed: 'fast',
+        },
+      },
+    });
     expect(makeChannel).toHaveBeenCalledWith(onEvent);
-    expect(invoke).toHaveBeenNthCalledWith(4, 'stream_codex_text', {
+    expect(invoke).toHaveBeenNthCalledWith(5, 'stream_codex_text', {
       input: {
         prompt: 'Draft an intake flow',
         attachments: [
@@ -85,13 +101,13 @@ describe('local API', () => {
     });
 
     await api.interruptCodexTurn('thread-1', 'turn-1');
-    expect(invoke).toHaveBeenNthCalledWith(5, 'interrupt_codex_turn', {
+    expect(invoke).toHaveBeenNthCalledWith(6, 'interrupt_codex_turn', {
       threadId: 'thread-1',
       turnId: 'turn-1',
     });
 
     await api.resolveCodexApproval(42, 'item/commandExecution/requestApproval', 'acceptForSession');
-    expect(invoke).toHaveBeenNthCalledWith(6, 'resolve_codex_approval', {
+    expect(invoke).toHaveBeenNthCalledWith(7, 'resolve_codex_approval', {
       requestId: 42,
       method: 'item/commandExecution/requestApproval',
       decision: 'acceptForSession',
@@ -118,6 +134,7 @@ describe('local API', () => {
       if (command === 'list_chats') return Promise.resolve([summary]);
       if (command === 'get_chat') return Promise.resolve(chat);
       if (command === 'archive_chat') return Promise.resolve();
+      if (command === 'rename_chat') return Promise.resolve();
       if (command === 'chat_history_status') return Promise.resolve({ warning: 'Recovered' });
       return Promise.resolve(saveResult);
     });
@@ -126,12 +143,17 @@ describe('local API', () => {
     await expect(api.listChats()).resolves.toEqual([summary]);
     await expect(api.getChat('chat-1')).resolves.toEqual(chat);
     await expect(api.saveChat(chat)).resolves.toEqual(saveResult);
+    await expect(api.renameChat('chat-1', 'Intake workflow')).resolves.toBeUndefined();
     await expect(api.archiveChat('chat-1')).resolves.toBeUndefined();
     await expect(api.chatHistoryStatus()).resolves.toEqual({ warning: 'Recovered' });
     expect(invoke).toHaveBeenNthCalledWith(1, 'list_chats', undefined);
     expect(invoke).toHaveBeenNthCalledWith(2, 'get_chat', { chatId: 'chat-1' });
     expect(invoke).toHaveBeenNthCalledWith(3, 'save_chat', { chat });
-    expect(invoke).toHaveBeenNthCalledWith(4, 'archive_chat', { chatId: 'chat-1' });
-    expect(invoke).toHaveBeenNthCalledWith(5, 'chat_history_status', undefined);
+    expect(invoke).toHaveBeenNthCalledWith(4, 'rename_chat', {
+      chatId: 'chat-1',
+      title: 'Intake workflow',
+    });
+    expect(invoke).toHaveBeenNthCalledWith(5, 'archive_chat', { chatId: 'chat-1' });
+    expect(invoke).toHaveBeenNthCalledWith(6, 'chat_history_status', undefined);
   });
 });

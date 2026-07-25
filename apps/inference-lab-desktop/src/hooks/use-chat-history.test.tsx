@@ -29,6 +29,83 @@ const saveResultFor = (
 });
 
 describe('persistent chat history', () => {
+  it('generates a short title from the first prompt and tracks active execution', async () => {
+    let emit: ((event: ChatStreamEvent) => void) | undefined;
+    let resolveTitle: (title: string) => void = () => undefined;
+    let resolveRequest: (result: unknown) => void = () => undefined;
+    const titleRequest = new Promise<string>((resolve) => {
+      resolveTitle = resolve;
+    });
+    const request = new Promise<unknown>((resolve) => {
+      resolveRequest = resolve;
+    });
+    const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
+      if (command === 'list_chats') return Promise.resolve([]);
+      if (command === 'chat_history_status') return Promise.resolve({});
+      if (command === 'save_chat') {
+        return Promise.resolve(saveResultFor(args?.chat as ChatRecord));
+      }
+      if (command === 'generate_chat_title') return titleRequest;
+      if (command === 'rename_chat') return Promise.resolve();
+      return request;
+    });
+    const api = createLocalApi(invoke, (onMessage) => {
+      emit = onMessage as (event: ChatStreamEvent) => void;
+      return { id: 'channel-1' };
+    });
+
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <LocalApiProvider api={api}>
+          <ChatHistoryProvider>{children}</ChatHistoryProvider>
+        </LocalApiProvider>
+      );
+    }
+
+    const settings = {
+      model: 'gpt-5.6-terra',
+      effort: 'medium',
+      speed: 'standard' as const,
+    };
+    const { result } = renderHook(
+      () => ({
+        chat: useCodexChat({ permissionMode: 'read-only', settings }),
+        history: useChatHistory(),
+      }),
+      { wrapper: Wrapper },
+    );
+
+    act(() =>
+      result.current.chat.submitPrompt({
+        files: [],
+        text: 'Build a detailed intake workflow for international vendors',
+      }),
+    );
+
+    await waitFor(() => expect(result.current.history.chats).toHaveLength(1));
+    const chatId = result.current.history.activeChatId!;
+    expect(result.current.history.generatingTitleChatIds.has(chatId)).toBe(true);
+    expect(result.current.history.runningChatIds.has(chatId)).toBe(true);
+    expect(invoke).toHaveBeenCalledWith('generate_chat_title', {
+      input: {
+        firstPrompt: 'Build a detailed intake workflow for international vendors',
+        filenames: [],
+        settings,
+      },
+    });
+
+    act(() => resolveTitle('Vendor intake'));
+
+    await waitFor(() => expect(result.current.history.chats[0]?.title).toBe('Vendor intake'));
+    expect(result.current.history.generatingTitleChatIds.has(chatId)).toBe(false);
+    expect(invoke).toHaveBeenCalledWith('rename_chat', { chatId, title: 'Vendor intake' });
+
+    await waitFor(() => expect(emit).toBeDefined());
+    act(() => emit?.({ type: 'completed' }));
+    act(() => resolveRequest({ threadId: 'thread-1' }));
+    await waitFor(() => expect(result.current.history.runningChatIds.has(chatId)).toBe(false));
+  });
+
   it('persists a transcript and its Codex thread id', async () => {
     let emit: ((event: ChatStreamEvent) => void) | undefined;
     let resolveRequest: (result: unknown) => void = () => undefined;

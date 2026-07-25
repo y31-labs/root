@@ -12,14 +12,25 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from '@workspace/ui/components/ui/sidebar';
-import { Archive, MessageSquare, Settings, SquarePen } from 'lucide-react';
+import { Spinner } from '@workspace/ui/components/ui/spinner';
+import { Archive, Settings, SquarePen } from 'lucide-react';
 
+import { ChatHistoryTitle } from '#/components/navigation/chat-history-title';
 import { APP_NAME } from '#/lib/app-config';
 import { useChatHistory } from '#/providers/chat-history-provider';
 
 export function AppSidebar() {
   const navigate = useNavigate();
-  const { activeChatId, archiveChat, chats, historyWarning, newChat, openChat } = useChatHistory();
+  const {
+    activeChatId,
+    archiveChat,
+    chats,
+    generatingTitleChatIds,
+    historyWarning,
+    newChat,
+    openChat,
+    runningChatIds,
+  } = useChatHistory();
 
   const handleNewChat = () => {
     newChat();
@@ -72,12 +83,19 @@ export function AppSidebar() {
                 {chats.map((chat) => (
                   <SidebarMenuItem key={chat.id}>
                     <SidebarMenuButton
+                      aria-label={chat.title}
+                      className='data-active:font-normal'
                       isActive={activeChatId === chat.id}
                       tooltip={chat.title}
                       onClick={() => handleOpenChat(chat.id)}
                     >
-                      <MessageSquare />
-                      <span>{chat.title}</span>
+                      <ChatHistoryTitle
+                        generating={generatingTitleChatIds.has(chat.id)}
+                        title={chat.title}
+                      />
+                      {runningChatIds.has(chat.id) ? (
+                        <Spinner className='size-3 text-muted-foreground' />
+                      ) : null}
                     </SidebarMenuButton>
                     <SidebarMenuAction
                       aria-label={`Archive ${chat.title}`}

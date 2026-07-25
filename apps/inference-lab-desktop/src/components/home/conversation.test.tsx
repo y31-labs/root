@@ -22,6 +22,14 @@ afterEach(() => {
 });
 
 describe('ChatConversation', () => {
+  it('keeps the conversation blank while saved history is loading', () => {
+    render(<ChatConversation loading messages={[]} />);
+
+    expect(screen.getByRole('log')).toBeTruthy();
+    expect(screen.queryByText('What should we build?')).toBeNull();
+    expect(screen.queryByText('Describe an internal tool, workflow, or process.')).toBeNull();
+  });
+
   it('renders assistant messages as Markdown', () => {
     render(
       <ChatConversation
