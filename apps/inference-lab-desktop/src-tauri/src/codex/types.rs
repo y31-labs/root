@@ -39,6 +39,8 @@ pub(crate) struct CodexAttachmentInput {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CodexTextInput {
+    pub(super) chat_id: String,
+    pub(super) assistant_message_id: String,
     pub(super) prompt: String,
     #[serde(default)]
     pub(super) attachments: Vec<CodexAttachmentInput>,
@@ -96,7 +98,7 @@ pub(crate) enum CodexApprovalDecision {
     Decline,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ModelSettings {
     pub(super) model: String,
@@ -104,7 +106,7 @@ pub(crate) struct ModelSettings {
     pub(super) speed: ModelSpeed,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) enum ModelSpeed {
     Standard,
@@ -214,10 +216,30 @@ pub(crate) enum CodexStreamEvent {
     Completed,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CodexTextResult {
     pub(super) thread_id: String,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CodexRunInfo {
+    pub(super) run_id: String,
+    pub(super) chat_id: String,
+    pub(super) thread_id: String,
+    pub(super) turn_id: String,
+    pub(super) assistant_message_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) model: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CodexRunStatus {
+    #[serde(flatten)]
+    pub(super) info: CodexRunInfo,
+    pub(super) active: bool,
 }
 
 #[cfg(test)]

@@ -4,13 +4,18 @@ mod logging;
 
 use std::{path::PathBuf, sync::Mutex};
 
-use tauri::Manager;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+    Manager, WindowEvent,
+};
 use tokio::sync::Mutex as AsyncMutex;
 
 struct AppState {
     data_dir: PathBuf,
     chat_history: Mutex<chat_history::ChatHistoryStore>,
     codex: AsyncMutex<Option<codex::CodexClient>>,
+    codex_runs: codex::runs::CodexRuns,
     _logging_guard: Option<logging::LoggingGuard>,
 }
 
@@ -50,9 +55,42 @@ pub fn run() {
                 data_dir,
                 chat_history: Mutex::new(chat_history),
                 codex: AsyncMutex::new(None),
+                codex_runs: codex::runs::CodexRuns::default(),
                 _logging_guard: logging_guard,
             });
+            let show = MenuItem::with_id(app, "show", "Show y31", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Quit and stop agents", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show, &quit])?;
+            TrayIconBuilder::new()
+                .icon(
+                    app.default_window_icon()
+                        .cloned()
+                        .ok_or_else(|| std::io::Error::other("Missing application icon"))?,
+                )
+                .menu(&menu)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .build(app)?;
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                let state = window.state::<AppState>();
+                if state.codex_runs.has_active() {
+                    api.prevent_close();
+                    let _ = window.hide();
+                } else {
+                    window.app_handle().exit(0);
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             chat_history::chat_history_status,
@@ -65,9 +103,11 @@ pub fn run() {
             codex::connect_codex,
             codex::generate_chat_title,
             codex::interrupt_codex_turn,
+            codex::get_codex_run,
             codex::list_codex_models,
             codex::resolve_codex_approval,
-            codex::stream_codex_text
+            codex::start_codex_text,
+            codex::stream_codex_run
         ])
         .run(tauri::generate_context!())
         .expect("failed to run y31 desktop");
