@@ -21,6 +21,7 @@
     "hooks": "@workspace/ui/hooks"
   },
   "registries": {
-    "@componentry": "https://componentry.fun/r/{name}.json"
+    "@componentry": "https://componentry.fun/r/{name}.json",
+    "@ai-elements": "https://ai-sdk.dev/elements/api/registry/{name}.json"
   }
 }

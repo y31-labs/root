@@ -1,73 +1,71 @@
-import { Handle, Position } from '@xyflow/react';
-import { cn } from '@workspace/ui/lib/utils';
-import type { ComponentProps } from 'react';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/ui/card";
+import { cn } from "@workspace/ui/lib/utils";
+import { Handle, Position } from "@xyflow/react";
+import type { ComponentProps } from "react";
 
-export interface NodeProps extends ComponentProps<'div'> {
-  handles?: {
-    source?: boolean;
-    target?: boolean;
+export type NodeProps = ComponentProps<typeof Card> & {
+  handles: {
+    target: boolean;
+    source: boolean;
   };
-}
+};
 
-export function Node({
-  handles = { source: true, target: true },
-  className,
-  children,
-  ...props
-}: NodeProps) {
-  return (
-    <div
-      className={cn(
-        'border-border bg-background text-foreground min-w-56 rounded-md border px-3 py-3 text-sm shadow-sm',
-        className,
-      )}
-      {...props}
-    >
-      {handles.target ? (
-        <Handle
-          type='target'
-          position={Position.Left}
-          className='!border-background !bg-muted-foreground'
-        />
-      ) : null}
-      {children}
-      {handles.source ? (
-        <Handle
-          type='source'
-          position={Position.Right}
-          className='!border-background !bg-muted-foreground'
-        />
-      ) : null}
-    </div>
-  );
-}
+export const Node = ({ handles, className, ...props }: NodeProps) => (
+  <Card
+    className={cn(
+      "node-container relative size-full h-auto w-sm gap-0 rounded-md p-0",
+      className
+    )}
+    {...props}
+  >
+    {handles.target && <Handle position={Position.Left} type="target" />}
+    {handles.source && <Handle position={Position.Right} type="source" />}
+    {props.children}
+  </Card>
+);
 
-export function NodeHeader({ className, ...props }: ComponentProps<'div'>) {
-  return <div className={cn('space-y-1', className)} {...props} />;
-}
+export type NodeHeaderProps = ComponentProps<typeof CardHeader>;
 
-export function NodeTitle({ className, ...props }: ComponentProps<'p'>) {
-  return <p className={cn('truncate font-medium leading-5', className)} {...props} />;
-}
+export const NodeHeader = ({ className, ...props }: NodeHeaderProps) => (
+  <CardHeader
+    className={cn("gap-0.5 rounded-t-md border-b bg-secondary p-3!", className)}
+    {...props}
+  />
+);
 
-export function NodeDescription({ className, ...props }: ComponentProps<'p'>) {
-  return (
-    <p
-      className={cn('text-muted-foreground line-clamp-2 text-xs leading-5', className)}
-      {...props}
-    />
-  );
-}
+export type NodeTitleProps = ComponentProps<typeof CardTitle>;
 
-export function NodeContent({ className, ...props }: ComponentProps<'div'>) {
-  return <div className={cn('mt-3 text-xs', className)} {...props} />;
-}
+export const NodeTitle = (props: NodeTitleProps) => <CardTitle {...props} />;
 
-export function NodeFooter({ className, ...props }: ComponentProps<'div'>) {
-  return (
-    <div
-      className={cn('text-muted-foreground mt-3 flex items-center gap-2 text-xs', className)}
-      {...props}
-    />
-  );
-}
+export type NodeDescriptionProps = ComponentProps<typeof CardDescription>;
+
+export const NodeDescription = (props: NodeDescriptionProps) => (
+  <CardDescription {...props} />
+);
+
+export type NodeActionProps = ComponentProps<typeof CardAction>;
+
+export const NodeAction = (props: NodeActionProps) => <CardAction {...props} />;
+
+export type NodeContentProps = ComponentProps<typeof CardContent>;
+
+export const NodeContent = ({ className, ...props }: NodeContentProps) => (
+  <CardContent className={cn("p-3", className)} {...props} />
+);
+
+export type NodeFooterProps = ComponentProps<typeof CardFooter>;
+
+export const NodeFooter = ({ className, ...props }: NodeFooterProps) => (
+  <CardFooter
+    className={cn("rounded-b-md border-t bg-secondary p-3!", className)}
+    {...props}
+  />
+);
