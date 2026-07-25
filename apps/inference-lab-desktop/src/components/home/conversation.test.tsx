@@ -159,8 +159,9 @@ describe('ChatConversation', () => {
     expect(screen.queryByRole('list', { name: 'Agent activity' })).toBeNull();
     fireEvent.click(sequenceTrigger);
     const sequence = screen.getByLabelText('Task sequence');
-    expect(sequence.className).toContain('data-open:animate-in');
-    expect(sequence.className).toContain('data-closed:animate-out');
+    expect(sequence.className).toContain('h-(--collapsible-panel-height)');
+    expect(sequence.className).toContain('data-starting-style:h-0');
+    expect(sequence.className).toContain('data-ending-style:h-0');
     expect(screen.getByRole('list', { name: 'Agent activity' })).toBeTruthy();
     expect(screen.getByText('Ran tests')).toBeTruthy();
     expect(screen.getAllByText('Updating app.tsx')).toHaveLength(2);

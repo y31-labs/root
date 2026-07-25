@@ -32,17 +32,17 @@ export function TaskSequence({ active = false, parts }: TaskSequenceProps) {
       }}
     >
       <TaskTrigger
-        className='w-full rounded-sm py-0.5 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
+        className='inline-flex max-w-full rounded-sm py-0.5 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
         title={title}
       >
-        <span className='flex w-full min-w-0 items-center gap-2 text-sm text-muted-foreground'>
+        <span className='flex max-w-full min-w-0 items-center gap-2 text-sm text-muted-foreground'>
           <ListTodo aria-hidden='true' className='size-4 shrink-0' />
           {active ? (
-            <Shimmer as='span' className='min-w-0 flex-1 truncate text-sm'>
+            <Shimmer as='span' className='min-w-0 truncate text-sm'>
               {title}
             </Shimmer>
           ) : (
-            <span className='min-w-0 flex-1 truncate'>{title}</span>
+            <span className='min-w-0 truncate'>{title}</span>
           )}
           <ChevronDown
             aria-hidden='true'
