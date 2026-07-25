@@ -1,9 +1,4 @@
-import {
-  Task,
-  TaskContent,
-  TaskItem,
-  TaskTrigger,
-} from '@workspace/ui/components/ai-elements/task';
+import { Task, TaskItem, TaskTrigger } from '@workspace/ui/components/ai-elements/task';
 import {
   BookOpen,
   Bot,
@@ -21,6 +16,7 @@ import {
 import type { ReactNode } from 'react';
 import { useStickToBottomContext } from 'use-stick-to-bottom';
 
+import { AnimatedTaskContent } from '#/components/home/animated-task-content';
 import type { CodexActivity, CodexActivityKind, CodexActivityStatus } from '#/lib/types';
 
 interface ActivityTaskProps {
@@ -30,103 +26,21 @@ interface ActivityTaskProps {
 
 export function ActivityTask({ activities, active = false }: ActivityTaskProps) {
   const { stopScroll } = useStickToBottomContext();
-  const status = activityTaskStatus(activities);
   const items = activityItems(activities);
-  const title = activityTaskTitle(items);
   const handleDisclosureChange = () => {
     if (!active) stopScroll();
   };
-  const onlyItem = items.length === 1 ? items[0] : undefined;
-
-  if (onlyItem) {
-    return (
-      <SingleActivityTask
-        active={active}
-        activity={onlyItem}
-        onDisclosureChange={handleDisclosureChange}
-      />
-    );
-  }
 
   return (
-    <Task
-      className='my-3'
-      defaultOpen={active || status !== 'succeeded'}
-      onOpenChange={handleDisclosureChange}
-    >
-      <TaskTrigger
-        className='w-full rounded-sm py-0.5 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
-        title={title}
-      >
-        <span className='flex w-full min-w-0 items-center gap-2 text-sm text-muted-foreground'>
-          <ActivityStatusIcon
-            announceStatus={false}
-            kind={items[0]?.kind ?? 'tool'}
-            status={status}
-          />
-          <span className='min-w-0 flex-1 truncate'>{title}</span>
-          <ChevronDown
-            aria-hidden='true'
-            className='size-4 shrink-0 transition-transform group-data-[panel-open]:rotate-180'
-          />
-        </span>
-      </TaskTrigger>
-      <TaskContent
-        aria-label='Agent activity'
-        className='[&>div]:mt-2 [&>div]:space-y-1 [&>div]:border-0 [&>div]:pl-0'
-        role='list'
-      >
-        {items.map((activity) => (
-          <ActivityItem
-            activity={activity}
-            key={activity.id}
-            onDisclosureChange={handleDisclosureChange}
-          />
-        ))}
-      </TaskContent>
-    </Task>
-  );
-}
-
-function SingleActivityTask({
-  active,
-  activity,
-  onDisclosureChange,
-}: {
-  active: boolean;
-  activity: ActivityDisplayItem;
-  onDisclosureChange: () => void;
-}) {
-  if (!activity.detail) {
-    return (
-      <div className='my-3 flex min-w-0 items-center gap-2 py-0.5 text-sm text-muted-foreground'>
-        <ActivityRow activity={activity} />
-      </div>
-    );
-  }
-
-  return (
-    <Task
-      className='my-3'
-      defaultOpen={active || activity.status !== 'succeeded'}
-      onOpenChange={onDisclosureChange}
-    >
-      <TaskTrigger
-        aria-label={activity.label}
-        className='group/activity w-full rounded-sm py-0.5 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
-        title={activity.label}
-      >
-        <span className='flex min-w-0 items-center gap-2 text-sm text-muted-foreground'>
-          <ActivityRow activity={activity} disclosure />
-        </span>
-      </TaskTrigger>
-      <TaskContent
-        aria-label={`${activity.label} details`}
-        className='[&>div]:mt-1 [&>div]:border-0 [&>div]:pl-6'
-      >
-        <ActivityDetail activity={activity} />
-      </TaskContent>
-    </Task>
+    <div aria-label='Agent activity' className='space-y-1' role='list'>
+      {items.map((activity) => (
+        <ActivityItem
+          activity={activity}
+          key={activity.id}
+          onDisclosureChange={handleDisclosureChange}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -140,7 +54,7 @@ function ActivityItem({
   return (
     <TaskItem className='min-w-0' role='listitem'>
       {activity.detail ? (
-        <Task defaultOpen={activity.status === 'running'} onOpenChange={onDisclosureChange}>
+        <Task defaultOpen={false} onOpenChange={onDisclosureChange}>
           <TaskTrigger
             aria-label={activity.label}
             className='group/activity w-full rounded-sm text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
@@ -150,12 +64,12 @@ function ActivityItem({
               <ActivityRow activity={activity} disclosure />
             </span>
           </TaskTrigger>
-          <TaskContent
+          <AnimatedTaskContent
             aria-label={`${activity.label} details`}
             className='[&>div]:mt-1 [&>div]:border-0 [&>div]:pl-6'
           >
             <ActivityDetail activity={activity} />
-          </TaskContent>
+          </AnimatedTaskContent>
         </Task>
       ) : (
         <div className='flex min-w-0 items-center gap-2 py-0.5'>
@@ -255,12 +169,6 @@ const activityIcons: Record<CodexActivityKind, ReactNode> = {
   web: <Globe2 />,
 };
 
-const activityTaskStatus = (activities: CodexActivity[]): CodexActivity['status'] => {
-  if (activities.some((activity) => activity.status === 'running')) return 'running';
-  if (activities.some((activity) => activity.status === 'failed')) return 'failed';
-  return 'succeeded';
-};
-
 interface ActivityDisplayItem {
   id: string;
   kind: CodexActivityKind;
@@ -280,12 +188,24 @@ const activityItems = (activities: CodexActivity[]): ActivityDisplayItem[] =>
       : [activity],
   );
 
-const activityTaskTitle = (activities: ActivityDisplayItem[]) => {
+export const activityTaskProgressLabel = (activities: CodexActivity[]) => {
+  const items = activityItems(activities);
+  let current = items.at(-1);
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (items[index]?.status !== 'running') continue;
+    current = items[index];
+    break;
+  }
+  if (!current) return 'Working';
+  return current.status === 'failed' ? `${current.label} — failed` : current.label;
+};
+
+export const activityTaskCompletionPhrases = (activities: CodexActivity[]) => {
   const completedKinds = new Map<CodexActivityKind, ActivityDisplayItem[]>();
   const running: string[] = [];
   const failed: string[] = [];
 
-  for (const activity of activities) {
+  for (const activity of activityItems(activities)) {
     if (activity.status === 'running') {
       running.push(activity.label);
       continue;
@@ -297,12 +217,11 @@ const activityTaskTitle = (activities: ActivityDisplayItem[]) => {
     completedKinds.set(activity.kind, [...(completedKinds.get(activity.kind) ?? []), activity]);
   }
 
-  const completed = [...completedKinds].map(([kind, items]) => completedActivityLabel(kind, items));
-  const phrases = [...completed, ...running, ...failed];
-  const summary = phrases
-    .map((phrase, index) => (index === 0 ? sentenceCase(phrase) : lowercaseFirst(phrase)))
-    .join(', ');
-  return summary || 'Agent activity';
+  return [
+    ...[...completedKinds].map(([kind, items]) => completedActivityLabel(kind, items)),
+    ...running,
+    ...failed,
+  ];
 };
 
 const completedActivityLabel = (kind: CodexActivityKind, activities: ActivityDisplayItem[]) => {
@@ -328,23 +247,17 @@ const completedActivityLabel = (kind: CodexActivityKind, activities: ActivityDis
     case 'plan':
       return plural ? `Updated the plan ${count} times` : 'Updated the plan';
     case 'read':
-      return plural ? `Read ${count} files` : 'Read a file';
+      return plural ? 'Read files' : 'Read a file';
     case 'search':
-      return plural ? `Searched ${count} times` : 'Searched files';
+      return plural ? `Searched files ${count} times` : 'Searched files';
     case 'tool':
-      return plural ? `Used ${count} tools` : 'Used a tool';
+      return plural ? `Loaded ${count} tools` : 'Loaded a tool';
     case 'wait':
       return plural ? `Waited ${count} times` : 'Waited';
     case 'web':
       return plural ? `Searched the web ${count} times` : 'Searched the web';
   }
 };
-
-const sentenceCase = (value: string) =>
-  value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : value;
-
-const lowercaseFirst = (value: string) =>
-  value ? `${value.charAt(0).toLowerCase()}${value.slice(1)}` : value;
 
 const activityStatusLabel = (status: CodexActivity['status']) => {
   if (status === 'succeeded') return 'Succeeded';

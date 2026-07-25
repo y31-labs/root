@@ -9,9 +9,8 @@ import { useEffect, useState } from 'react';
 import { StickToBottom } from 'use-stick-to-bottom';
 
 import { FileAttachments } from '#/components/file-attachments';
-import { ActivityTask } from '#/components/home/activity-task';
 import { ApprovalRow, type ApprovalDecision } from '#/components/home/approval-row';
-import { ReasoningTask } from '#/components/home/reasoning-task';
+import { TaskSequence } from '#/components/home/task-sequence';
 import type { ChatApproval, ChatMessage } from '#/lib/chat-message';
 import type { ChatTranscriptPart, CodexApprovalDecision, CodexApprovalMethod } from '#/lib/types';
 
@@ -54,24 +53,18 @@ export function ChatConversation({ messages, onApprovalDecision }: ChatConversat
                     variant='message'
                   />
                 ) : null}
-                {message.role === 'assistant' && message.parts?.length
-                  ? message.parts.map((part, index) => (
-                      <TranscriptPart
-                        active={
-                          message.streaming === true && index === (message.parts?.length ?? 0) - 1
-                        }
-                        key={`${part.type}-${part.id}`}
-                        part={part}
-                      />
-                    ))
-                  : message.text &&
-                    (message.role === 'assistant' ? (
-                      <MessageResponse className='h-auto' isAnimating={message.streaming}>
-                        {message.text}
-                      </MessageResponse>
-                    ) : (
-                      message.text
-                    ))}
+                {message.role === 'assistant' && message.parts?.length ? (
+                  <MessageTranscript parts={message.parts} streaming={message.streaming === true} />
+                ) : (
+                  message.text &&
+                  (message.role === 'assistant' ? (
+                    <MessageResponse className='h-auto' isAnimating={message.streaming}>
+                      {message.text}
+                    </MessageResponse>
+                  ) : (
+                    message.text
+                  ))
+                )}
                 {message.streaming &&
                   !message.text &&
                   !message.parts?.length &&
@@ -130,19 +123,53 @@ export function ChatConversation({ messages, onApprovalDecision }: ChatConversat
   );
 }
 
-function TranscriptPart({ active, part }: { active: boolean; part: ChatTranscriptPart }) {
-  if (part.type === 'message') {
-    return (
-      <MessageResponse className='h-auto' isAnimating={active}>
-        {part.text}
-      </MessageResponse>
-    );
-  }
-  if (part.type === 'reasoning') {
-    return <ReasoningTask active={active} summaries={part.summaries} />;
-  }
-  return <ActivityTask active={active} activities={part.activities} />;
+type MessageTranscriptPart = Extract<ChatTranscriptPart, { type: 'message' }>;
+type TaskTranscriptPart = Exclude<ChatTranscriptPart, MessageTranscriptPart>;
+type TranscriptSegment =
+  | { type: 'message'; part: MessageTranscriptPart }
+  | { type: 'tasks'; id: string; parts: TaskTranscriptPart[] };
+
+function MessageTranscript({
+  parts,
+  streaming,
+}: {
+  parts: ChatTranscriptPart[];
+  streaming: boolean;
+}) {
+  const segments = transcriptSegments(parts);
+
+  return segments.map((segment, index) => {
+    const active = streaming && index === segments.length - 1;
+    if (segment.type === 'message') {
+      return (
+        <MessageResponse className='h-auto' isAnimating={active} key={segment.part.id}>
+          {segment.part.text}
+        </MessageResponse>
+      );
+    }
+    return <TaskSequence active={active} key={segment.id} parts={segment.parts} />;
+  });
 }
+
+const transcriptSegments = (parts: ChatTranscriptPart[]): TranscriptSegment[] => {
+  const segments: TranscriptSegment[] = [];
+
+  for (const part of parts) {
+    if (part.type === 'message') {
+      if (part.text.trim()) segments.push({ type: 'message', part });
+      continue;
+    }
+
+    const last = segments.at(-1);
+    if (last?.type === 'tasks') {
+      last.parts.push(part);
+      continue;
+    }
+    segments.push({ type: 'tasks', id: `tasks-${part.id}`, parts: [part] });
+  }
+
+  return segments;
+};
 
 const approvalTitle = (approval: ChatApproval) => {
   if (approval.status !== 'resolved') return approval.title;
