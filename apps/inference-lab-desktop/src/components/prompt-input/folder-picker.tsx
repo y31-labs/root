@@ -2,12 +2,11 @@ import { Button } from '@workspace/ui/components/ui/button';
 import { Folder } from 'lucide-react';
 
 interface FolderPickerProps {
-  disabled: boolean;
   workingDirectory?: string;
   onSelect: () => void;
 }
 
-export function FolderPicker({ disabled, workingDirectory, onSelect }: FolderPickerProps) {
+export function FolderPicker({ workingDirectory, onSelect }: FolderPickerProps) {
   return (
     <Button
       type='button'
@@ -15,11 +14,8 @@ export function FolderPicker({ disabled, workingDirectory, onSelect }: FolderPic
       size='sm'
       className='mb-2 ml-2 max-w-[calc(100%-0.5rem)] rounded-full px-2 font-normal text-muted-foreground'
       aria-label={
-        workingDirectory
-          ? `Change working folder: ${workingDirectory}`
-          : 'Select working folder'
+        workingDirectory ? `Change working folder: ${workingDirectory}` : 'Select working folder'
       }
-      disabled={disabled}
       title={workingDirectory}
       onClick={onSelect}
     >

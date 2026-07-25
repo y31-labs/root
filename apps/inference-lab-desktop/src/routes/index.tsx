@@ -15,16 +15,18 @@ function HomeRoute() {
   const { selectWorkingDirectory, workingDirectory } = useWorkingDirectory();
   const modelSettings = useModelSettings(api.listModels);
   const { permissionMode, setPermissionMode } = usePermissionMode();
-  const { messages, pending, prompt, resolveApproval, setPrompt, submitPrompt } = useCodexChat({
-    permissionMode,
-    settings: modelSettings.settings,
-    workingDirectory,
-  });
+  const { messages, pending, prompt, resolveApproval, setPrompt, stopResponse, submitPrompt } =
+    useCodexChat({
+      permissionMode,
+      settings: modelSettings.settings,
+      workingDirectory,
+    });
 
   return (
     <main className='flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground'>
       <ChatConversation messages={messages} onApprovalDecision={resolveApproval} />
       <ChatInput
+        conversationStarted={messages.length > 0}
         modelSettings={modelSettings}
         pending={pending}
         permissionMode={permissionMode}
@@ -33,6 +35,7 @@ function HomeRoute() {
         onPromptChange={setPrompt}
         onPermissionModeChange={setPermissionMode}
         onSelectWorkingDirectory={selectWorkingDirectory}
+        onStop={stopResponse}
         onSubmit={submitPrompt}
       />
     </main>

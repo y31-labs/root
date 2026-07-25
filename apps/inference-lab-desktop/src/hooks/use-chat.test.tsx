@@ -4,7 +4,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { c } from '#/hooks/use-codex-chat';
+import { useCodexChat } from '#/hooks/use-codex-chat';
 import { createLocalApi } from '#/lib/local-api';
 import type { ChatStreamEvent } from '#/lib/types';
 import { LocalApiProvider } from '#/providers/local-api-provider';
@@ -427,6 +427,46 @@ describe('useCodexChat', () => {
     act(() => emissions[2]?.({ type: 'completed' }));
     act(() => requestResolvers[2]?.({ threadId: 'codex-thread-2' }));
     await waitFor(() => expect(result.current.pending).toBe(false));
+  });
+
+  it('stops an active response and completes the current turn', async () => {
+    let emit: ((event: ChatStreamEvent) => void) | undefined;
+    let resolveRequest: (result: unknown) => void = () => undefined;
+    const request = new Promise<unknown>((resolve) => {
+      resolveRequest = resolve;
+    });
+    const invoke = vi.fn((command: string) =>
+      command === 'interrupt_codex_turn' ? Promise.resolve() : request,
+    );
+    const api = createLocalApi(invoke, (onMessage) => {
+      emit = onMessage as (event: ChatStreamEvent) => void;
+      return { id: 'channel-1' };
+    });
+
+    function Wrapper({ children }: { children: ReactNode }) {
+      return <LocalApiProvider api={api}>{children}</LocalApiProvider>;
+    }
+
+    const { result } = renderHook(() => useCodexChat({ permissionMode: 'read-only' }), {
+      wrapper: Wrapper,
+    });
+
+    act(() => result.current.submitPrompt({ files: [], text: 'Keep working' }));
+    await waitFor(() => expect(emit).toBeDefined());
+    act(() => emit?.({ type: 'started', threadId: 'thread-1', turnId: 'turn-1' }));
+    act(() => result.current.stopResponse());
+
+    await waitFor(() => expect(result.current.pending).toBe(false));
+    expect(result.current.messages[1]).toMatchObject({
+      completedAtMs: expect.any(Number),
+      streaming: false,
+    });
+    expect(invoke).toHaveBeenCalledWith('interrupt_codex_turn', {
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+    });
+
+    act(() => resolveRequest({ threadId: 'thread-1' }));
   });
 
   it('shows a transport failure once and allows a later submission', async () => {

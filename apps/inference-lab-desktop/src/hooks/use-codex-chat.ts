@@ -247,6 +247,12 @@ export const useCodexChat = ({
       });
   };
 
+  const stopResponse = () => {
+    chat.stop();
+    submissionInFlight.current = false;
+    finishActiveTurn();
+  };
+
   const resolveApproval = (
     requestId: string | number,
     method: CodexApprovalMethod,
@@ -267,6 +273,7 @@ export const useCodexChat = ({
     prompt,
     resolveApproval,
     setPrompt,
+    stopResponse,
     submitPrompt,
   };
 };
