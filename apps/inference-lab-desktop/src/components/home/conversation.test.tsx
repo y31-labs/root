@@ -160,6 +160,9 @@ describe('ChatConversation', () => {
     fireEvent.click(sequenceTrigger);
     const sequence = screen.getByLabelText('Task sequence');
     expect(sequence.className).toContain('h-(--collapsible-panel-height)');
+    expect(sequence.className).toContain('max-h-[50dvh]');
+    expect(sequence.className).toContain('overflow-y-auto');
+    expect(sequence.className).toContain('scroll-fade');
     expect(sequence.className).toContain('data-starting-style:h-0');
     expect(sequence.className).toContain('data-ending-style:h-0');
     expect(screen.getByRole('list', { name: 'Agent activity' })).toBeTruthy();

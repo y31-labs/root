@@ -52,7 +52,7 @@ export function TaskSequence({ active = false, parts }: TaskSequenceProps) {
       </TaskTrigger>
       <AnimatedTaskContent
         aria-label='Task sequence'
-        className='[&>div]:mt-2 [&>div]:space-y-2 [&>div]:border-0 [&>div]:pl-6'
+        className='scroll-fade max-h-[50dvh] overflow-y-auto [&>div]:mt-2 [&>div]:space-y-2 [&>div]:border-0 [&>div]:pl-6'
       >
         {parts.map((part) =>
           part.type === 'reasoning' ? (
