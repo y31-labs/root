@@ -27,7 +27,7 @@ export function FileAttachments({
     >
       {attachments.map((attachment) => {
         const label = attachment.filename ?? 'Attached file';
-        if (variant === 'message' && isImage(attachment)) {
+        if (variant === 'message' && isImage(attachment) && attachment.url) {
           return (
             <div className='size-24 overflow-hidden rounded-lg' key={attachment.id}>
               <img
@@ -49,7 +49,7 @@ export function FileAttachments({
             )}
             key={attachment.id}
           >
-            {isImage(attachment) ? (
+            {isImage(attachment) && attachment.url ? (
               <img
                 alt={label}
                 className='size-5 shrink-0 rounded object-cover'

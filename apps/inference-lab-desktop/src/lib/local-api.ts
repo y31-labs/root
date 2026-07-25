@@ -1,6 +1,12 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
 
 import type {
+  ChatHistoryStatus,
+  ChatRecord,
+  ChatSaveResult,
+  ChatSummary,
+} from '#/lib/chat-history';
+import type {
   CodexApprovalDecision,
   CodexApprovalMethod,
   ChatStreamEvent,
@@ -62,6 +68,11 @@ export const createLocalApi = (
     call(command, args) as Promise<T>;
 
   return {
+    archiveChat: (chatId: string) => request<void>('archive_chat', { chatId }),
+    chatHistoryStatus: () => request<ChatHistoryStatus>('chat_history_status'),
+    getChat: (chatId: string) => request<ChatRecord | null>('get_chat', { chatId }),
+    listChats: () => request<ChatSummary[]>('list_chats'),
+    saveChat: (chat: ChatRecord) => request<ChatSaveResult>('save_chat', { chat }),
     codexIntegrationStatus: () => request<CodexIntegrationStatus>('codex_integration_status'),
     connectCodex: () => request<void>('connect_codex'),
     listModels: () =>

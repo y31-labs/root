@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { ChatRecord } from '#/lib/chat-history';
 import { createLocalApi } from '#/lib/local-api';
 
 describe('local API', () => {
@@ -95,5 +96,42 @@ describe('local API', () => {
       method: 'item/commandExecution/requestApproval',
       decision: 'acceptForSession',
     });
+  });
+
+  it('loads, saves, and archives chat history through native commands', async () => {
+    const chat: ChatRecord = {
+      id: 'chat-1',
+      title: 'Build an intake flow',
+      createdAtMs: 10,
+      updatedAtMs: 20,
+      codexThreadId: 'thread-1',
+      messages: [{ id: 'message-1', role: 'user', text: 'Build an intake flow' }],
+    };
+    const summary = {
+      id: chat.id,
+      title: chat.title,
+      createdAtMs: chat.createdAtMs,
+      updatedAtMs: chat.updatedAtMs,
+    };
+    const saveResult = { ...summary, attachmentStorageKeys: {} };
+    const invoke = vi.fn((command: string) => {
+      if (command === 'list_chats') return Promise.resolve([summary]);
+      if (command === 'get_chat') return Promise.resolve(chat);
+      if (command === 'archive_chat') return Promise.resolve();
+      if (command === 'chat_history_status') return Promise.resolve({ warning: 'Recovered' });
+      return Promise.resolve(saveResult);
+    });
+    const api = createLocalApi(invoke);
+
+    await expect(api.listChats()).resolves.toEqual([summary]);
+    await expect(api.getChat('chat-1')).resolves.toEqual(chat);
+    await expect(api.saveChat(chat)).resolves.toEqual(saveResult);
+    await expect(api.archiveChat('chat-1')).resolves.toBeUndefined();
+    await expect(api.chatHistoryStatus()).resolves.toEqual({ warning: 'Recovered' });
+    expect(invoke).toHaveBeenNthCalledWith(1, 'list_chats', undefined);
+    expect(invoke).toHaveBeenNthCalledWith(2, 'get_chat', { chatId: 'chat-1' });
+    expect(invoke).toHaveBeenNthCalledWith(3, 'save_chat', { chat });
+    expect(invoke).toHaveBeenNthCalledWith(4, 'archive_chat', { chatId: 'chat-1' });
+    expect(invoke).toHaveBeenNthCalledWith(5, 'chat_history_status', undefined);
   });
 });
