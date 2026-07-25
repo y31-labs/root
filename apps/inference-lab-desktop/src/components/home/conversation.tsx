@@ -37,7 +37,7 @@ export function ChatConversation({ messages, onApprovalDecision }: ChatConversat
       <StickToBottom.Content className='mx-auto flex min-h-full w-full max-w-3xl flex-col px-5 py-6 md:px-8'>
         {messages.length ? (
           messages.map((message) => (
-            <Message from={message.role} key={message.id}>
+            <Message className='mt-6' from={message.role} key={message.id}>
               <MessageContent className='group-[.is-user]:border-0 group-[.is-user]:bg-muted/40'>
                 {message.role === 'assistant' && message.startedAtMs !== undefined ? (
                   <TurnDuration
