@@ -16,6 +16,8 @@ import type {
   ModelSettings,
   ModelSpeed,
   PermissionMode,
+  CodexRunInfo,
+  CodexRunStatus,
 } from '#/lib/types';
 
 type Invoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -90,19 +92,23 @@ export const createLocalApi = (
     connectCodex: () => request<void>('connect_codex'),
     listModels: () =>
       request<ProviderModel[]>('list_codex_models').then((models) => models.map(toModel)),
+    getCodexRun: (chatId: string) => request<CodexRunStatus | null>('get_codex_run', { chatId }),
     interruptCodexTurn: (threadId: string, turnId: string) =>
       request<void>('interrupt_codex_turn', { threadId, turnId }),
-    streamChatText: (
+    startCodexText: (
+      chatId: string,
+      assistantMessageId: string,
       prompt: string,
       attachments: ChatAttachmentInput[],
       workingDirectory: string | undefined,
       threadId: string | undefined,
       settings: ModelSettings | undefined,
       permissionMode: PermissionMode,
-      onEvent: (event: ChatStreamEvent) => void,
     ) =>
-      request<ChatTextResult>('stream_codex_text', {
+      request<CodexRunInfo>('start_codex_text', {
         input: {
+          chatId,
+          assistantMessageId,
           prompt,
           attachments,
           ...(workingDirectory ? { workingDirectory } : {}),
@@ -110,6 +116,10 @@ export const createLocalApi = (
           ...(settings ? { settings } : {}),
           permissionMode,
         },
+      }),
+    streamCodexRun: (runId: string, onEvent: (event: ChatStreamEvent) => void) =>
+      request<ChatTextResult>('stream_codex_run', {
+        runId,
         onEvent: makeChannel(onEvent),
       }),
     resolveCodexApproval: (

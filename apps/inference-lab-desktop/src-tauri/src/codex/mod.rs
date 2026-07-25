@@ -1,5 +1,6 @@
 mod client;
 mod discovery;
+pub(crate) mod runs;
 mod stream;
 mod types;
 
@@ -10,14 +11,15 @@ use std::{
 };
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use runs::CodexRunOutcome;
 use serde_json::{json, Value};
 use stream::{collect_turn_text, stream_turn};
-use tauri::{ipc::Channel, State};
+use tauri::{ipc::Channel, AppHandle, Manager, State};
 use tokio::sync::broadcast;
 use types::{
-    CodexApprovalDecision, CodexAttachmentInput, CodexIntegrationStatus, CodexStreamEvent,
-    CodexTextInput, CodexTextResult, CodexTitleInput, Model, ModelSettings, ModelSpeed,
-    PermissionMode,
+    CodexApprovalDecision, CodexAttachmentInput, CodexIntegrationStatus, CodexRunInfo,
+    CodexRunStatus, CodexStreamEvent, CodexTextInput, CodexTextResult, CodexTitleInput, Model,
+    ModelSettings, ModelSpeed, PermissionMode,
 };
 
 use crate::AppState;
@@ -199,11 +201,14 @@ pub(crate) async fn generate_chat_title(
 }
 
 #[tauri::command]
-pub(crate) async fn stream_codex_text(
+pub(crate) async fn start_codex_text(
+    app: AppHandle,
     state: State<'_, AppState>,
     input: CodexTextInput,
-    on_event: Channel<CodexStreamEvent>,
-) -> Result<CodexTextResult, String> {
+) -> Result<CodexRunInfo, String> {
+    if input.chat_id.trim().is_empty() || input.assistant_message_id.trim().is_empty() {
+        return Err("Codex received an invalid chat identity.".to_string());
+    }
     let prompt = input.prompt.trim();
     if prompt.is_empty() && input.attachments.is_empty() {
         return Err("Enter a message or attach a file before starting Codex.".to_string());
@@ -229,7 +234,7 @@ pub(crate) async fn stream_codex_text(
         &thread_id,
         turn_input,
         &cwd,
-        input.settings,
+        input.settings.clone(),
         input.permission_mode,
     );
 
@@ -248,14 +253,29 @@ pub(crate) async fn stream_codex_text(
             return Err(error);
         }
     };
-    if let Err(error) = on_event
-        .send(CodexStreamEvent::Started {
-            thread_id: thread_id.clone(),
-            turn_id: turn_id.clone(),
-        })
-        .map_err(display_error)
-    {
+    let run_info = CodexRunInfo {
+        run_id: format!("{thread_id}:{turn_id}"),
+        chat_id: input.chat_id,
+        thread_id: thread_id.clone(),
+        turn_id: turn_id.clone(),
+        assistant_message_id: input.assistant_message_id,
+        model: input.settings.map(|settings| settings.model),
+    };
+    let run = match state.codex_runs.insert(run_info.clone()) {
+        Ok(run) => run,
+        Err(error) => {
+            let _ = interrupt_turn(&state, &thread_id, &turn_id).await;
+            cleanup_attachment_dir(attachment_dir.as_deref());
+            return Err(error);
+        }
+    };
+    if let Err(error) = run.record(CodexStreamEvent::Started {
+        thread_id: thread_id.clone(),
+        turn_id: turn_id.clone(),
+    }) {
         let _ = interrupt_turn(&state, &thread_id, &turn_id).await;
+        let _ = run.finish(CodexRunOutcome::Failed(error.clone()));
+        let _ = state.codex_runs.finish(&run_info.run_id);
         cleanup_attachment_dir(attachment_dir.as_deref());
         return Err(error);
     }
@@ -265,23 +285,101 @@ pub(crate) async fn stream_codex_text(
         resumed
     );
 
-    let stream_result =
-        stream_turn(&state, &mut notifications, &thread_id, &turn_id, &on_event).await;
-    cleanup_attachment_dir(attachment_dir.as_deref());
-    if let Err(error) = stream_result {
-        tracing::warn!(error = %error, "Codex turn failed");
-        tracing::warn!(
-            target: crate::logging::EXTERNAL_EVENT_TARGET,
-            event = "codex_turn_failed"
-        );
-        return Err(error);
+    let run_id = run_info.run_id.clone();
+    tauri::async_runtime::spawn(async move {
+        let state = app.state::<AppState>();
+        let stream_result =
+            stream_turn(&state, &mut notifications, &thread_id, &turn_id, &|event| {
+                run.record(event)
+            })
+            .await;
+        cleanup_attachment_dir(attachment_dir.as_deref());
+        match stream_result {
+            Ok(()) => {
+                tracing::info!(
+                    target: crate::logging::EXTERNAL_EVENT_TARGET,
+                    event = "codex_turn_completed"
+                );
+                let _ = run.finish(CodexRunOutcome::Completed(CodexTextResult { thread_id }));
+            }
+            Err(error) => {
+                tracing::warn!(error = %error, "Codex turn failed");
+                tracing::warn!(
+                    target: crate::logging::EXTERNAL_EVENT_TARGET,
+                    event = "codex_turn_failed"
+                );
+                let _ = run.finish(CodexRunOutcome::Failed(error));
+            }
+        }
+        if let Err(error) = state.codex_runs.finish(&run_id) {
+            tracing::warn!(error = %error, "failed to finish Codex run state");
+        }
+    });
+
+    Ok(run_info)
+}
+
+#[tauri::command]
+pub(crate) fn get_codex_run(
+    state: State<'_, AppState>,
+    chat_id: String,
+) -> Result<Option<CodexRunStatus>, String> {
+    state
+        .codex_runs
+        .get_for_chat(&chat_id)?
+        .map(|run| {
+            Ok(CodexRunStatus {
+                info: run.info.clone(),
+                active: run.is_active(),
+            })
+        })
+        .transpose()
+}
+
+#[tauri::command]
+pub(crate) async fn stream_codex_run(
+    state: State<'_, AppState>,
+    run_id: String,
+    on_event: Channel<CodexStreamEvent>,
+) -> Result<CodexTextResult, String> {
+    let run = state
+        .codex_runs
+        .get(&run_id)?
+        .ok_or_else(|| "The Codex run is no longer available.".to_string())?;
+    let (events, mut update_receiver) = run.subscribe()?;
+    let mut last_sequence = None;
+
+    for event in events {
+        on_event.send(event.event).map_err(display_error)?;
+        last_sequence = Some(event.sequence);
+    }
+    if let Some(outcome) = run.outcome()? {
+        return outcome_result(outcome);
     }
 
-    tracing::info!(
-        target: crate::logging::EXTERNAL_EVENT_TARGET,
-        event = "codex_turn_completed"
-    );
-    Ok(CodexTextResult { thread_id })
+    loop {
+        match update_receiver.recv().await {
+            Ok(()) | Err(broadcast::error::RecvError::Lagged(_)) => {
+                for event in run.events_after(last_sequence)? {
+                    on_event.send(event.event).map_err(display_error)?;
+                    last_sequence = Some(event.sequence);
+                }
+                if let Some(outcome) = run.outcome()? {
+                    return outcome_result(outcome);
+                }
+            }
+            Err(broadcast::error::RecvError::Closed) => {
+                return Err("The Codex run event stream closed.".to_string());
+            }
+        }
+    }
+}
+
+fn outcome_result(outcome: CodexRunOutcome) -> Result<CodexTextResult, String> {
+    match outcome {
+        CodexRunOutcome::Completed(result) => Ok(result),
+        CodexRunOutcome::Failed(error) => Err(error),
+    }
 }
 
 #[tauri::command]

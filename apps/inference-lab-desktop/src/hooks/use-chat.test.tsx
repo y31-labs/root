@@ -18,9 +18,11 @@ describe('useCodexChat', () => {
     const request = new Promise<unknown>((resolve) => {
       resolveRequest = resolve;
     });
-    const invoke = vi.fn((command: string) =>
-      command === 'resolve_codex_approval' ? Promise.resolve() : request,
-    );
+    const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
+      if (command === 'start_codex_text') return Promise.resolve(runFromStartArgs(args));
+      if (command === 'stream_codex_run') return request;
+      return Promise.resolve();
+    });
     const api = createLocalApi(invoke, (onMessage) => {
       emit = onMessage as (event: ChatStreamEvent) => void;
       return { id: 'channel-1' };
@@ -251,8 +253,10 @@ describe('useCodexChat', () => {
       streaming: false,
       text: '',
     });
-    expect(invoke).toHaveBeenCalledWith('stream_codex_text', {
+    expect(invoke).toHaveBeenCalledWith('start_codex_text', {
       input: {
+        chatId: expect.any(String),
+        assistantMessageId: 'message-2',
         attachments: [
           {
             dataUrl: 'data:application/pdf;base64,ZmlsZQ==',
@@ -269,6 +273,9 @@ describe('useCodexChat', () => {
         permissionMode: 'workspace-write',
         workingDirectory: '/Users/example/project',
       },
+    });
+    expect(invoke).toHaveBeenCalledWith('stream_codex_run', {
+      runId: 'run-1',
       onEvent: { id: 'channel-1' },
     });
   });
@@ -279,7 +286,11 @@ describe('useCodexChat', () => {
     const request = new Promise<unknown>((resolve) => {
       resolveRequest = resolve;
     });
-    const invoke = vi.fn(() => request);
+    const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
+      if (command === 'start_codex_text') return Promise.resolve(runFromStartArgs(args));
+      if (command === 'stream_codex_run') return request;
+      return Promise.resolve();
+    });
     const api = createLocalApi(invoke, (onMessage) => {
       emit = onMessage as (event: ChatStreamEvent) => void;
       return { id: 'channel-1' };
@@ -314,9 +325,11 @@ describe('useCodexChat', () => {
 
     await waitFor(() => expect(emit).toBeDefined());
     expect(result.current.messages).toHaveLength(2);
-    expect(invoke).toHaveBeenCalledOnce();
-    expect(invoke).toHaveBeenCalledWith('stream_codex_text', {
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(invoke).toHaveBeenCalledWith('start_codex_text', {
       input: {
+        chatId: expect.any(String),
+        assistantMessageId: 'message-2',
         attachments: [
           {
             dataUrl: 'data:image/png;base64,aW1hZ2U=',
@@ -327,7 +340,6 @@ describe('useCodexChat', () => {
         prompt: '',
         permissionMode: 'read-only',
       },
-      onEvent: { id: 'channel-1' },
     });
 
     act(() => emit?.({ type: 'completed' }));
@@ -338,13 +350,24 @@ describe('useCodexChat', () => {
   it('uses current settings, continues the Codex thread, and resets it with the workspace', async () => {
     const emissions: Array<(event: ChatStreamEvent) => void> = [];
     const requestResolvers: Array<(result: unknown) => void> = [];
-    const invoke = vi.fn(
-      (command: string, _args?: Record<string, unknown>) =>
-        new Promise<unknown>((resolve) => {
-          if (command === 'stream_codex_text') requestResolvers.push(resolve);
-          else resolve(undefined);
-        }),
-    );
+    let runNumber = 0;
+    const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
+      if (command === 'start_codex_text') {
+        runNumber += 1;
+        const input = args?.input as Record<string, unknown>;
+        return Promise.resolve(
+          runFromStartArgs(
+            args,
+            runNumber,
+            typeof input.threadId === 'string' ? input.threadId : `codex-thread-${runNumber}`,
+          ),
+        );
+      }
+      if (command === 'stream_codex_run') {
+        return new Promise<unknown>((resolve) => requestResolvers.push(resolve));
+      }
+      return Promise.resolve();
+    });
     const api = createLocalApi(invoke, (onMessage) => {
       emissions.push(onMessage as (event: ChatStreamEvent) => void);
       return { id: `channel-${emissions.length}` };
@@ -386,7 +409,8 @@ describe('useCodexChat', () => {
     });
     act(() => result.current.submitPrompt({ files: [], text: 'Second' }));
     await waitFor(() => expect(emissions).toHaveLength(2));
-    expect(invoke.mock.calls[1]?.[1]).toMatchObject({
+    const startCalls = invoke.mock.calls.filter(([command]) => command === 'start_codex_text');
+    expect(startCalls[1]?.[1]).toMatchObject({
       input: {
         prompt: 'Second',
         threadId: 'codex-thread-1',
@@ -408,22 +432,21 @@ describe('useCodexChat', () => {
       expect(result.current.messages).toEqual([]);
       expect(result.current.pending).toBe(false);
     });
-    expect(invoke).toHaveBeenCalledWith('interrupt_codex_turn', {
-      threadId: 'codex-thread-1',
-      turnId: 'codex-turn-2',
-    });
+    expect(invoke.mock.calls.some(([command]) => command === 'interrupt_codex_turn')).toBe(false);
     act(() => requestResolvers[1]?.({ threadId: 'codex-thread-1' }));
 
     act(() => result.current.submitPrompt({ files: [], text: 'Third' }));
     await waitFor(() => expect(emissions).toHaveLength(3));
-    const streamCalls = invoke.mock.calls.filter(([command]) => command === 'stream_codex_text');
-    expect(streamCalls[2]?.[1]).toMatchObject({
+    const updatedStartCalls = invoke.mock.calls.filter(
+      ([command]) => command === 'start_codex_text',
+    );
+    expect(updatedStartCalls[2]?.[1]).toMatchObject({
       input: {
         prompt: 'Third',
         workingDirectory: '/workspace/two',
       },
     });
-    expect(streamCalls[2]?.[1]?.input).not.toHaveProperty('threadId');
+    expect(updatedStartCalls[2]?.[1]?.input).not.toHaveProperty('threadId');
     act(() => emissions[2]?.({ type: 'completed' }));
     act(() => requestResolvers[2]?.({ threadId: 'codex-thread-2' }));
     await waitFor(() => expect(result.current.pending).toBe(false));
@@ -435,9 +458,11 @@ describe('useCodexChat', () => {
     const request = new Promise<unknown>((resolve) => {
       resolveRequest = resolve;
     });
-    const invoke = vi.fn((command: string) =>
-      command === 'interrupt_codex_turn' ? Promise.resolve() : request,
-    );
+    const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
+      if (command === 'start_codex_text') return Promise.resolve(runFromStartArgs(args));
+      if (command === 'stream_codex_run') return request;
+      return Promise.resolve();
+    });
     const api = createLocalApi(invoke, (onMessage) => {
       emit = onMessage as (event: ChatStreamEvent) => void;
       return { id: 'channel-1' };
@@ -476,8 +501,10 @@ describe('useCodexChat', () => {
     const secondRequest = new Promise<unknown>((resolve) => {
       resolveSecondRequest = resolve;
     });
-    const invoke = vi.fn((command: string) => {
-      if (command !== 'stream_codex_text') return Promise.resolve();
+    const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
+      if (command === 'start_codex_text')
+        return Promise.resolve(runFromStartArgs(args, callCount + 1));
+      if (command !== 'stream_codex_run') return Promise.resolve();
       callCount += 1;
       return callCount === 1 ? Promise.reject(new Error('Connection failed')) : secondRequest;
     });
@@ -522,8 +549,9 @@ describe('useCodexChat', () => {
       resolveRequest = resolve;
     });
     let approvalAttempts = 0;
-    const invoke = vi.fn((command: string) => {
-      if (command === 'stream_codex_text') return request;
+    const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
+      if (command === 'start_codex_text') return Promise.resolve(runFromStartArgs(args));
+      if (command === 'stream_codex_run') return request;
       approvalAttempts += 1;
       return approvalAttempts === 1
         ? Promise.reject(new Error('Approval could not be sent'))
@@ -589,3 +617,19 @@ describe('useCodexChat', () => {
     await waitFor(() => expect(result.current.pending).toBe(false));
   });
 });
+
+const runFromStartArgs = (
+  args: Record<string, unknown> | undefined,
+  runNumber = 1,
+  threadId = 'thread-1',
+) => {
+  const input = args?.input as Record<string, unknown>;
+  return {
+    runId: `run-${runNumber}`,
+    chatId: String(input.chatId),
+    threadId,
+    turnId: `turn-${runNumber}`,
+    assistantMessageId: String(input.assistantMessageId),
+    model: (input.settings as { model?: string } | undefined)?.model,
+  };
+};

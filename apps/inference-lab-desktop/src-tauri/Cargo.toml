@@ -15,7 +15,7 @@ tauri-build = { version = "2", features = [] }
 base64 = "0.22"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-dialog = "2"
 tokio = { version = "1", features = ["io-util", "process", "rt-multi-thread", "sync", "time"] }
 tracing = "0.1"

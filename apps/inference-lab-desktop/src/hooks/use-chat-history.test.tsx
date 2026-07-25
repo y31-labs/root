@@ -47,6 +47,8 @@ describe('persistent chat history', () => {
       }
       if (command === 'generate_chat_title') return titleRequest;
       if (command === 'rename_chat') return Promise.resolve();
+      if (command === 'start_codex_text') return Promise.resolve(runFromStartArgs(args));
+      if (command === 'stream_codex_run') return request;
       return request;
     });
     const api = createLocalApi(invoke, (onMessage) => {
@@ -120,6 +122,8 @@ describe('persistent chat history', () => {
         savedChats.push(chat);
         return Promise.resolve(saveResultFor(chat));
       }
+      if (command === 'start_codex_text') return Promise.resolve(runFromStartArgs(args));
+      if (command === 'stream_codex_run') return request;
       return request;
     });
     const api = createLocalApi(invoke, (onMessage) => {
@@ -186,10 +190,14 @@ describe('persistent chat history', () => {
       ],
     };
     let emit: ((event: ChatStreamEvent) => void) | undefined;
-    const invoke = vi.fn((command: string) => {
+    const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
       if (command === 'list_chats') return Promise.resolve([summaryFor(storedChat)]);
       if (command === 'get_chat') return Promise.resolve(storedChat);
+      if (command === 'get_codex_run') return Promise.resolve(null);
       if (command === 'save_chat') return Promise.resolve(saveResultFor(storedChat));
+      if (command === 'start_codex_text') {
+        return Promise.resolve(runFromStartArgs(args, 'thread-1'));
+      }
       return new Promise<unknown>(() => undefined);
     });
     const api = createLocalApi(invoke, (onMessage) => {
@@ -224,7 +232,7 @@ describe('persistent chat history', () => {
     act(() => result.current.submitPrompt({ files: [], text: 'Continue' }));
     await waitFor(() => expect(emit).toBeDefined());
     expect(invoke).toHaveBeenCalledWith(
-      'stream_codex_text',
+      'start_codex_text',
       expect.objectContaining({
         input: expect.objectContaining({ threadId: 'thread-1' }),
       }),
@@ -252,10 +260,14 @@ describe('persistent chat history', () => {
       ],
     };
     const onWorkingDirectoryChange = vi.fn();
-    const invoke = vi.fn((command: string) => {
+    const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
       if (command === 'list_chats') return Promise.resolve([summaryFor(storedChat)]);
       if (command === 'get_chat') return Promise.resolve(storedChat);
+      if (command === 'get_codex_run') return Promise.resolve(null);
       if (command === 'save_chat') return Promise.resolve(saveResultFor(storedChat));
+      if (command === 'start_codex_text') {
+        return Promise.resolve(runFromStartArgs(args, 'thread-1'));
+      }
       return new Promise<unknown>(() => undefined);
     });
     const api = createLocalApi(invoke, () => ({ id: 'channel-1' }));
@@ -293,7 +305,7 @@ describe('persistent chat history', () => {
 
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(
-        'stream_codex_text',
+        'start_codex_text',
         expect.objectContaining({
           input: expect.objectContaining({
             threadId: 'thread-1',
@@ -302,6 +314,80 @@ describe('persistent chat history', () => {
         }),
       ),
     );
+  });
+
+  it('keeps a turn running across chats and replays it when its chat is reopened', async () => {
+    const emissions: Array<(event: ChatStreamEvent) => void> = [];
+    const streamResolvers: Array<(result: unknown) => void> = [];
+    const savedChats = new Map<string, ChatRecord>();
+    let run: ReturnType<typeof runFromStartArgs> | undefined;
+    const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
+      if (command === 'list_chats') return Promise.resolve([]);
+      if (command === 'chat_history_status') return Promise.resolve({});
+      if (command === 'save_chat') {
+        const chat = args?.chat as ChatRecord;
+        savedChats.set(chat.id, chat);
+        return Promise.resolve(saveResultFor(chat));
+      }
+      if (command === 'get_chat') {
+        return Promise.resolve(savedChats.get(String(args?.chatId)) ?? null);
+      }
+      if (command === 'get_codex_run') {
+        return Promise.resolve(run ? { ...run, active: true } : null);
+      }
+      if (command === 'start_codex_text') {
+        run = runFromStartArgs(args);
+        return Promise.resolve(run);
+      }
+      if (command === 'stream_codex_run') {
+        return new Promise<unknown>((resolve) => streamResolvers.push(resolve));
+      }
+      return Promise.resolve();
+    });
+    const api = createLocalApi(invoke, (onMessage) => {
+      emissions.push(onMessage as (event: ChatStreamEvent) => void);
+      return { id: `channel-${emissions.length}` };
+    });
+
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <LocalApiProvider api={api}>
+          <ChatHistoryProvider>{children}</ChatHistoryProvider>
+        </LocalApiProvider>
+      );
+    }
+
+    const { result } = renderHook(
+      () => ({
+        chat: useCodexChat({ permissionMode: 'read-only' }),
+        history: useChatHistory(),
+      }),
+      { wrapper: Wrapper },
+    );
+
+    act(() => result.current.chat.submitPrompt({ files: [], text: 'Work in the background' }));
+    await waitFor(() => expect(emissions).toHaveLength(1));
+    act(() => emissions[0]?.({ type: 'messageDelta', id: 'reply-1', text: 'Halfway' }));
+    await waitFor(() => expect(result.current.chat.messages[1]?.streaming).toBe(true));
+    const runningChatId = result.current.history.activeChatId;
+
+    act(() => result.current.history.newChat());
+    await waitFor(() => expect(result.current.chat.messages).toEqual([]));
+    expect(invoke.mock.calls.some(([command]) => command === 'interrupt_codex_turn')).toBe(false);
+
+    act(() => result.current.history.openChat(runningChatId!));
+    await waitFor(() => expect(emissions).toHaveLength(2));
+    act(() => {
+      emissions[1]?.({ type: 'started', threadId: 'thread-1', turnId: 'turn-1' });
+      emissions[1]?.({ type: 'messageDelta', id: 'reply-1', text: 'Halfway and done' });
+      emissions[1]?.({ type: 'completed' });
+      streamResolvers[1]?.({ threadId: 'thread-1' });
+    });
+
+    await waitFor(() => expect(result.current.chat.pending).toBe(false));
+    expect(result.current.chat.messages[1]?.parts).toEqual([
+      { type: 'message', id: 'reply-1', text: 'Halfway and done' },
+    ]);
   });
 
   it('expires process-local state when hydrating an interrupted turn', async () => {
@@ -347,6 +433,7 @@ describe('persistent chat history', () => {
     const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
       if (command === 'list_chats') return Promise.resolve([summaryFor(storedChat)]);
       if (command === 'get_chat') return Promise.resolve(storedChat);
+      if (command === 'get_codex_run') return Promise.resolve(null);
       if (command === 'save_chat') {
         const chat = args?.chat as ChatRecord;
         savedChats.push(chat);
@@ -405,6 +492,7 @@ describe('persistent chat history', () => {
 
   it('sends attachment payloads only until native storage returns their keys', async () => {
     const savedChats: ChatRecord[] = [];
+    let runNumber = 0;
     const invoke = vi.fn((command: string, args?: Record<string, unknown>) => {
       if (command === 'list_chats') return Promise.resolve([]);
       if (command === 'chat_history_status') return Promise.resolve({});
@@ -417,7 +505,11 @@ describe('persistent chat history', () => {
           }),
         );
       }
-      if (command === 'stream_codex_text') return Promise.resolve({ threadId: 'thread-1' });
+      if (command === 'start_codex_text') {
+        runNumber += 1;
+        return Promise.resolve(runFromStartArgs(args, 'thread-1', runNumber));
+      }
+      if (command === 'stream_codex_run') return Promise.resolve({ threadId: 'thread-1' });
       return Promise.resolve();
     });
     const api = createLocalApi(invoke, () => ({ id: 'channel-1' }));
@@ -497,3 +589,18 @@ describe('persistent chat history', () => {
     expect(result.current.history.activeChatId).toBeUndefined();
   });
 });
+
+const runFromStartArgs = (
+  args: Record<string, unknown> | undefined,
+  threadId = 'thread-1',
+  runNumber = 1,
+) => {
+  const input = args?.input as Record<string, unknown>;
+  return {
+    runId: `run-${runNumber}`,
+    chatId: String(input.chatId),
+    threadId,
+    turnId: `turn-${runNumber}`,
+    assistantMessageId: String(input.assistantMessageId),
+  };
+};
