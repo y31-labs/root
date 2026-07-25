@@ -1,4 +1,4 @@
-import { Button } from '@workspace/ui/components/ui/button';
+import { PromptInputButton } from '@workspace/ui/components/ai-elements/prompt-input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,18 +54,17 @@ export function PermissionSelectDropdown({
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         render={
-          <Button
+          <PromptInputButton
             aria-label={`Permissions: ${selected.label}`}
-            className='justify-center rounded-full dark:aria-expanded:bg-muted/50'
+            className='rounded-full dark:aria-expanded:bg-muted/50'
             disabled={disabled}
-            size='sm'
             type='button'
             variant='ghost'
           >
             <selected.icon
               className={permissionMode === 'danger-full-access' ? 'text-danger' : undefined}
             />
-          </Button>
+          </PromptInputButton>
         }
       />
       <DropdownMenuContent

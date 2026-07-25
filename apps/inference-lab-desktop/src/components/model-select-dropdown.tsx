@@ -1,4 +1,4 @@
-import { Button } from '@workspace/ui/components/ui/button';
+import { PromptInputButton } from '@workspace/ui/components/ai-elements/prompt-input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,18 +79,17 @@ export function ModelSelectDropdown({
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         render={
-          <Button
+          <PromptInputButton
             aria-label={triggerLabel}
-            className='justify-center rounded-full dark:aria-expanded:bg-muted/50'
+            className='justify-center rounded-full dark:aria-expanded:bg-muted/50 font-normal'
             disabled={disabled}
-            size='sm'
             type='button'
             variant='ghost'
           >
             {fast && <Zap aria-label='Fast mode' className='fill-current text-foreground' />}
             <span className='text-foreground'>{modelLabel}</span>
             {effortLabel && <span className='text-muted-foreground'>{effortLabel}</span>}
-          </Button>
+          </PromptInputButton>
         }
       />
       <DropdownMenuContent
