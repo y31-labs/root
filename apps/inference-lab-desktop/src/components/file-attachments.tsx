@@ -1,9 +1,10 @@
-import type { PromptInputMessage } from '@workspace/ui/components/ai-elements/prompt-input';
 import { Button } from '@workspace/ui/components/ui/button';
 import { cn } from '@workspace/ui/lib/utils';
 import { FileText, X } from 'lucide-react';
 
-export type FileAttachment = PromptInputMessage['files'][number] & { id: string };
+import type { FileAttachment } from '#/lib/chat-message';
+
+export type { FileAttachment } from '#/lib/chat-message';
 
 interface FileAttachmentsProps {
   attachments: FileAttachment[];

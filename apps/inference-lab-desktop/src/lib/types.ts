@@ -46,12 +46,72 @@ export interface CodexApprovalRequest {
   detail?: string;
 }
 
+export type CodexActivityKind =
+  | 'agent'
+  | 'command'
+  | 'error'
+  | 'file'
+  | 'image'
+  | 'plan'
+  | 'read'
+  | 'search'
+  | 'tool'
+  | 'wait'
+  | 'web';
+export type CodexActivityStatus = 'running' | 'succeeded' | 'failed';
+
+export interface CodexActivityItem {
+  id: string;
+  label: string;
+  detail?: string;
+}
+
+export interface CodexActivity {
+  id: string;
+  kind: CodexActivityKind;
+  label: string;
+  detail?: string;
+  items?: CodexActivityItem[];
+  status: CodexActivityStatus;
+}
+
+export type ChatTranscriptPart =
+  | { type: 'message'; id: string; text: string }
+  | { type: 'reasoning'; id: string; summaries: string[] }
+  | { type: 'activity'; id: string; activities: CodexActivity[] };
+
 export type ChatStreamEvent =
-  | { type: 'started'; threadId: string }
-  | { type: 'delta'; text: string }
+  | { type: 'started'; threadId: string; turnId: string }
+  | { type: 'messageDelta'; id: string; text: string }
+  | { type: 'reasoningDelta'; id: string; summaryIndex: number; text: string }
+  | ({ type: 'activity' } & CodexActivity)
+  | { type: 'activityDelta'; id: string; delta: string }
   | ({ type: 'approval' } & CodexApprovalRequest)
   | { type: 'completed' };
 
 export interface ChatTextResult {
   threadId: string;
+}
+
+export interface CodexActivityCustomEventPayload {
+  assistantMessageId: string;
+  activity: CodexActivity;
+}
+
+export interface CodexActivityDeltaCustomEventPayload {
+  assistantMessageId: string;
+  id: string;
+  delta: string;
+}
+
+export interface CodexReasoningDeltaCustomEventPayload {
+  assistantMessageId: string;
+  id: string;
+  summaryIndex: number;
+  delta: string;
+}
+
+export interface CodexApprovalCustomEventPayload {
+  assistantMessageId: string;
+  approval: CodexApprovalRequest;
 }

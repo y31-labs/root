@@ -1,7 +1,3 @@
-import {
-  ApprovalRow,
-  type ApprovalDecision,
-} from '@workspace/ui/components/ai-elements/approval-row';
 import { ConversationEmptyState } from '@workspace/ui/components/ai-elements/conversation';
 import {
   Message,
@@ -9,26 +5,17 @@ import {
   MessageResponse,
 } from '@workspace/ui/components/ai-elements/message';
 import { Shimmer } from '@workspace/ui/components/ai-elements/shimmer';
+import { useEffect, useState } from 'react';
 import { StickToBottom } from 'use-stick-to-bottom';
 
-import { FileAttachments, type FileAttachment } from '#/components/file-attachments';
-import type { CodexApprovalDecision, CodexApprovalMethod, CodexApprovalRequest } from '#/lib/types';
+import { FileAttachments } from '#/components/file-attachments';
+import { ActivityTask } from '#/components/home/activity-task';
+import { ApprovalRow, type ApprovalDecision } from '#/components/home/approval-row';
+import { ReasoningTask } from '#/components/home/reasoning-task';
+import type { ChatApproval, ChatMessage } from '#/lib/chat-message';
+import type { ChatTranscriptPart, CodexApprovalDecision, CodexApprovalMethod } from '#/lib/types';
 
-interface ChatApproval extends CodexApprovalRequest {
-  decision?: CodexApprovalDecision;
-  error?: string;
-  status: 'pending' | 'submitting' | 'resolved';
-}
-
-export interface ChatMessage {
-  id: number;
-  role: 'user' | 'assistant';
-  text: string;
-  attachments?: FileAttachment[];
-  approvals?: ChatApproval[];
-  streaming?: boolean;
-  error?: string;
-}
+export type { ChatMessage } from '#/lib/chat-message';
 
 interface ChatConversationProps {
   messages: ChatMessage[];
@@ -44,15 +31,22 @@ export function ChatConversation({ messages, onApprovalDecision }: ChatConversat
     <StickToBottom
       aria-live='polite'
       className='relative min-h-0 flex-1 overflow-y-hidden'
-      initial='smooth'
-      resize='smooth'
+      initial='instant'
+      resize='instant'
       role='log'
     >
       <StickToBottom.Content className='mx-auto flex min-h-full w-full max-w-3xl flex-col px-5 py-6 md:px-8'>
         {messages.length ? (
           messages.map((message) => (
             <Message from={message.role} key={message.id}>
-              <MessageContent className='group-data-[role=user]/message:border-0 group-data-[role=user]/message:bg-muted/40'>
+              <MessageContent className='group-[.is-user]:border-0 group-[.is-user]:bg-muted/40'>
+                {message.role === 'assistant' && message.startedAtMs !== undefined ? (
+                  <TurnDuration
+                    completedAtMs={message.completedAtMs}
+                    startedAtMs={message.startedAtMs}
+                    streaming={message.streaming === true}
+                  />
+                ) : null}
                 {message.attachments?.length ? (
                   <FileAttachments
                     attachments={message.attachments}
@@ -60,19 +54,32 @@ export function ChatConversation({ messages, onApprovalDecision }: ChatConversat
                     variant='message'
                   />
                 ) : null}
-                {message.text &&
-                  (message.role === 'assistant' ? (
-                    <MessageResponse isAnimating={message.streaming}>
-                      {message.text}
-                    </MessageResponse>
-                  ) : (
-                    message.text
-                  ))}
-                {message.streaming && !message.text && (
-                  <Shimmer as='span' className='text-sm'>
-                    Thinking
-                  </Shimmer>
-                )}
+                {message.role === 'assistant' && message.parts?.length
+                  ? message.parts.map((part, index) => (
+                      <TranscriptPart
+                        active={
+                          message.streaming === true && index === (message.parts?.length ?? 0) - 1
+                        }
+                        key={`${part.type}-${part.id}`}
+                        part={part}
+                      />
+                    ))
+                  : message.text &&
+                    (message.role === 'assistant' ? (
+                      <MessageResponse className='h-auto' isAnimating={message.streaming}>
+                        {message.text}
+                      </MessageResponse>
+                    ) : (
+                      message.text
+                    ))}
+                {message.streaming &&
+                  !message.text &&
+                  !message.parts?.length &&
+                  !message.approvals?.length && (
+                    <Shimmer as='span' className='text-sm'>
+                      Thinking
+                    </Shimmer>
+                  )}
                 {message.error && (
                   <p className={message.text ? 'mt-2 text-danger' : 'text-danger'}>
                     {message.error}
@@ -123,9 +130,61 @@ export function ChatConversation({ messages, onApprovalDecision }: ChatConversat
   );
 }
 
+function TranscriptPart({ active, part }: { active: boolean; part: ChatTranscriptPart }) {
+  if (part.type === 'message') {
+    return (
+      <MessageResponse className='h-auto' isAnimating={active}>
+        {part.text}
+      </MessageResponse>
+    );
+  }
+  if (part.type === 'reasoning') {
+    return <ReasoningTask active={active} summaries={part.summaries} />;
+  }
+  return <ActivityTask active={active} activities={part.activities} />;
+}
+
 const approvalTitle = (approval: ChatApproval) => {
   if (approval.status !== 'resolved') return approval.title;
   if (approval.decision === 'accept') return 'Allowed once';
   if (approval.decision === 'acceptForSession') return 'Allowed for session';
   return 'Denied';
+};
+
+function TurnDuration({
+  completedAtMs,
+  startedAtMs,
+  streaming,
+}: {
+  completedAtMs?: number;
+  startedAtMs: number;
+  streaming: boolean;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!streaming) return;
+    setNow(Date.now());
+    const interval = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(interval);
+  }, [streaming]);
+
+  const elapsed = formatElapsedTime(Math.max(0, (completedAtMs ?? now) - startedAtMs));
+
+  return (
+    <p className='mb-4 border-b pb-3 text-xs tabular-nums text-muted-foreground'>
+      {streaming ? 'Working' : 'Worked'} for {elapsed}
+    </p>
+  );
+}
+
+const formatElapsedTime = (durationMs: number) => {
+  const totalSeconds = Math.floor(durationMs / 1_000);
+  const hours = Math.floor(totalSeconds / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 };

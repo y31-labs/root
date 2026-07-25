@@ -132,14 +132,68 @@ pub(crate) struct Model {
 }
 
 #[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CodexActivityItem {
+    pub(super) id: String,
+    pub(super) label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) detail: Option<String>,
+}
+
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum CodexActivityKind {
+    Agent,
+    Command,
+    Error,
+    File,
+    Image,
+    Plan,
+    Tool,
+    Wait,
+    Web,
+}
+
+#[derive(Clone, Copy, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum CodexActivityStatus {
+    Running,
+    Succeeded,
+    Failed,
+}
+
+#[derive(Clone, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub(crate) enum CodexStreamEvent {
     Started {
         #[serde(rename = "threadId")]
         thread_id: String,
+        #[serde(rename = "turnId")]
+        turn_id: String,
     },
-    Delta {
+    MessageDelta {
+        id: String,
         text: String,
+    },
+    ReasoningDelta {
+        id: String,
+        #[serde(rename = "summaryIndex")]
+        summary_index: usize,
+        text: String,
+    },
+    Activity {
+        id: String,
+        kind: CodexActivityKind,
+        label: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        detail: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        items: Option<Vec<CodexActivityItem>>,
+        status: CodexActivityStatus,
+    },
+    ActivityDelta {
+        id: String,
+        delta: String,
     },
     Approval {
         #[serde(rename = "requestId")]
@@ -159,7 +213,9 @@ pub(crate) struct CodexTextResult {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_model_display_name;
+    use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn normalizes_model_display_names() {
@@ -170,6 +226,63 @@ mod tests {
         assert_eq!(
             normalize_model_display_name("Custom-Model".to_string()),
             "Custom Model"
+        );
+    }
+
+    #[test]
+    fn stream_events_use_the_frontend_contract() {
+        assert_eq!(
+            serde_json::to_value(CodexStreamEvent::Started {
+                thread_id: "thread-1".to_string(),
+                turn_id: "turn-1".to_string()
+            })
+            .unwrap(),
+            json!({ "type": "started", "threadId": "thread-1", "turnId": "turn-1" })
+        );
+        assert_eq!(
+            serde_json::to_value(CodexStreamEvent::MessageDelta {
+                id: "message-1".to_string(),
+                text: "Hello".to_string()
+            })
+            .unwrap(),
+            json!({ "type": "messageDelta", "id": "message-1", "text": "Hello" })
+        );
+        assert_eq!(
+            serde_json::to_value(CodexStreamEvent::ReasoningDelta {
+                id: "reasoning-1".to_string(),
+                summary_index: 0,
+                text: "Inspecting".to_string()
+            })
+            .unwrap(),
+            json!({
+                "type": "reasoningDelta",
+                "id": "reasoning-1",
+                "summaryIndex": 0,
+                "text": "Inspecting"
+            })
+        );
+        assert_eq!(
+            serde_json::to_value(CodexStreamEvent::Activity {
+                id: "command-1".to_string(),
+                kind: CodexActivityKind::Command,
+                label: "bun test".to_string(),
+                detail: Some("12 tests passed".to_string()),
+                items: None,
+                status: CodexActivityStatus::Succeeded,
+            })
+            .unwrap(),
+            json!({
+                "type": "activity",
+                "id": "command-1",
+                "kind": "command",
+                "label": "bun test",
+                "detail": "12 tests passed",
+                "status": "succeeded"
+            })
+        );
+        assert_eq!(
+            serde_json::to_value(CodexStreamEvent::Completed).unwrap(),
+            json!({ "type": "completed" })
         );
     }
 }
