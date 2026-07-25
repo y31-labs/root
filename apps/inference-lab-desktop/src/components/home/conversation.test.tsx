@@ -16,7 +16,10 @@ beforeAll(() => {
   );
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe('ChatConversation', () => {
   it('renders assistant messages as Markdown', () => {
@@ -102,6 +105,182 @@ describe('ChatConversation', () => {
       42,
       'item/commandExecution/requestApproval',
       'acceptForSession',
+    );
+  });
+
+  it('renders agent activity with status and output', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(102_000);
+    render(
+      <ChatConversation
+        messages={[
+          {
+            parts: [
+              {
+                type: 'activity',
+                id: 'activity-command-1',
+                activities: [
+                  {
+                    id: 'command-1',
+                    kind: 'command',
+                    label: 'Ran tests',
+                    detail: '12 tests passed',
+                    status: 'succeeded',
+                  },
+                  {
+                    id: 'file-1',
+                    kind: 'file',
+                    label: 'Updating app.tsx',
+                    status: 'running',
+                  },
+                  {
+                    id: 'tool-1',
+                    kind: 'search',
+                    label: 'Queried Database',
+                    detail: 'Connection refused',
+                    status: 'failed',
+                  },
+                ],
+              },
+            ],
+            id: 1,
+            role: 'assistant',
+            startedAtMs: 0,
+            streaming: true,
+            text: '',
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('Working for 1m 42s')).toBeTruthy();
+    expect(
+      screen.getByRole('button', {
+        name: 'Ran a command, updating app.tsx, queried Database — failed',
+      }),
+    ).toBeTruthy();
+    expect(screen.getByRole('list', { name: 'Agent activity' })).toBeTruthy();
+    expect(screen.getByText('Ran tests')).toBeTruthy();
+    expect(screen.getByText('Updating app.tsx')).toBeTruthy();
+    expect(screen.getByText('Queried Database')).toBeTruthy();
+    expect(screen.queryByText('12 tests passed')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Ran tests' }));
+    expect(screen.getByLabelText('Ran tests details')).toBeTruthy();
+    expect(screen.getByText('12 tests passed')).toBeTruthy();
+    expect(screen.getAllByLabelText('Running')).toHaveLength(1);
+    expect(screen.getByLabelText('Succeeded')).toBeTruthy();
+    expect(screen.getByLabelText('Failed')).toBeTruthy();
+    expect(screen.queryByText('Thinking')).toBeNull();
+  });
+
+  it('renders file activity as a three-level task with expandable diffs', () => {
+    render(
+      <ChatConversation
+        messages={[
+          {
+            id: 1,
+            role: 'assistant',
+            text: '',
+            parts: [
+              {
+                type: 'activity',
+                id: 'activity-file-1',
+                activities: [
+                  {
+                    id: 'file-1',
+                    kind: 'file',
+                    label: 'Updated 2 files',
+                    status: 'succeeded',
+                    items: [
+                      {
+                        id: 'file-1-change-0',
+                        label: 'Edited app.tsx +2 -1',
+                        detail: '@@ -1 +1,2 @@\n-old\n+new\n+added',
+                      },
+                      {
+                        id: 'file-1-change-1',
+                        label: 'Created app.test.tsx +1 -0',
+                        detail: '@@ -0,0 +1 @@\n+test',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.queryByText('Edited app.tsx +2 -1')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Edited files' }));
+    expect(screen.getByRole('button', { name: 'Edited app.tsx +2 -1' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Created app.test.tsx +1 -0' })).toBeTruthy();
+    expect(screen.queryByText(/-old/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Edited app.tsx +2 -1' }));
+    expect(screen.getByText(/-old/)).toBeTruthy();
+    expect(screen.getByText(/\+added/)).toBeTruthy();
+  });
+
+  it('renders messages, reasoning, and activity in stream order', () => {
+    const { container } = render(
+      <ChatConversation
+        messages={[
+          {
+            id: 1,
+            role: 'assistant',
+            streaming: true,
+            text: '',
+            parts: [
+              { type: 'message', id: 'message-1', text: 'I’ll inspect the project.' },
+              {
+                type: 'activity',
+                id: 'activity-command-1',
+                activities: [
+                  {
+                    id: 'command-1',
+                    kind: 'command',
+                    label: 'Ran tests',
+                    status: 'succeeded',
+                  },
+                ],
+              },
+              {
+                type: 'reasoning',
+                id: 'reasoning-1',
+                summaries: ['**The tests** point to the rendering path.'],
+              },
+              { type: 'message', id: 'message-2', text: 'The first check passed.' },
+              {
+                type: 'activity',
+                id: 'activity-command-2',
+                activities: [
+                  {
+                    id: 'command-2',
+                    kind: 'command',
+                    label: 'Running typecheck',
+                    status: 'running',
+                  },
+                ],
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const content = container.textContent ?? '';
+    expect(content.indexOf('I’ll inspect the project.')).toBeLessThan(content.indexOf('Ran tests'));
+    expect(content.indexOf('Ran tests')).toBeLessThan(content.indexOf('Thinking'));
+    expect(content.indexOf('Thinking')).toBeLessThan(content.indexOf('The first check passed.'));
+    expect(screen.getByText('Thinking').classList.contains('font-semibold')).toBe(false);
+    expect(content.indexOf('The first check passed.')).toBeLessThan(
+      content.indexOf('Running typecheck'),
+    );
+    const emphasizedReasoning = screen.getByText('The tests');
+    expect(emphasizedReasoning.dataset.streamdown).toBe('strong');
+    expect(emphasizedReasoning.closest('.h-auto')?.className).toContain(
+      '[&_[data-streamdown=strong]]:font-normal',
     );
   });
 });

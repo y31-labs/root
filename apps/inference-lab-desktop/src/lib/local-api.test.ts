@@ -83,8 +83,14 @@ describe('local API', () => {
       onEvent: channel,
     });
 
+    await api.interruptCodexTurn('thread-1', 'turn-1');
+    expect(invoke).toHaveBeenNthCalledWith(5, 'interrupt_codex_turn', {
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+    });
+
     await api.resolveCodexApproval(42, 'item/commandExecution/requestApproval', 'acceptForSession');
-    expect(invoke).toHaveBeenNthCalledWith(5, 'resolve_codex_approval', {
+    expect(invoke).toHaveBeenNthCalledWith(6, 'resolve_codex_approval', {
       requestId: 42,
       method: 'item/commandExecution/requestApproval',
       decision: 'acceptForSession',

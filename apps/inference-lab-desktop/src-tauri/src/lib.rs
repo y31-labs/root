@@ -49,6 +49,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             codex::codex_integration_status,
             codex::connect_codex,
+            codex::interrupt_codex_turn,
             codex::list_codex_models,
             codex::resolve_codex_approval,
             codex::stream_codex_text

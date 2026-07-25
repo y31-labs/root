@@ -66,6 +66,8 @@ export const createLocalApi = (
     connectCodex: () => request<void>('connect_codex'),
     listModels: () =>
       request<ProviderModel[]>('list_codex_models').then((models) => models.map(toModel)),
+    interruptCodexTurn: (threadId: string, turnId: string) =>
+      request<void>('interrupt_codex_turn', { threadId, turnId }),
     streamChatText: (
       prompt: string,
       attachments: ChatAttachmentInput[],

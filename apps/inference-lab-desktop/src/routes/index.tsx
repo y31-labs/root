@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 
 import { ChatConversation } from '#/components/home/conversation';
 import { ChatInput } from '#/components/prompt-input/chat-input';
-import { useChat } from '#/hooks/use-chat';
+import { useCodexChat } from '#/hooks/use-codex-chat';
 import { useModelSettings } from '#/hooks/use-model-settings';
 import { usePermissionMode } from '#/hooks/use-permission-mode';
 import { useWorkingDirectory } from '#/hooks/use-working-directory';
@@ -15,7 +15,7 @@ function HomeRoute() {
   const { selectWorkingDirectory, workingDirectory } = useWorkingDirectory();
   const modelSettings = useModelSettings(api.listModels);
   const { permissionMode, setPermissionMode } = usePermissionMode();
-  const { messages, pending, prompt, resolveApproval, setPrompt, submitPrompt } = useChat({
+  const { messages, pending, prompt, resolveApproval, setPrompt, submitPrompt } = useCodexChat({
     permissionMode,
     settings: modelSettings.settings,
     workingDirectory,

@@ -174,16 +174,6 @@ pub(crate) async fn stream_codex_text(
         input: turn_input,
         attachment_dir,
     } = prepare_turn_input(prompt, &input.attachments, &state.data_dir)?;
-    if let Err(error) = on_event
-        .send(CodexStreamEvent::Started {
-            thread_id: thread_id.clone(),
-        })
-        .map_err(display_error)
-    {
-        cleanup_attachment_dir(attachment_dir.as_deref());
-        return Err(error);
-    }
-
     let turn_params = turn_start_params(
         &thread_id,
         turn_input,
@@ -207,6 +197,17 @@ pub(crate) async fn stream_codex_text(
             return Err(error);
         }
     };
+    if let Err(error) = on_event
+        .send(CodexStreamEvent::Started {
+            thread_id: thread_id.clone(),
+            turn_id: turn_id.clone(),
+        })
+        .map_err(display_error)
+    {
+        let _ = interrupt_turn(&state, &thread_id, &turn_id).await;
+        cleanup_attachment_dir(attachment_dir.as_deref());
+        return Err(error);
+    }
     tracing::info!(
         target: crate::logging::EXTERNAL_EVENT_TARGET,
         event = "codex_turn_started",
@@ -230,6 +231,25 @@ pub(crate) async fn stream_codex_text(
         event = "codex_turn_completed"
     );
     Ok(CodexTextResult { thread_id })
+}
+
+#[tauri::command]
+pub(crate) async fn interrupt_codex_turn(
+    state: State<'_, AppState>,
+    thread_id: String,
+    turn_id: String,
+) -> Result<(), String> {
+    interrupt_turn(&state, &thread_id, &turn_id).await
+}
+
+async fn interrupt_turn(state: &AppState, thread_id: &str, turn_id: &str) -> Result<(), String> {
+    request(
+        state,
+        "turn/interrupt",
+        json!({ "threadId": thread_id, "turnId": turn_id }),
+    )
+    .await
+    .map(|_| ())
 }
 
 #[tauri::command]
@@ -293,7 +313,8 @@ fn turn_start_params(
         "cwd": cwd,
         "runtimeWorkspaceRoots": [cwd],
         "approvalPolicy": permission_mode.approval_policy(),
-        "approvalsReviewer": "user"
+        "approvalsReviewer": "user",
+        "summary": "auto"
     });
     if let Some(settings) = settings {
         params["model"] = json!(settings.model);
@@ -582,6 +603,7 @@ mod tests {
                 "runtimeWorkspaceRoots": ["/project"],
                 "approvalPolicy": "never",
                 "approvalsReviewer": "user",
+                "summary": "auto",
                 "model": "gpt-5.6-terra",
                 "effort": "medium",
                 "serviceTier": null
