@@ -1,6 +1,6 @@
 import type { Repository, RepositoryTarget } from '@workspace/code-agent-contracts/sessions';
 import { Badge } from '@workspace/ui/components/ui/badge';
-import { Canvas, CanvasPanel } from '@workspace/ui/components/ai-elements/canvas';
+import { Canvas } from '@workspace/ui/components/ai-elements/canvas';
 import { Edge as WorkflowEdge } from '@workspace/ui/components/ai-elements/edge';
 import {
   Node,
@@ -10,6 +10,7 @@ import {
   NodeHeader,
   NodeTitle,
 } from '@workspace/ui/components/ai-elements/node';
+import { Panel as CanvasPanel } from '@workspace/ui/components/ai-elements/panel';
 import { useMemo } from 'react';
 
 interface ProjectMapWorkflowProps {
