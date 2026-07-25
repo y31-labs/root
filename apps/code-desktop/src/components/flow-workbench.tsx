@@ -5,7 +5,7 @@ import type {
   TargetFlowEdge,
   TargetFlowNode,
 } from '@workspace/code-agent-contracts/sessions';
-import { Canvas, CanvasPanel } from '@workspace/ui/components/ai-elements/canvas';
+import { Canvas } from '@workspace/ui/components/ai-elements/canvas';
 import { Edge as WorkflowEdge } from '@workspace/ui/components/ai-elements/edge';
 import {
   Node,
@@ -15,6 +15,7 @@ import {
   NodeHeader,
   NodeTitle,
 } from '@workspace/ui/components/ai-elements/node';
+import { Panel as CanvasPanel } from '@workspace/ui/components/ai-elements/panel';
 import { Badge } from '@workspace/ui/components/ui/badge';
 import { Button } from '@workspace/ui/components/ui/button';
 import { cn } from '@workspace/ui/lib/utils';
