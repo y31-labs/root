@@ -16,26 +16,24 @@ interface ChatInputFooterProps {
   modelSettings: ModelSettingsState;
   pending: boolean;
   permissionMode: PermissionMode;
-  prompt: string;
   onPermissionModeChange: (permissionMode: PermissionMode) => void;
+  onStop: () => void;
 }
 
 export function ChatInputFooter({
   modelSettings,
   pending,
   permissionMode,
-  prompt,
   onPermissionModeChange,
+  onStop,
 }: ChatInputFooterProps) {
   const attachments = usePromptInputAttachments();
-  const canSubmit = Boolean(prompt.trim() || attachments.files.length);
 
   return (
     <PromptInputFooter className='px-2.5 pb-2.5'>
       <PromptInputTools className='min-w-0 flex-1'>
-        <ModelSelectDropdown disabled={pending} modelSettings={modelSettings} />
+        <ModelSelectDropdown modelSettings={modelSettings} />
         <PermissionSelectDropdown
-          disabled={pending}
           permissionMode={permissionMode}
           onPermissionModeChange={onPermissionModeChange}
         />
@@ -51,10 +49,10 @@ export function ChatInputFooter({
         </PromptInputButton>
         <PromptInputSubmit
           className='ml-1.5 rounded-full'
-          disabled={pending || !canSubmit}
-          status={pending ? 'submitted' : 'ready'}
+          onStop={onStop}
+          status={pending ? 'streaming' : 'ready'}
         >
-          {pending || <ArrowUp />}
+          {pending ? null : <ArrowUp />}
         </PromptInputSubmit>
       </PromptInputTools>
     </PromptInputFooter>

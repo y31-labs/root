@@ -85,11 +85,13 @@ describe('PromptInput', () => {
     render(
       <ChatInput
         {...permissionProps}
+        conversationStarted={false}
         modelSettings={modelSettings}
         pending={false}
         prompt=''
         onPromptChange={vi.fn()}
         onSelectWorkingDirectory={vi.fn()}
+        onStop={vi.fn()}
         onSubmit={onSubmit}
       />,
     );
@@ -100,7 +102,7 @@ describe('PromptInput', () => {
     expect(fileInputClick).toHaveBeenCalledOnce();
 
     const submit = screen.getByRole('button', { name: 'Submit' });
-    expect(submit.hasAttribute('disabled')).toBe(true);
+    expect(submit.hasAttribute('disabled')).toBe(false);
 
     const image = new File(['image'], 'layout.png', { type: 'image/png' });
     fireEvent.change(fileInput, {
@@ -136,11 +138,13 @@ describe('PromptInput', () => {
     render(
       <ChatInput
         {...permissionProps}
+        conversationStarted={false}
         modelSettings={modelSettings}
         pending={false}
         prompt=''
         onPromptChange={vi.fn()}
         onSelectWorkingDirectory={vi.fn()}
+        onStop={vi.fn()}
         onSubmit={onSubmit}
       />,
     );
@@ -177,11 +181,13 @@ describe('PromptInput', () => {
     const { rerender } = render(
       <ChatInput
         {...permissionProps}
+        conversationStarted={false}
         modelSettings={modelSettings}
         pending={false}
         prompt=''
         onPromptChange={vi.fn()}
         onSelectWorkingDirectory={onSelectWorkingDirectory}
+        onStop={vi.fn()}
         onSubmit={vi.fn()}
       />,
     );
@@ -192,12 +198,14 @@ describe('PromptInput', () => {
     rerender(
       <ChatInput
         {...permissionProps}
+        conversationStarted={false}
         modelSettings={modelSettings}
         pending={false}
         prompt=''
         workingDirectory='/Users/example/inventory-tool'
         onPromptChange={vi.fn()}
         onSelectWorkingDirectory={onSelectWorkingDirectory}
+        onStop={vi.fn()}
         onSubmit={vi.fn()}
       />,
     );
@@ -207,5 +215,49 @@ describe('PromptInput', () => {
         name: 'Change working folder: /Users/example/inventory-tool',
       }).textContent,
     ).toContain('inventory-tool');
+
+    rerender(
+      <ChatInput
+        {...permissionProps}
+        conversationStarted
+        modelSettings={modelSettings}
+        pending={false}
+        prompt=''
+        workingDirectory='/Users/example/inventory-tool'
+        onPromptChange={vi.fn()}
+        onSelectWorkingDirectory={onSelectWorkingDirectory}
+        onStop={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: /working folder/i })).toBeNull();
+  });
+
+  it('keeps the composer available and changes submit to stop while pending', () => {
+    const onStop = vi.fn();
+    const { container } = render(
+      <ChatInput
+        {...permissionProps}
+        conversationStarted
+        modelSettings={modelSettings}
+        pending
+        prompt='Draft the next request'
+        onPromptChange={vi.fn()}
+        onSelectWorkingDirectory={vi.fn()}
+        onStop={onStop}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen
+        .getByRole('textbox', { name: 'Describe what you want to build' })
+        .hasAttribute('disabled'),
+    ).toBe(false);
+    expect(container.querySelector('[data-slot=input-group] :disabled')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    expect(onStop).toHaveBeenCalledOnce();
   });
 });

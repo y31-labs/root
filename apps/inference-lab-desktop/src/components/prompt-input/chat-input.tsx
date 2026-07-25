@@ -15,6 +15,7 @@ const MAX_ATTACHMENT_FILES = 4;
 const MAX_ATTACHMENT_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per file, up to 40 MB total.
 
 interface ChatInputProps {
+  conversationStarted: boolean;
   modelSettings: ModelSettingsState;
   pending: boolean;
   permissionMode: PermissionMode;
@@ -23,10 +24,12 @@ interface ChatInputProps {
   onPromptChange: (prompt: string) => void;
   onPermissionModeChange: (permissionMode: PermissionMode) => void;
   onSelectWorkingDirectory: () => void;
+  onStop: () => void;
   onSubmit: PromptInputProps['onSubmit'];
 }
 
 export function ChatInput({
+  conversationStarted,
   modelSettings,
   pending,
   permissionMode,
@@ -35,16 +38,15 @@ export function ChatInput({
   onPromptChange,
   onPermissionModeChange,
   onSelectWorkingDirectory,
+  onStop,
   onSubmit,
 }: ChatInputProps) {
   return (
     <div className='shrink-0 px-4 pb-4 sm:px-8 sm:pb-5'>
       <div className='mx-auto w-full max-w-3xl'>
-        <FolderPicker
-          disabled={pending}
-          workingDirectory={workingDirectory}
-          onSelect={onSelectWorkingDirectory}
-        />
+        {!conversationStarted && (
+          <FolderPicker workingDirectory={workingDirectory} onSelect={onSelectWorkingDirectory} />
+        )}
         <PromptInput
           className='w-full *:data-[slot=input-group]:rounded-2xl *:data-[slot=input-group]:bg-muted/40 *:data-[slot=input-group]:shadow-none *:data-[slot=input-group]:focus-within:border-border dark:*:data-[slot=input-group]:bg-muted/40'
           maxFiles={MAX_ATTACHMENT_FILES}
@@ -63,16 +65,15 @@ export function ChatInput({
               onChange={(event) => onPromptChange(event.target.value)}
               placeholder='What do you want to build?'
               autoFocus
-              disabled={pending}
-              className='min-h-20 px-4 pb-1 pt-3.5 text-[15px] leading-6 placeholder:text-muted-foreground/80 disabled:opacity-100 dark:bg-transparent'
+              className='min-h-20 px-4 pb-1 pt-3.5 text-[15px] leading-6 placeholder:text-muted-foreground/80 dark:bg-transparent'
             />
           </PromptInputBody>
           <ChatInputFooter
             modelSettings={modelSettings}
             pending={pending}
             permissionMode={permissionMode}
-            prompt={prompt}
             onPermissionModeChange={onPermissionModeChange}
+            onStop={onStop}
           />
         </PromptInput>
       </div>
