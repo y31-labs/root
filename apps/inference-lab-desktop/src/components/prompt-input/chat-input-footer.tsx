@@ -5,7 +5,7 @@ import {
   PromptInputTools,
   usePromptInputAttachments,
 } from '@workspace/ui/components/ai-elements/prompt-input';
-import { ArrowUp, Mic, Paperclip } from 'lucide-react';
+import { ArrowUp, Paperclip } from 'lucide-react';
 
 import { ModelSelectDropdown } from '#/components/model-select-dropdown';
 import { PermissionSelectDropdown } from '#/components/permission-select-dropdown';
@@ -48,10 +48,6 @@ export function ChatInputFooter({
           onClick={attachments.openFileDialog}
         >
           <Paperclip />
-          Attach files
-        </PromptInputButton>
-        <PromptInputButton className='rounded-full' aria-label='Use voice input'>
-          <Mic />
         </PromptInputButton>
         <PromptInputSubmit
           className='ml-1.5 rounded-full'
