@@ -155,30 +155,26 @@ describe('createCodexStreamTranslator', () => {
 });
 
 describe('CodexChatConnection', () => {
-  it('snapshots request settings and retains the Codex thread identity', async () => {
-    const streamChatText = vi.fn(
-      async (
-        _text: string,
-        _attachments: unknown[],
-        _workingDirectory: string | undefined,
-        _threadId: string | undefined,
-        _settings: unknown,
-        _permissionMode: unknown,
-        onEvent: (event: ChatStreamEvent) => void,
-      ) => {
-        onEvent({
-          type: 'started',
-          threadId: 'codex-thread-started',
-          turnId: 'codex-turn-1',
-        });
-        onEvent({ type: 'messageDelta', id: 'message-1', text: 'Done' });
-        onEvent({ type: 'completed' });
-        return { threadId: 'codex-thread-finished' };
-      },
-    );
+  it('starts a native background run and streams it through the subscription', async () => {
+    const startCodexText = vi.fn(async () => runInfo);
     const connection = new CodexChatConnection({
-      api: { interruptCodexTurn: vi.fn(async () => undefined), streamChatText },
+      api: {
+        getCodexRun: vi.fn(async () => null),
+        interruptCodexTurn: vi.fn(async () => undefined),
+        startCodexText,
+        streamCodexRun: async (_runId, onEvent) => {
+          onEvent({
+            type: 'started',
+            threadId: 'codex-thread-1',
+            turnId: 'codex-turn-1',
+          });
+          onEvent({ type: 'messageDelta', id: 'message-1', text: 'Done' });
+          onEvent({ type: 'completed' });
+          return { threadId: 'codex-thread-1' };
+        },
+      },
       getConfig: () => ({
+        chatId: 'chat-1',
         permissionMode: 'workspace-write',
         settings: { model: 'gpt-5.6-terra', effort: 'high', speed: 'fast' },
         workingDirectory: '/Users/example/project',
@@ -197,11 +193,15 @@ describe('CodexChatConnection', () => {
       text: 'Build it',
     });
 
-    const chunks = await collect(connection.connect([], undefined, undefined, runContext));
+    const chunksPromise = collectUntilTerminal(connection.subscribe());
+    await connection.send([], undefined, undefined, runContext);
+    const chunks = await chunksPromise;
 
     expect(chunks.at(-1)?.type).toBe('RUN_FINISHED');
-    expect(connection.threadId).toBe('codex-thread-finished');
-    expect(streamChatText).toHaveBeenCalledWith(
+    expect(connection.threadId).toBe('codex-thread-1');
+    expect(startCodexText).toHaveBeenCalledWith(
+      'chat-1',
+      'message-2',
       'Build it',
       [
         {
@@ -214,33 +214,31 @@ describe('CodexChatConnection', () => {
       undefined,
       { model: 'gpt-5.6-terra', effort: 'high', speed: 'fast' },
       'workspace-write',
-      expect.any(Function),
     );
   });
 
-  it('finishes defensively when the command omits completed', async () => {
-    const onMissingCompletion = vi.fn();
+  it('replays a run when its chat is restored after navigation', async () => {
     const connection = new CodexChatConnection({
       api: {
+        getCodexRun: vi.fn(async () => ({ ...runInfo, active: true })),
         interruptCodexTurn: vi.fn(async () => undefined),
-        streamChatText: async (...args) => {
-          args[6]({ type: 'messageDelta', id: 'message-1', text: 'Partial' });
+        startCodexText: vi.fn(async () => runInfo),
+        streamCodexRun: async (_runId, onEvent) => {
+          onEvent({
+            type: 'started',
+            threadId: 'codex-thread-1',
+            turnId: 'codex-turn-1',
+          });
+          onEvent({ type: 'messageDelta', id: 'message-1', text: 'Replayed' });
+          onEvent({ type: 'completed' });
           return { threadId: 'codex-thread-1' };
         },
       },
-      getConfig: () => ({ permissionMode: 'read-only' }),
-      onMissingCompletion,
+      getConfig: () => ({ chatId: 'chat-1', permissionMode: 'read-only' }),
     });
-    connection.prepareSubmission({
-      assistantMessageId: 'message-2',
-      attachments: [],
-      id: 'message-1',
-      text: 'Hello',
-    });
+    connection.restoreChat('chat-1', 'codex-thread-1', runInfo);
 
-    const chunks = await collect(connection.connect([], undefined, undefined, runContext));
-
-    expect(onMissingCompletion).toHaveBeenCalledOnce();
+    const chunks = await collectUntilTerminal(connection.subscribe());
     expect(chunks.map((chunk) => chunk.type)).toEqual([
       'RUN_STARTED',
       'TEXT_MESSAGE_START',
@@ -250,16 +248,18 @@ describe('CodexChatConnection', () => {
     ]);
   });
 
-  it('throws one transport failure after yielding partial output', async () => {
+  it('turns a native background failure into a terminal run error', async () => {
     const connection = new CodexChatConnection({
       api: {
+        getCodexRun: vi.fn(async () => null),
         interruptCodexTurn: vi.fn(async () => undefined),
-        streamChatText: async (...args) => {
-          args[6]({ type: 'messageDelta', id: 'message-1', text: 'Partial' });
+        startCodexText: vi.fn(async () => runInfo),
+        streamCodexRun: async (_runId, onEvent) => {
+          onEvent({ type: 'messageDelta', id: 'message-1', text: 'Partial' });
           throw new Error('transport failed');
         },
       },
-      getConfig: () => ({ permissionMode: 'read-only' }),
+      getConfig: () => ({ chatId: 'chat-1', permissionMode: 'read-only' }),
     });
     connection.prepareSubmission({
       assistantMessageId: 'message-2',
@@ -267,19 +267,14 @@ describe('CodexChatConnection', () => {
       id: 'message-1',
       text: 'Hello',
     });
-    const chunks: StreamChunk[] = [];
-
-    await expect(
-      (async () => {
-        for await (const chunk of connection.connect([], undefined, undefined, runContext)) {
-          chunks.push(chunk);
-        }
-      })(),
-    ).rejects.toThrow('transport failed');
+    const chunksPromise = collectUntilTerminal(connection.subscribe());
+    await connection.send([], undefined, undefined, runContext);
+    const chunks = await chunksPromise;
     expect(chunks.some((chunk) => chunk.type === 'TEXT_MESSAGE_CONTENT')).toBe(true);
+    expect(chunks.at(-1)).toMatchObject({ type: 'RUN_ERROR', message: 'transport failed' });
   });
 
-  it('ignores late channel events after abort', async () => {
+  it('detaches on navigation without interrupting the background turn', async () => {
     let emit: ((event: ChatStreamEvent) => void) | undefined;
     let finish: (() => void) | undefined;
     const request = new Promise<{ threadId: string }>((resolve) => {
@@ -288,13 +283,15 @@ describe('CodexChatConnection', () => {
     const interruptCodexTurn = vi.fn(async () => undefined);
     const connection = new CodexChatConnection({
       api: {
+        getCodexRun: vi.fn(async () => null),
         interruptCodexTurn,
-        streamChatText: async (...args) => {
-          emit = args[6];
+        startCodexText: vi.fn(async () => runInfo),
+        streamCodexRun: async (_runId, onEvent) => {
+          emit = onEvent;
           return request;
         },
       },
-      getConfig: () => ({ permissionMode: 'read-only' }),
+      getConfig: () => ({ chatId: 'chat-1', permissionMode: 'read-only' }),
     });
     connection.prepareSubmission({
       assistantMessageId: 'message-2',
@@ -303,11 +300,9 @@ describe('CodexChatConnection', () => {
       text: 'Hello',
     });
     const abortController = new AbortController();
-    const collecting = collect(
-      connection.connect([], undefined, abortController.signal, runContext),
-    );
+    const collecting = collect(connection.subscribe(abortController.signal));
+    await connection.send([], undefined, undefined, runContext);
 
-    emit?.({ type: 'started', threadId: 'codex-thread-1', turnId: 'codex-turn-1' });
     emit?.({ type: 'messageDelta', id: 'message-1', text: 'Before abort' });
     await Promise.resolve();
     await Promise.resolve();
@@ -317,46 +312,33 @@ describe('CodexChatConnection', () => {
 
     const chunks = await collecting;
     expect(chunks.filter((chunk) => chunk.type === 'TEXT_MESSAGE_CONTENT')).toHaveLength(1);
+    expect(interruptCodexTurn).not.toHaveBeenCalled();
+
+    connection.interruptActive();
     expect(interruptCodexTurn).toHaveBeenCalledWith('codex-thread-1', 'codex-turn-1');
   });
-
-  it('interrupts a late-starting turn and does not restore its thread after reset', async () => {
-    let emit: ((event: ChatStreamEvent) => void) | undefined;
-    let finish: (() => void) | undefined;
-    const request = new Promise<{ threadId: string }>((resolve) => {
-      finish = () => resolve({ threadId: 'stale-thread' });
-    });
-    const interruptCodexTurn = vi.fn(async () => undefined);
-    const connection = new CodexChatConnection({
-      api: {
-        interruptCodexTurn,
-        streamChatText: async (...args) => {
-          emit = args[6];
-          return request;
-        },
-      },
-      getConfig: () => ({ permissionMode: 'read-only' }),
-    });
-    connection.prepareSubmission({
-      assistantMessageId: 'message-2',
-      attachments: [],
-      id: 'message-1',
-      text: 'Hello',
-    });
-    const collecting = collect(connection.connect([], undefined, undefined, runContext));
-
-    connection.resetThread();
-    emit?.({ type: 'started', threadId: 'stale-thread', turnId: 'stale-turn' });
-    finish?.();
-    await collecting;
-
-    expect(interruptCodexTurn).toHaveBeenCalledWith('stale-thread', 'stale-turn');
-    expect(connection.threadId).toBeUndefined();
-  });
 });
+
+const runInfo = {
+  runId: 'run-1',
+  chatId: 'chat-1',
+  threadId: 'codex-thread-1',
+  turnId: 'codex-turn-1',
+  assistantMessageId: 'message-2',
+  model: 'gpt-5.6-terra',
+};
 
 const collect = async (stream: AsyncIterable<StreamChunk>) => {
   const chunks: StreamChunk[] = [];
   for await (const chunk of stream) chunks.push(chunk);
+  return chunks;
+};
+
+const collectUntilTerminal = async (stream: AsyncIterable<StreamChunk>) => {
+  const chunks: StreamChunk[] = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+    if (chunk.type === 'RUN_FINISHED' || chunk.type === 'RUN_ERROR') break;
+  }
   return chunks;
 };

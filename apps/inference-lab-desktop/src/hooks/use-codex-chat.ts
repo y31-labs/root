@@ -30,6 +30,7 @@ import type {
   CodexReasoningDeltaCustomEventPayload,
   CodexApprovalDecision,
   CodexApprovalMethod,
+  CodexRunInfo,
   ModelSettings,
   PermissionMode,
 } from '#/lib/types';
@@ -83,12 +84,15 @@ export const useCodexChat = ({
   chatHistoryRef.current = chatHistory;
   const config = useRef({ onWorkingDirectoryChange, permissionMode, settings, workingDirectory });
   config.current = { onWorkingDirectoryChange, permissionMode, settings, workingDirectory };
+  const chatMetadata = useRef<
+    Pick<ChatRecord, 'createdAtMs' | 'id' | 'title' | 'workingDirectory'> | undefined
+  >(undefined);
 
   const connectionRef = useRef<CodexChatConnection | null>(null);
   if (!connectionRef.current) {
     connectionRef.current = new CodexChatConnection({
       api,
-      getConfig: () => config.current,
+      getConfig: () => ({ ...config.current, chatId: chatMetadata.current?.id }),
     });
   }
   const connection = connectionRef.current;
@@ -97,9 +101,6 @@ export const useCodexChat = ({
   const [turns, setTurns] = useState<CodexTurn[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const activeAssistantMessageId = useRef<string | undefined>(undefined);
-  const chatMetadata = useRef<
-    Pick<ChatRecord, 'createdAtMs' | 'id' | 'title' | 'workingDirectory'> | undefined
-  >(undefined);
   const chatSnapshot = useRef<ChatRecord | undefined>(undefined);
   const skipHydratedSnapshot = useRef(false);
   const saveTimeout = useRef<number | undefined>(undefined);
@@ -242,6 +243,7 @@ export const useCodexChat = ({
   const chat = useTanStackChat({
     id: 'inference-lab-codex-chat',
     connection,
+    live: true,
     queue: 'drop',
     onChunk: handleChunk,
     onError: recordError,
@@ -254,6 +256,7 @@ export const useCodexChat = ({
       window.clearTimeout(saveTimeout.current);
       saveTimeout.current = undefined;
     }
+    if (archiveSnapshot) connection.interruptActive();
     const pendingSave = archiveSnapshot ? Promise.resolve() : persistSnapshot();
     const previousChatId = chatMetadata.current?.id;
     if (previousChatId) chatHistoryRef.current.setChatRunning(previousChatId, false);
@@ -277,11 +280,19 @@ export const useCodexChat = ({
 
     let active = true;
     setLoadingHistory(true);
-    void pendingSave
-      .then(() => loadChat(activeChatId))
-      .then((storedChat) => {
+    void Promise.all([
+      pendingSave.then(() => loadChat(activeChatId)),
+      api.getCodexRun(activeChatId).catch((error: unknown) => {
+        console.error(error);
+        return null;
+      }),
+    ])
+      .then(([storedChat, availableRun]) => {
         if (!active || !storedChat) return;
-        const normalized = normalizeStoredMessages(storedChat.messages, storedChat.updatedAtMs);
+        const resumableRun = runForIncompleteTurn(storedChat, availableRun ?? undefined);
+        const normalized = resumableRun
+          ? resetRunningTurn(storedChat.messages, resumableRun.assistantMessageId)
+          : normalizeStoredMessages(storedChat.messages, storedChat.updatedAtMs);
         const currentWorkingDirectory = config.current.workingDirectory;
         const savedWorkingDirectory = storedChat.workingDirectory;
         const canApplySavedWorkingDirectory =
@@ -304,7 +315,11 @@ export const useCodexChat = ({
             ? { workingDirectory: effectiveWorkingDirectory }
             : { workingDirectory: undefined }),
         };
-        const hydratedTurns = hydrateTurns(normalizedChat.messages, normalizedChat.updatedAtMs);
+        const hydratedTurns = hydrateTurns(
+          normalizedChat.messages,
+          normalizedChat.updatedAtMs,
+          resumableRun?.assistantMessageId,
+        );
         chatMetadata.current = {
           id: normalizedChat.id,
           title: normalizedChat.title,
@@ -314,10 +329,15 @@ export const useCodexChat = ({
         chatSnapshot.current = normalizedChat;
         attachmentStorageKeys.current = collectAttachmentStorageKeys(normalizedChat.messages);
         skipHydratedSnapshot.current = normalizedChat.messages.length > 0;
-        connection.restoreThread(canRestoreThread ? normalizedChat.codexThreadId : undefined);
+        activeAssistantMessageId.current = resumableRun?.assistantMessageId;
+        connection.restoreChat(
+          normalizedChat.id,
+          canRestoreThread ? normalizedChat.codexThreadId : undefined,
+          canRestoreThread ? resumableRun : undefined,
+        );
         nextMessageId.current = greatestMessageNumber(normalizedChat.messages);
         setTurns(hydratedTurns);
-        if (normalized.changed) {
+        if (normalized.changed && !resumableRun) {
           void persistSnapshot();
         }
       })
@@ -329,7 +349,7 @@ export const useCodexChat = ({
     return () => {
       active = false;
     };
-  }, [chat.clear, chat.stop, connection, persistSnapshot, chatHistory.sessionVersion]);
+  }, [api, chat.clear, chat.stop, connection, persistSnapshot, chatHistory.sessionVersion]);
 
   const previousWorkingDirectory = useRef(workingDirectory);
   useEffect(() => {
@@ -473,6 +493,7 @@ export const useCodexChat = ({
   };
 
   const stopResponse = () => {
+    connection.interruptActive();
     chat.stop();
     submissionInFlight.current = false;
     const chatId = chatMetadata.current?.id;
@@ -497,7 +518,14 @@ export const useCodexChat = ({
   return {
     loadingHistory,
     messages,
-    pending: chat.isLoading || loadingHistory,
+    pending:
+      chat.isLoading ||
+      loadingHistory ||
+      turns.some(
+        (turn) =>
+          turn.completedAtMs === undefined &&
+          turn.assistantMessageId === activeAssistantMessageId.current,
+      ),
     prompt,
     resolveApproval,
     setPrompt,
@@ -576,7 +604,11 @@ const appendMessageReference = (
   return [...(parts ?? []), { type: 'message', id, messageId }];
 };
 
-const hydrateTurns = (messages: ChatMessage[], fallbackCompletedAtMs: number): CodexTurn[] => {
+const hydrateTurns = (
+  messages: ChatMessage[],
+  fallbackCompletedAtMs: number,
+  activeAssistantMessageId?: string,
+): CodexTurn[] => {
   const turns: CodexTurn[] = [];
 
   for (let index = 0; index < messages.length; index += 1) {
@@ -600,7 +632,9 @@ const hydrateTurns = (messages: ChatMessage[], fallbackCompletedAtMs: number): C
       ...(assistantMessage.approvals ? { approvals: assistantMessage.approvals } : {}),
       assistantMessageId,
       attachments: userMessage.attachments ?? [],
-      completedAtMs: assistantMessage.completedAtMs ?? fallbackCompletedAtMs,
+      ...(assistantMessageId === activeAssistantMessageId
+        ? {}
+        : { completedAtMs: assistantMessage.completedAtMs ?? fallbackCompletedAtMs }),
       ...(parts ? { parts } : {}),
       startedAtMs: assistantMessage.startedAtMs ?? fallbackCompletedAtMs,
       submittedText: userMessage.text,
@@ -611,6 +645,38 @@ const hydrateTurns = (messages: ChatMessage[], fallbackCompletedAtMs: number): C
 
   return turns;
 };
+
+const runForIncompleteTurn = (chat: ChatRecord, run: CodexRunInfo | undefined) => {
+  if (!run) return undefined;
+  const assistantMessage = chat.messages.find(
+    (message) => message.role === 'assistant' && String(message.id) === run.assistantMessageId,
+  );
+  if (
+    !assistantMessage ||
+    (assistantMessage.completedAtMs !== undefined && !assistantMessage.streaming)
+  ) {
+    return undefined;
+  }
+  return run;
+};
+
+const resetRunningTurn = (
+  messages: ChatMessage[],
+  assistantMessageId: string,
+): { changed: boolean; messages: ChatMessage[] } => ({
+  changed: false,
+  messages: messages.map((message) => {
+    if (message.role !== 'assistant' || String(message.id) !== assistantMessageId) return message;
+    const {
+      approvals: _approvals,
+      completedAtMs: _completedAtMs,
+      error: _error,
+      parts: _parts,
+      ...runningMessage
+    } = message;
+    return { ...runningMessage, streaming: true, text: '' };
+  }),
+});
 
 const greatestMessageNumber = (messages: ChatMessage[]) =>
   messages.reduce((greatest, message) => {

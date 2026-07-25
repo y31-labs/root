@@ -93,6 +93,19 @@ export interface ChatTextResult {
   threadId: string;
 }
 
+export interface CodexRunInfo {
+  runId: string;
+  chatId: string;
+  threadId: string;
+  turnId: string;
+  assistantMessageId: string;
+  model?: string;
+}
+
+export interface CodexRunStatus extends CodexRunInfo {
+  active: boolean;
+}
+
 export interface CodexActivityCustomEventPayload {
   assistantMessageId: string;
   activity: CodexActivity;

@@ -1,4 +1,4 @@
-import type { ConnectConnectionAdapter, RunAgentInputContext } from '@tanstack/ai-react';
+import type { RunAgentInputContext, SubscribeConnectionAdapter } from '@tanstack/ai-react';
 import { EventType } from '@tanstack/ai/client';
 import type { ModelMessage, StreamChunk, UIMessage } from '@tanstack/ai/client';
 
@@ -11,6 +11,7 @@ import type {
   CodexReasoningDeltaCustomEventPayload,
   ModelSettings,
   PermissionMode,
+  CodexRunInfo,
 } from '#/lib/types';
 
 export const CODEX_ACTIVITY_EVENT = 'codex.activity';
@@ -21,6 +22,7 @@ export const CODEX_REASONING_DELTA_EVENT = 'codex.reasoning-delta';
 const TEXT_PART_PREFIX = 'codex-text:';
 
 interface CodexChatRequestConfig {
+  chatId?: string;
   permissionMode: PermissionMode;
   settings?: ModelSettings;
   workingDirectory?: string;
@@ -34,7 +36,7 @@ export interface CodexChatSubmission {
 }
 
 interface CodexChatConnectionOptions {
-  api: Pick<LocalApi, 'interruptCodexTurn' | 'streamChatText'>;
+  api: Pick<LocalApi, 'getCodexRun' | 'interruptCodexTurn' | 'startCodexText' | 'streamCodexRun'>;
   getConfig: () => CodexChatRequestConfig;
   onMissingCompletion?: () => void;
 }
@@ -87,14 +89,18 @@ export const createCodexStreamTranslator = (options: TranslatorOptions) => {
     ];
   };
 
-  const finish = (): StreamChunk[] => {
-    if (completed) return [];
-    const chunks = startRun();
-
+  const closeTextMessages = () => {
+    const chunks: StreamChunk[] = [];
     for (const messageId of openTextMessageIds) {
       chunks.push({ type: EventType.TEXT_MESSAGE_END, messageId });
     }
     openTextMessageIds.clear();
+    return chunks;
+  };
+
+  const finish = (): StreamChunk[] => {
+    if (completed) return [];
+    const chunks = [...startRun(), ...closeTextMessages()];
 
     chunks.push({
       type: EventType.RUN_FINISHED,
@@ -103,6 +109,20 @@ export const createCodexStreamTranslator = (options: TranslatorOptions) => {
       ...(options.model !== undefined ? { model: options.model } : {}),
       timestamp: Date.now(),
       finishReason: 'stop',
+    });
+    completed = true;
+    return chunks;
+  };
+
+  const fail = (message: string): StreamChunk[] => {
+    if (completed) return [];
+    const chunks = [...startRun(), ...closeTextMessages()];
+    chunks.push({
+      type: EventType.RUN_ERROR,
+      threadId: options.threadId,
+      runId: options.runId,
+      timestamp: Date.now(),
+      message,
     });
     completed = true;
     return chunks;
@@ -191,19 +211,25 @@ export const createCodexStreamTranslator = (options: TranslatorOptions) => {
     get completed() {
       return completed;
     },
+    fail,
     finish,
     translate,
   };
 };
 
-export class CodexChatConnection implements ConnectConnectionAdapter {
-  readonly #api: Pick<LocalApi, 'interruptCodexTurn' | 'streamChatText'>;
+export class CodexChatConnection implements SubscribeConnectionAdapter {
+  readonly #api: Pick<
+    LocalApi,
+    'getCodexRun' | 'interruptCodexTurn' | 'startCodexText' | 'streamCodexRun'
+  >;
   readonly #getConfig: () => CodexChatRequestConfig;
   readonly #onMissingCompletion: () => void;
+  #chatId: string | undefined;
   #codexThreadId: string | undefined;
   #generation = 0;
-  #cancelActive: (() => void) | undefined;
+  #activeRun: CodexRunInfo | undefined;
   #pendingSubmission: CodexChatSubmission | undefined;
+  #subscriber: AsyncQueue<StreamChunk> | undefined;
 
   constructor({ api, getConfig, onMissingCompletion }: CodexChatConnectionOptions) {
     this.#api = api;
@@ -226,137 +252,131 @@ export class CodexChatConnection implements ConnectConnectionAdapter {
 
   resetThread() {
     this.#generation += 1;
-    this.#cancelActive?.();
-    this.#cancelActive = undefined;
+    this.#subscriber?.clear();
+    this.#activeRun = undefined;
+    this.#chatId = undefined;
     this.#codexThreadId = undefined;
     this.#pendingSubmission = undefined;
   }
 
-  restoreThread(threadId: string | undefined) {
-    this.resetThread();
+  restoreChat(chatId: string, threadId: string | undefined, run?: CodexRunInfo) {
+    this.#generation += 1;
+    this.#subscriber?.clear();
+    this.#chatId = chatId;
     this.#codexThreadId = threadId;
+    this.#activeRun = run;
+    this.#pendingSubmission = undefined;
+    if (run) this.#pumpRun(run);
   }
 
-  connect(
+  subscribe(abortSignal?: AbortSignal): AsyncIterable<StreamChunk> {
+    const queue = new AsyncQueue<StreamChunk>();
+    this.#subscriber?.close();
+    this.#subscriber = queue;
+    const close = () => {
+      if (this.#subscriber === queue) this.#subscriber = undefined;
+      queue.close();
+    };
+    if (abortSignal?.aborted) {
+      close();
+      return queue;
+    }
+    abortSignal?.addEventListener('abort', close, { once: true });
+
+    const activeRun = this.#activeRun;
+    if (activeRun) {
+      this.#pumpRun(activeRun);
+    } else if (this.#chatId) {
+      const generation = this.#generation;
+      void this.#api
+        .getCodexRun(this.#chatId)
+        .then((run) => {
+          if (!run || generation !== this.#generation || this.#subscriber !== queue) return;
+          this.#activeRun = run;
+          this.#pumpRun(run);
+        })
+        .catch(() => undefined);
+    }
+    return queue;
+  }
+
+  async send(
     _messages: UIMessage[] | ModelMessage[],
     _data?: Record<string, unknown>,
     abortSignal?: AbortSignal,
-    runContext?: RunAgentInputContext,
-  ): AsyncIterable<StreamChunk> {
+    _runContext?: RunAgentInputContext,
+  ): Promise<void> {
     const submission = this.#pendingSubmission;
     this.#pendingSubmission = undefined;
     if (!submission) throw new Error('No Codex submission was prepared for this request.');
 
     const config = this.#getConfig();
-    this.#cancelActive?.();
-    const generation = ++this.#generation;
+    const chatId = config.chatId ?? this.#chatId;
+    if (!chatId) throw new Error('No chat identity is available for this request.');
+    this.#chatId = chatId;
     const codexThreadId = this.#codexThreadId;
-    const queue = new AsyncQueue<StreamChunk>();
+    const run = await this.#api.startCodexText(
+      chatId,
+      submission.assistantMessageId,
+      submission.text,
+      submission.attachments,
+      config.workingDirectory,
+      codexThreadId,
+      config.settings,
+      config.permissionMode,
+    );
+    this.#codexThreadId = run.threadId;
+    this.#activeRun = run;
+    if (!abortSignal?.aborted) this.#pumpRun(run);
+  }
+
+  interruptActive() {
+    const run = this.#activeRun;
+    if (!run) return;
+    this.#generation += 1;
+    this.#subscriber?.clear();
+    this.#activeRun = undefined;
+    void this.#api.interruptCodexTurn(run.threadId, run.turnId).catch(() => undefined);
+  }
+
+  #pumpRun(run: CodexRunInfo) {
+    const subscriber = this.#subscriber;
+    if (!subscriber) return;
+    const generation = ++this.#generation;
     const translator = createCodexStreamTranslator({
-      assistantMessageId: submission.assistantMessageId,
-      ...(config.settings?.model !== undefined ? { model: config.settings.model } : {}),
-      runId: runContext?.runId ?? createCorrelationId('run'),
-      threadId: runContext?.threadId ?? createCorrelationId('thread'),
+      assistantMessageId: run.assistantMessageId,
+      ...(run.model !== undefined ? { model: run.model } : {}),
+      runId: run.runId,
+      threadId: run.chatId,
     });
-    let inactive = false;
-    let cancelRequested = false;
-    let interrupted = false;
-    let turn: { threadId: string; turnId: string } | undefined;
-
-    const interrupt = () => {
-      if (!turn || interrupted) return;
-      interrupted = true;
-      void this.#api.interruptCodexTurn(turn.threadId, turn.turnId).catch(() => undefined);
-    };
-
-    const cleanup = () => {
-      abortSignal?.removeEventListener('abort', cancel);
-      if (this.#cancelActive === cancel) this.#cancelActive = undefined;
-    };
-
-    const close = () => {
-      if (inactive) return;
-      inactive = true;
-      cleanup();
-      queue.close();
-    };
-    const cancel = () => {
-      if (inactive) return;
-      cancelRequested = true;
-      inactive = true;
-      cleanup();
-      interrupt();
-      queue.cancel();
-    };
-    this.#cancelActive = cancel;
-
-    if (abortSignal?.aborted) {
-      cancel();
-      return queue;
-    }
-    abortSignal?.addEventListener('abort', cancel, { once: true });
-
     const push = (chunks: StreamChunk[]) => {
-      if (inactive) return;
-      for (const chunk of chunks) queue.push(chunk);
-    };
-    const handleEvent = (event: ChatStreamEvent) => {
-      if (event.type === 'started') {
-        turn = { threadId: event.threadId, turnId: event.turnId };
-        if (cancelRequested || generation !== this.#generation) {
-          interrupt();
-          return;
-        }
-        this.#codexThreadId = event.threadId;
-      }
-      if (inactive || generation !== this.#generation) return;
-      push(translator.translate(event));
+      if (generation !== this.#generation || subscriber !== this.#subscriber) return;
+      for (const chunk of chunks) subscriber.push(chunk);
     };
 
     void this.#api
-      .streamChatText(
-        submission.text,
-        submission.attachments,
-        config.workingDirectory,
-        codexThreadId,
-        config.settings,
-        config.permissionMode,
-        handleEvent,
-      )
+      .streamCodexRun(run.runId, (event) => push(translator.translate(event)))
       .then((result) => {
-        if (inactive || generation !== this.#generation) {
-          cleanup();
-          return;
-        }
+        if (generation !== this.#generation || subscriber !== this.#subscriber) return;
         this.#codexThreadId = result.threadId;
+        this.#activeRun = undefined;
         if (!translator.completed) {
           this.#onMissingCompletion();
           push(translator.finish());
         }
-        close();
       })
       .catch((error: unknown) => {
-        if (inactive || generation !== this.#generation) {
-          cleanup();
-          return;
-        }
-        inactive = true;
-        cleanup();
-        queue.fail(toError(error));
+        if (generation !== this.#generation || subscriber !== this.#subscriber) return;
+        this.#activeRun = undefined;
+        push(translator.fail(toError(error).message));
       });
-
-    return queue;
   }
 }
 
 class AsyncQueue<T> implements AsyncIterable<T>, AsyncIterator<T> {
   readonly #buffer: T[] = [];
-  readonly #waiters: Array<{
-    reject: (error: Error) => void;
-    resolve: (result: IteratorResult<T>) => void;
-  }> = [];
+  readonly #waiters: Array<(result: IteratorResult<T>) => void> = [];
   #closed = false;
-  #error: Error | undefined;
 
   [Symbol.asyncIterator]() {
     return this;
@@ -365,9 +385,8 @@ class AsyncQueue<T> implements AsyncIterable<T>, AsyncIterator<T> {
   next(): Promise<IteratorResult<T>> {
     const value = this.#buffer.shift();
     if (value !== undefined) return Promise.resolve({ done: false, value });
-    if (this.#error) return Promise.reject(this.#error);
     if (this.#closed) return Promise.resolve({ done: true, value: undefined });
-    return new Promise((resolve, reject) => this.#waiters.push({ reject, resolve }));
+    return new Promise((resolve) => this.#waiters.push(resolve));
   }
 
   return(): Promise<IteratorResult<T>> {
@@ -376,36 +395,24 @@ class AsyncQueue<T> implements AsyncIterable<T>, AsyncIterator<T> {
   }
 
   push(value: T) {
-    if (this.#closed || this.#error) return;
+    if (this.#closed) return;
     const waiter = this.#waiters.shift();
-    if (waiter) waiter.resolve({ done: false, value });
+    if (waiter) waiter({ done: false, value });
     else this.#buffer.push(value);
   }
 
   close() {
-    if (this.#closed || this.#error) return;
+    if (this.#closed) return;
     this.#closed = true;
     for (const waiter of this.#waiters.splice(0)) {
-      waiter.resolve({ done: true, value: undefined });
+      waiter({ done: true, value: undefined });
     }
   }
 
-  cancel() {
-    if (this.#closed || this.#error) return;
+  clear() {
     this.#buffer.splice(0);
-    this.close();
-  }
-
-  fail(error: Error) {
-    if (this.#closed || this.#error) return;
-    this.#error = error;
-    if (this.#buffer.length > 0) return;
-    for (const waiter of this.#waiters.splice(0)) waiter.reject(error);
   }
 }
-
-const createCorrelationId = (prefix: string) =>
-  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 const toError = (error: unknown) =>
   error instanceof Error ? error : new Error('The Codex request failed.');

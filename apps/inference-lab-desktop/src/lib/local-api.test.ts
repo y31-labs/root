@@ -30,10 +30,19 @@ describe('local API', () => {
     ]);
   });
 
-  it('passes chat text updates through a Tauri channel', async () => {
-    const invoke = vi.fn(async (command: string) =>
-      command === 'list_codex_models' ? [] : { threadId: 'thread-1' },
-    );
+  it('starts and subscribes to native background chat runs', async () => {
+    const run = {
+      runId: 'run-1',
+      chatId: 'chat-1',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      assistantMessageId: 'message-2',
+    };
+    const invoke = vi.fn(async (command: string) => {
+      if (command === 'list_codex_models') return [];
+      if (command === 'start_codex_text' || command === 'get_codex_run') return run;
+      return { threadId: 'thread-1' };
+    });
     const channel = { id: 'channel-1' };
     const makeChannel = vi.fn(() => channel);
     const onEvent = vi.fn();
@@ -47,7 +56,9 @@ describe('local API', () => {
       effort: 'medium',
       speed: 'fast',
     });
-    await api.streamChatText(
+    await api.startCodexText(
+      'chat-1',
+      'message-2',
       'Draft an intake flow',
       [
         {
@@ -60,8 +71,9 @@ describe('local API', () => {
       'thread-1',
       { model: 'gpt-5.6-terra', effort: 'medium', speed: 'fast' },
       'workspace-write',
-      onEvent,
     );
+    await api.streamCodexRun('run-1', onEvent);
+    await api.getCodexRun('chat-1');
 
     expect(invoke).toHaveBeenNthCalledWith(1, 'codex_integration_status', undefined);
     expect(invoke).toHaveBeenNthCalledWith(2, 'connect_codex', undefined);
@@ -78,8 +90,10 @@ describe('local API', () => {
       },
     });
     expect(makeChannel).toHaveBeenCalledWith(onEvent);
-    expect(invoke).toHaveBeenNthCalledWith(5, 'stream_codex_text', {
+    expect(invoke).toHaveBeenNthCalledWith(5, 'start_codex_text', {
       input: {
+        chatId: 'chat-1',
+        assistantMessageId: 'message-2',
         prompt: 'Draft an intake flow',
         attachments: [
           {
@@ -97,17 +111,21 @@ describe('local API', () => {
         },
         permissionMode: 'workspace-write',
       },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(6, 'stream_codex_run', {
+      runId: 'run-1',
       onEvent: channel,
     });
+    expect(invoke).toHaveBeenNthCalledWith(7, 'get_codex_run', { chatId: 'chat-1' });
 
     await api.interruptCodexTurn('thread-1', 'turn-1');
-    expect(invoke).toHaveBeenNthCalledWith(6, 'interrupt_codex_turn', {
+    expect(invoke).toHaveBeenNthCalledWith(8, 'interrupt_codex_turn', {
       threadId: 'thread-1',
       turnId: 'turn-1',
     });
 
     await api.resolveCodexApproval(42, 'item/commandExecution/requestApproval', 'acceptForSession');
-    expect(invoke).toHaveBeenNthCalledWith(7, 'resolve_codex_approval', {
+    expect(invoke).toHaveBeenNthCalledWith(9, 'resolve_codex_approval', {
       requestId: 42,
       method: 'item/commandExecution/requestApproval',
       decision: 'acceptForSession',
