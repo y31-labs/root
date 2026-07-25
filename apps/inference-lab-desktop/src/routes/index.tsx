@@ -12,11 +12,12 @@ export const Route = createFileRoute('/')({ component: HomeRoute });
 
 function HomeRoute() {
   const api = useLocalApi();
-  const { selectWorkingDirectory, workingDirectory } = useWorkingDirectory();
+  const { selectWorkingDirectory, setWorkingDirectory, workingDirectory } = useWorkingDirectory();
   const modelSettings = useModelSettings(api.listModels);
   const { permissionMode, setPermissionMode } = usePermissionMode();
   const { messages, pending, prompt, resolveApproval, setPrompt, stopResponse, submitPrompt } =
     useCodexChat({
+      onWorkingDirectoryChange: setWorkingDirectory,
       permissionMode,
       settings: modelSettings.settings,
       workingDirectory,

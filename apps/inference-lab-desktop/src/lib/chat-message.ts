@@ -2,12 +2,18 @@ import type { PromptInputMessage } from '@workspace/ui/components/ai-elements/pr
 
 import type { ChatTranscriptPart, CodexApprovalDecision, CodexApprovalRequest } from '#/lib/types';
 
-export type FileAttachment = PromptInputMessage['files'][number] & { id: string };
+type PromptFile = PromptInputMessage['files'][number];
+
+export type FileAttachment = Omit<PromptFile, 'url'> & {
+  id: string;
+  storageKey?: string;
+  url?: string;
+};
 
 export interface ChatApproval extends CodexApprovalRequest {
   decision?: CodexApprovalDecision;
   error?: string;
-  status: 'pending' | 'submitting' | 'resolved';
+  status: 'expired' | 'pending' | 'submitting' | 'resolved';
 }
 
 export interface ChatMessage {

@@ -19,5 +19,5 @@ export const useWorkingDirectory = () => {
     })();
   };
 
-  return { selectWorkingDirectory, workingDirectory };
+  return { selectWorkingDirectory, setWorkingDirectory, workingDirectory };
 };

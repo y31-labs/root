@@ -176,6 +176,7 @@ const transcriptSegments = (parts: ChatTranscriptPart[]): TranscriptSegment[] =>
 };
 
 const approvalTitle = (approval: ChatApproval) => {
+  if (approval.status === 'expired') return `${approval.title} — expired`;
   if (approval.status !== 'resolved') return approval.title;
   if (approval.decision === 'accept') return 'Allowed once';
   if (approval.decision === 'acceptForSession') return 'Allowed for session';

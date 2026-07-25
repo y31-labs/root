@@ -232,6 +232,11 @@ export class CodexChatConnection implements ConnectConnectionAdapter {
     this.#pendingSubmission = undefined;
   }
 
+  restoreThread(threadId: string | undefined) {
+    this.resetThread();
+    this.#codexThreadId = threadId;
+  }
+
   connect(
     _messages: UIMessage[] | ModelMessage[],
     _data?: Record<string, unknown>,

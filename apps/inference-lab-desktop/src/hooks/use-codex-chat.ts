@@ -1,8 +1,17 @@
 import { useChat as useTanStackChat } from '@tanstack/ai-react';
 import type { StreamChunk, UIMessage } from '@tanstack/ai/client';
 import type { PromptInputMessage } from '@workspace/ui/components/ai-elements/prompt-input';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import {
+  applyAttachmentStorageKeys,
+  collectAttachmentStorageKeys,
+  createChatId,
+  createChatTitle,
+  normalizeStoredMessages,
+  withoutStoredAttachmentUrls,
+  type ChatRecord,
+} from '#/lib/chat-history';
 import type { ChatApproval, ChatMessage, FileAttachment } from '#/lib/chat-message';
 import {
   CODEX_ACTIVITY_DELTA_EVENT,
@@ -24,11 +33,14 @@ import type {
   ModelSettings,
   PermissionMode,
 } from '#/lib/types';
+import { useChatHistory } from '#/providers/chat-history-provider';
 import { useLocalApi } from '#/providers/local-api-provider';
 
 const ACTIVITY_DETAIL_LIMIT = 50_000;
+const CHAT_SAVE_DELAY_MS = 300;
 
 interface UseCodexChatOptions {
+  onWorkingDirectoryChange?: (workingDirectory: string | undefined) => void;
   permissionMode: PermissionMode;
   workingDirectory?: string;
   settings?: ModelSettings;
@@ -41,10 +53,12 @@ interface MessageReferencePart {
 }
 
 type ActivityTranscriptPart = Extract<ChatTranscriptPart, { type: 'activity' }>;
+type MessageTranscriptPart = Extract<ChatTranscriptPart, { type: 'message' }>;
 type ReasoningTranscriptPart = Extract<ChatTranscriptPart, { type: 'reasoning' }>;
 type SupplementalTranscriptPart =
   | ActivityTranscriptPart
   | MessageReferencePart
+  | MessageTranscriptPart
   | ReasoningTranscriptPart;
 interface CodexTurn {
   approvals?: ChatApproval[];
@@ -58,13 +72,17 @@ interface CodexTurn {
 }
 
 export const useCodexChat = ({
+  onWorkingDirectoryChange,
   permissionMode,
   settings,
   workingDirectory,
 }: UseCodexChatOptions) => {
   const api = useLocalApi();
-  const config = useRef({ permissionMode, settings, workingDirectory });
-  config.current = { permissionMode, settings, workingDirectory };
+  const chatHistory = useChatHistory();
+  const chatHistoryRef = useRef(chatHistory);
+  chatHistoryRef.current = chatHistory;
+  const config = useRef({ onWorkingDirectoryChange, permissionMode, settings, workingDirectory });
+  config.current = { onWorkingDirectoryChange, permissionMode, settings, workingDirectory };
 
   const connectionRef = useRef<CodexChatConnection | null>(null);
   if (!connectionRef.current) {
@@ -77,9 +95,43 @@ export const useCodexChat = ({
 
   const [prompt, setPrompt] = useState('');
   const [turns, setTurns] = useState<CodexTurn[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const activeAssistantMessageId = useRef<string | undefined>(undefined);
+  const chatMetadata = useRef<
+    Pick<ChatRecord, 'createdAtMs' | 'id' | 'title' | 'workingDirectory'> | undefined
+  >(undefined);
+  const chatSnapshot = useRef<ChatRecord | undefined>(undefined);
+  const skipHydratedSnapshot = useRef(false);
+  const saveTimeout = useRef<number | undefined>(undefined);
   const nextMessageId = useRef(0);
+  const attachmentStorageKeys = useRef<Record<string, string>>({});
+  const pendingWorkingDirectoryRestore = useRef<{ value: string | undefined } | undefined>(
+    undefined,
+  );
   const submissionInFlight = useRef(false);
+
+  const persistSnapshot = useCallback(() => {
+    if (saveTimeout.current !== undefined) window.clearTimeout(saveTimeout.current);
+    saveTimeout.current = undefined;
+    const snapshot = chatSnapshot.current;
+    if (!snapshot) return Promise.resolve();
+    return chatHistoryRef.current
+      .persistChat(withoutStoredAttachmentUrls(snapshot))
+      .then((result) => {
+        if (!result) return;
+        const currentSnapshot = chatSnapshot.current;
+        if (currentSnapshot?.id !== snapshot.id) return;
+        attachmentStorageKeys.current = result.attachmentStorageKeys;
+        chatSnapshot.current = {
+          ...currentSnapshot,
+          messages: applyAttachmentStorageKeys(
+            currentSnapshot.messages,
+            attachmentStorageKeys.current,
+          ),
+        };
+      })
+      .catch(console.error);
+  }, []);
 
   const finishActiveTurn = () => {
     const assistantMessageId = activeAssistantMessageId.current;
@@ -189,26 +241,171 @@ export const useCodexChat = ({
     onError: recordError,
   });
 
+  useEffect(() => {
+    const archivedChatId = chatHistoryRef.current.archivedChatId;
+    const archiveSnapshot = chatSnapshot.current?.id === archivedChatId;
+    if (archiveSnapshot && saveTimeout.current !== undefined) {
+      window.clearTimeout(saveTimeout.current);
+      saveTimeout.current = undefined;
+    }
+    const pendingSave = archiveSnapshot ? Promise.resolve() : persistSnapshot();
+    chatSnapshot.current = undefined;
+    chatMetadata.current = undefined;
+    attachmentStorageKeys.current = {};
+    skipHydratedSnapshot.current = false;
+    chat.stop();
+    connection.resetThread();
+    chat.clear();
+    setTurns([]);
+    setPrompt('');
+    activeAssistantMessageId.current = undefined;
+    submissionInFlight.current = false;
+
+    const { activeChatId, loadChat } = chatHistoryRef.current;
+    if (!activeChatId) {
+      setLoadingHistory(false);
+      return;
+    }
+
+    let active = true;
+    setLoadingHistory(true);
+    void pendingSave
+      .then(() => loadChat(activeChatId))
+      .then((storedChat) => {
+        if (!active || !storedChat) return;
+        const normalized = normalizeStoredMessages(storedChat.messages, storedChat.updatedAtMs);
+        const currentWorkingDirectory = config.current.workingDirectory;
+        const savedWorkingDirectory = storedChat.workingDirectory;
+        const canApplySavedWorkingDirectory =
+          savedWorkingDirectory !== undefined &&
+          savedWorkingDirectory !== currentWorkingDirectory &&
+          config.current.onWorkingDirectoryChange !== undefined;
+        if (canApplySavedWorkingDirectory) {
+          pendingWorkingDirectoryRestore.current = { value: savedWorkingDirectory };
+          config.current.onWorkingDirectoryChange?.(savedWorkingDirectory);
+        }
+        const canRestoreThread =
+          savedWorkingDirectory === currentWorkingDirectory || canApplySavedWorkingDirectory;
+        const effectiveWorkingDirectory = canRestoreThread
+          ? savedWorkingDirectory
+          : currentWorkingDirectory;
+        const normalizedChat = {
+          ...storedChat,
+          messages: normalized.messages,
+          ...(effectiveWorkingDirectory
+            ? { workingDirectory: effectiveWorkingDirectory }
+            : { workingDirectory: undefined }),
+        };
+        const hydratedTurns = hydrateTurns(normalizedChat.messages, normalizedChat.updatedAtMs);
+        chatMetadata.current = {
+          id: normalizedChat.id,
+          title: normalizedChat.title,
+          createdAtMs: normalizedChat.createdAtMs,
+          workingDirectory: normalizedChat.workingDirectory,
+        };
+        chatSnapshot.current = normalizedChat;
+        attachmentStorageKeys.current = collectAttachmentStorageKeys(normalizedChat.messages);
+        skipHydratedSnapshot.current = normalizedChat.messages.length > 0;
+        connection.restoreThread(canRestoreThread ? normalizedChat.codexThreadId : undefined);
+        nextMessageId.current = greatestMessageNumber(normalizedChat.messages);
+        setTurns(hydratedTurns);
+        if (normalized.changed) {
+          void persistSnapshot();
+        }
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (active) setLoadingHistory(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [chat.clear, chat.stop, connection, persistSnapshot, chatHistory.sessionVersion]);
+
   const previousWorkingDirectory = useRef(workingDirectory);
   useEffect(() => {
     if (previousWorkingDirectory.current === workingDirectory) return;
     previousWorkingDirectory.current = workingDirectory;
+    const pendingRestore = pendingWorkingDirectoryRestore.current;
+    if (pendingRestore && pendingRestore.value === workingDirectory) {
+      pendingWorkingDirectoryRestore.current = undefined;
+      return;
+    }
+    pendingWorkingDirectoryRestore.current = undefined;
+    void persistSnapshot();
+    chatSnapshot.current = undefined;
+    chatMetadata.current = undefined;
+    attachmentStorageKeys.current = {};
+    skipHydratedSnapshot.current = false;
     chat.stop();
     connection.resetThread();
     chat.clear();
     setTurns([]);
     activeAssistantMessageId.current = undefined;
     submissionInFlight.current = false;
-  }, [chat.clear, chat.stop, connection, workingDirectory]);
+    chatHistoryRef.current.newChat();
+  }, [chat.clear, chat.stop, connection, persistSnapshot, workingDirectory]);
 
   const messages = useMemo(
     () => buildChatMessages(turns, chat.messages, activeAssistantMessageId.current),
     [chat.messages, turns],
   );
 
+  useEffect(() => {
+    const metadata = chatMetadata.current;
+    if (!metadata || messages.length === 0 || loadingHistory) return;
+    if (skipHydratedSnapshot.current) {
+      skipHydratedSnapshot.current = false;
+      return;
+    }
+
+    const previousUpdatedAtMs = chatSnapshot.current?.updatedAtMs ?? metadata.createdAtMs;
+    chatSnapshot.current = {
+      ...metadata,
+      ...(connection.threadId ? { codexThreadId: connection.threadId } : {}),
+      messages: applyAttachmentStorageKeys(messages, attachmentStorageKeys.current),
+      updatedAtMs: Math.max(Date.now(), previousUpdatedAtMs + 1),
+    };
+    if (saveTimeout.current !== undefined) window.clearTimeout(saveTimeout.current);
+    saveTimeout.current = window.setTimeout(() => void persistSnapshot(), CHAT_SAVE_DELAY_MS);
+    return () => {
+      if (saveTimeout.current !== undefined) window.clearTimeout(saveTimeout.current);
+    };
+  }, [chat.isLoading, connection, loadingHistory, messages, persistSnapshot]);
+
+  useEffect(
+    () => () => {
+      void persistSnapshot();
+    },
+    [persistSnapshot],
+  );
+
   const submitPrompt = ({ files, text: submittedText }: PromptInputMessage) => {
     const text = submittedText.trim();
-    if ((!text && files.length === 0) || chat.isLoading || submissionInFlight.current) return;
+    if (
+      (!text && files.length === 0) ||
+      chat.isLoading ||
+      loadingHistory ||
+      submissionInFlight.current
+    ) {
+      return;
+    }
+
+    if (!chatMetadata.current) {
+      const now = Date.now();
+      const id = createChatId();
+      chatMetadata.current = {
+        id,
+        title: createChatTitle(
+          text,
+          files.map((file) => file.filename ?? ''),
+        ),
+        createdAtMs: now,
+        workingDirectory,
+      };
+      chatHistoryRef.current.activateChat(id);
+    }
 
     submissionInFlight.current = true;
     const userMessageId = `message-${++nextMessageId.current}`;
@@ -269,7 +466,7 @@ export const useCodexChat = ({
 
   return {
     messages,
-    pending: chat.isLoading,
+    pending: chat.isLoading || loadingHistory,
     prompt,
     resolveApproval,
     setPrompt,
@@ -316,6 +513,7 @@ const materializeTranscript = (
   (parts ?? []).map((part) => {
     if (part.type === 'activity') return part;
     if (part.type === 'message') {
+      if (!('messageId' in part)) return part;
       return {
         type: 'message',
         id: part.id,
@@ -337,11 +535,57 @@ const appendMessageReference = (
   id: string,
   messageId: string,
 ): SupplementalTranscriptPart[] => {
-  if (parts?.some((part) => part.type === 'message' && part.messageId === messageId)) {
+  if (
+    parts?.some(
+      (part) => part.type === 'message' && 'messageId' in part && part.messageId === messageId,
+    )
+  ) {
     return parts;
   }
   return [...(parts ?? []), { type: 'message', id, messageId }];
 };
+
+const hydrateTurns = (messages: ChatMessage[], fallbackCompletedAtMs: number): CodexTurn[] => {
+  const turns: CodexTurn[] = [];
+
+  for (let index = 0; index < messages.length; index += 1) {
+    const userMessage = messages[index];
+    if (userMessage?.role !== 'user') continue;
+    const assistantMessage = messages[index + 1];
+    if (assistantMessage?.role !== 'assistant') continue;
+    const assistantMessageId = String(assistantMessage.id);
+    const parts =
+      assistantMessage.parts ??
+      (assistantMessage.text
+        ? [
+            {
+              type: 'message' as const,
+              id: `${assistantMessageId}-text`,
+              text: assistantMessage.text,
+            },
+          ]
+        : undefined);
+    turns.push({
+      ...(assistantMessage.approvals ? { approvals: assistantMessage.approvals } : {}),
+      assistantMessageId,
+      attachments: userMessage.attachments ?? [],
+      completedAtMs: assistantMessage.completedAtMs ?? fallbackCompletedAtMs,
+      ...(parts ? { parts } : {}),
+      startedAtMs: assistantMessage.startedAtMs ?? fallbackCompletedAtMs,
+      submittedText: userMessage.text,
+      userMessageId: String(userMessage.id),
+    });
+    index += 1;
+  }
+
+  return turns;
+};
+
+const greatestMessageNumber = (messages: ChatMessage[]) =>
+  messages.reduce((greatest, message) => {
+    const match = /^message-(\d+)$/.exec(String(message.id));
+    return match ? Math.max(greatest, Number(match[1])) : greatest;
+  }, 0);
 
 const appendReasoningDelta = (
   parts: SupplementalTranscriptPart[] | undefined,

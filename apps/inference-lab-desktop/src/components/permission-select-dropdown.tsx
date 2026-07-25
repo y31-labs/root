@@ -62,7 +62,7 @@ export function PermissionSelectDropdown({
             variant='ghost'
           >
             <selected.icon
-              className={permissionMode === 'danger-full-access' ? 'text-danger' : undefined}
+              className={permissionMode === 'danger-full-access' ? 'text-warning' : undefined}
             />
           </PromptInputButton>
         }
@@ -75,10 +75,13 @@ export function PermissionSelectDropdown({
       >
         <DropdownMenuGroup>
           <DropdownMenuLabel>Permissions</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={permissionMode} onValueChange={onPermissionModeChange}>
+          <DropdownMenuRadioGroup
+            value={permissionMode}
+            onValueChange={(value) => onPermissionModeChange(value as PermissionMode)}
+          >
             {Object.entries(permissionOptions).map(
               ([permission, { icon: Icon, label, description }]) => {
-                const className = permission === 'danger-full-access' ? 'text-danger' : undefined;
+                const className = permission === 'danger-full-access' ? 'text-warning' : undefined;
 
                 return (
                   <DropdownMenuRadioItem closeOnClick key={permission} value={permission}>
