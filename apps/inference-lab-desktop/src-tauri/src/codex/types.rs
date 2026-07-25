@@ -49,6 +49,15 @@ pub(crate) struct CodexTextInput {
     pub(super) permission_mode: PermissionMode,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CodexTitleInput {
+    pub(super) first_prompt: String,
+    #[serde(default)]
+    pub(super) filenames: Vec<String>,
+    pub(super) settings: Option<ModelSettings>,
+}
+
 #[derive(Clone, Copy, Default, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(super) enum PermissionMode {

@@ -167,6 +167,8 @@ export const useCodexChat = ({
         };
       });
     });
+    const chatId = chatMetadata.current?.id;
+    if (chatId) chatHistoryRef.current.setChatRunning(chatId, false);
     activeAssistantMessageId.current = undefined;
   };
 
@@ -230,7 +232,11 @@ export const useCodexChat = ({
       return;
     }
 
-    if (chunk.type === 'RUN_FINISHED') finishActiveTurn();
+    if (chunk.type === 'RUN_FINISHED') {
+      const chatId = chatMetadata.current?.id;
+      if (chatId) chatHistoryRef.current.setChatRunning(chatId, false);
+      finishActiveTurn();
+    }
   };
 
   const chat = useTanStackChat({
@@ -249,6 +255,8 @@ export const useCodexChat = ({
       saveTimeout.current = undefined;
     }
     const pendingSave = archiveSnapshot ? Promise.resolve() : persistSnapshot();
+    const previousChatId = chatMetadata.current?.id;
+    if (previousChatId) chatHistoryRef.current.setChatRunning(previousChatId, false);
     chatSnapshot.current = undefined;
     chatMetadata.current = undefined;
     attachmentStorageKeys.current = {};
@@ -334,6 +342,8 @@ export const useCodexChat = ({
     }
     pendingWorkingDirectoryRestore.current = undefined;
     void persistSnapshot();
+    const previousChatId = chatMetadata.current?.id;
+    if (previousChatId) chatHistoryRef.current.setChatRunning(previousChatId, false);
     chatSnapshot.current = undefined;
     chatMetadata.current = undefined;
     attachmentStorageKeys.current = {};
@@ -405,9 +415,26 @@ export const useCodexChat = ({
         workingDirectory,
       };
       chatHistoryRef.current.activateChat(id);
+      void chatHistoryRef.current
+        .generateChatTitle({
+          chatId: id,
+          filenames: files.map((file) => file.filename ?? ''),
+          firstPrompt: text,
+          settings,
+        })
+        .then((title) => {
+          if (!title || chatMetadata.current?.id !== id) return;
+          chatMetadata.current = { ...chatMetadata.current, title };
+          if (chatSnapshot.current?.id === id) {
+            chatSnapshot.current = { ...chatSnapshot.current, title };
+            void persistSnapshot();
+          }
+        });
     }
 
+    const submittedChatId = chatMetadata.current.id;
     submissionInFlight.current = true;
+    chatHistoryRef.current.setChatRunning(submittedChatId, true);
     const userMessageId = `message-${++nextMessageId.current}`;
     const assistantMessageId = `message-${++nextMessageId.current}`;
     const attachments = files.map((file, index) => ({
@@ -441,12 +468,15 @@ export const useCodexChat = ({
       .finally(() => {
         connection.discardSubmission(userMessageId);
         submissionInFlight.current = false;
+        chatHistoryRef.current.setChatRunning(submittedChatId, false);
       });
   };
 
   const stopResponse = () => {
     chat.stop();
     submissionInFlight.current = false;
+    const chatId = chatMetadata.current?.id;
+    if (chatId) chatHistoryRef.current.setChatRunning(chatId, false);
     finishActiveTurn();
   };
 
@@ -465,6 +495,7 @@ export const useCodexChat = ({
   };
 
   return {
+    loadingHistory,
     messages,
     pending: chat.isLoading || loadingHistory,
     prompt,

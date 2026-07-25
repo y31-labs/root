@@ -25,7 +25,7 @@ export interface ChatRecord extends ChatSummary {
 export const createChatTitle = (text: string, filenames: string[]) => {
   const source = text.trim() || filenames[0] || 'Attachment';
   const compact = source.replaceAll(/\s+/g, ' ');
-  return compact.length > 56 ? `${compact.slice(0, 55).trimEnd()}…` : compact;
+  return Array.from(compact).slice(0, 200).join('').trimEnd();
 };
 
 export const createChatId = () =>

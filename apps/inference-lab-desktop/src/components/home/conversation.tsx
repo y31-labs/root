@@ -17,6 +17,7 @@ import type { ChatTranscriptPart, CodexApprovalDecision, CodexApprovalMethod } f
 export type { ChatMessage } from '#/lib/chat-message';
 
 interface ChatConversationProps {
+  loading?: boolean;
   messages: ChatMessage[];
   onApprovalDecision?: (
     requestId: string | number,
@@ -25,7 +26,11 @@ interface ChatConversationProps {
   ) => void;
 }
 
-export function ChatConversation({ messages, onApprovalDecision }: ChatConversationProps) {
+export function ChatConversation({
+  loading = false,
+  messages,
+  onApprovalDecision,
+}: ChatConversationProps) {
   return (
     <StickToBottom
       aria-live='polite'
@@ -35,7 +40,7 @@ export function ChatConversation({ messages, onApprovalDecision }: ChatConversat
       role='log'
     >
       <StickToBottom.Content className='mx-auto flex min-h-full w-full max-w-3xl flex-col px-5 py-6 md:px-8'>
-        {messages.length ? (
+        {loading ? null : messages.length ? (
           messages.map((message) => (
             <Message
               className={message.role === 'assistant' ? 'mt-6 max-w-full' : 'mt-6'}

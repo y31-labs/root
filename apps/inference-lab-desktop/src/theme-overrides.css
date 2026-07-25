@@ -28,9 +28,65 @@ html {
   overscroll-behavior: none;
 }
 
+.chat-history-title {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.chat-history-title[data-overflowing] {
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 1.25rem), transparent);
+  mask-image: linear-gradient(to right, black calc(100% - 1.25rem), transparent);
+}
+
+.chat-history-title-track {
+  display: inline-flex;
+  min-width: max-content;
+  gap: 2rem;
+  will-change: transform;
+}
+
+.chat-history-title-copy {
+  flex: none;
+}
+
+[data-sidebar='menu-button']:hover .chat-history-title[data-overflowing] {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 0.75rem,
+    black calc(100% - 0.75rem),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 0.75rem,
+    black calc(100% - 0.75rem),
+    transparent
+  );
+}
+
+[data-sidebar='menu-button']:hover .chat-history-title[data-overflowing] .chat-history-title-track {
+  animation: chat-title-marquee var(--chat-title-marquee-duration) linear infinite;
+}
+
+@keyframes chat-title-marquee {
+  to {
+    transform: translateX(calc(-1 * var(--chat-title-marquee-distance)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sidebar='menu-button']:hover
+    .chat-history-title[data-overflowing]
+    .chat-history-title-track {
+    animation: none;
+  }
+}
+
 .dark {
   --background: oklch(0 0 0);
-  --sidebar: oklch(0.170 0 0);
+  --sidebar: oklch(0.17 0 0);
   --sidebar-foreground: oklch(0.82 0 0);
   --sidebar-accent: oklch(0.205 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);

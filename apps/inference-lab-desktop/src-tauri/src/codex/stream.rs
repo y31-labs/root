@@ -18,6 +18,69 @@ use super::{request, types::CodexStreamEvent};
 use crate::AppState;
 
 const TURN_TIMEOUT: Duration = Duration::from_secs(300);
+const TITLE_TURN_TIMEOUT: Duration = Duration::from_secs(60);
+
+pub(super) async fn collect_turn_text(
+    state: &AppState,
+    notifications: &mut broadcast::Receiver<Value>,
+    thread_id: &str,
+    turn_id: &str,
+) -> Result<String, String> {
+    let stream_result = timeout(TITLE_TURN_TIMEOUT, async {
+        let mut text = String::new();
+        loop {
+            let message = notifications.recv().await.map_err(|error| match error {
+                broadcast::error::RecvError::Closed => "Codex app-server stopped".to_string(),
+                broadcast::error::RecvError::Lagged(_) => {
+                    "Codex produced updates faster than y31 could consume them".to_string()
+                }
+            })?;
+            if message.get("method").and_then(Value::as_str) == Some("server/stopped") {
+                return Err("Codex app-server stopped".to_string());
+            }
+            if let Some((_, delta)) = agent_message_delta(&message, thread_id, turn_id) {
+                text.push_str(delta);
+                continue;
+            }
+            let Some(turn) = completed_turn(&message, thread_id, turn_id) else {
+                continue;
+            };
+            match turn.get("status").and_then(Value::as_str) {
+                Some("completed") => {
+                    if text.trim().is_empty() {
+                        if let Some((_, final_text)) = final_agent_message(turn) {
+                            text = final_text;
+                        }
+                    }
+                    return Ok(text);
+                }
+                Some("interrupted") => return Err("Codex stopped title generation.".to_string()),
+                Some("failed") => {
+                    return Err(turn
+                        .pointer("/error/message")
+                        .and_then(Value::as_str)
+                        .unwrap_or("Codex could not generate a chat title")
+                        .to_string());
+                }
+                _ => continue,
+            }
+        }
+    })
+    .await;
+
+    match stream_result {
+        Ok(result) => result,
+        Err(_) => {
+            let _ = request(
+                state,
+                "turn/interrupt",
+                json!({ "threadId": thread_id, "turnId": turn_id }),
+            )
+            .await;
+            Err("Chat title generation timed out after one minute.".to_string())
+        }
+    }
+}
 
 pub(super) async fn stream_turn(
     state: &AppState,

@@ -314,6 +314,22 @@ impl ChatHistoryStore {
         Ok(result)
     }
 
+    fn rename(&mut self, id: &str, title: String) -> Result<(), String> {
+        self.ensure_writable()?;
+        validate_chat_title(&title)?;
+        let Some(index) = self.chats.iter().position(|chat| chat.id == id) else {
+            return Err("Chat was not found".to_string());
+        };
+        if self.chats[index].archived_at_ms.is_some() {
+            return Err("Chat was archived".to_string());
+        }
+        let mut renamed_chat = self.chats[index].clone();
+        renamed_chat.title = title;
+        self.persist_chat_record(&renamed_chat)?;
+        self.chats[index] = renamed_chat;
+        Ok(())
+    }
+
     fn archive(&mut self, id: &str) -> Result<(), String> {
         self.ensure_writable()?;
         let Some(index) = self.chats.iter().position(|chat| chat.id == id) else {
@@ -521,6 +537,15 @@ pub(crate) fn save_chat(
     lock_store(&state)?.save(chat)
 }
 
+#[tauri::command]
+pub(crate) fn rename_chat(
+    state: State<'_, AppState>,
+    chat_id: String,
+    title: String,
+) -> Result<(), String> {
+    lock_store(&state)?.rename(&chat_id, title)
+}
+
 fn lock_store(state: &AppState) -> Result<MutexGuard<'_, ChatHistoryStore>, String> {
     state
         .chat_history
@@ -532,9 +557,7 @@ fn validate_chat(chat: &ChatRecord) -> Result<(), String> {
     if chat.id.trim().is_empty() || chat.id.len() > 120 {
         return Err("Chat id is invalid".to_string());
     }
-    if chat.title.trim().is_empty() || chat.title.chars().count() > 200 {
-        return Err("Chat title is invalid".to_string());
-    }
+    validate_chat_title(&chat.title)?;
     if chat.updated_at_ms < chat.created_at_ms {
         return Err("Chat timestamps are invalid".to_string());
     }
@@ -545,6 +568,13 @@ fn validate_chat(chat: &ChatRecord) -> Result<(), String> {
     }
     if !chat.messages.is_array() {
         return Err("Chat messages are invalid".to_string());
+    }
+    Ok(())
+}
+
+fn validate_chat_title(title: &str) -> Result<(), String> {
+    if title.trim().is_empty() || title.chars().count() > 200 {
+        return Err("Chat title is invalid".to_string());
     }
     Ok(())
 }
@@ -761,6 +791,29 @@ mod tests {
             "Chat messages are invalid"
         );
         assert!(!directory.join(CHAT_HISTORY_DIRECTORY).exists());
+
+        fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn renames_a_chat_without_changing_its_order() {
+        let directory = temporary_directory("rename");
+        fs::create_dir_all(&directory).unwrap();
+        let mut store = ChatHistoryStore::load(&directory);
+        store.save(chat("one", "Original title", 20)).unwrap();
+        store.save(chat("two", "Other chat", 30)).unwrap();
+
+        store.rename("one", "Generated title".to_string()).unwrap();
+
+        assert_eq!(store.chat("one").unwrap().unwrap().title, "Generated title");
+        assert_eq!(
+            store
+                .summaries()
+                .into_iter()
+                .map(|summary| summary.id)
+                .collect::<Vec<_>>(),
+            vec!["two", "one"]
+        );
 
         fs::remove_dir_all(directory).unwrap();
     }
