@@ -90,6 +90,7 @@ export const createLocalApi = (
     saveChat: (chat: ChatRecord) => request<ChatSaveResult>('save_chat', { chat }),
     codexIntegrationStatus: () => request<CodexIntegrationStatus>('codex_integration_status'),
     connectCodex: () => request<void>('connect_codex'),
+    openLogsFolder: () => request<void>('open_logs_folder'),
     listModels: () =>
       request<ProviderModel[]>('list_codex_models').then((models) => models.map(toModel)),
     getCodexRun: (chatId: string) => request<CodexRunStatus | null>('get_codex_run', { chatId }),

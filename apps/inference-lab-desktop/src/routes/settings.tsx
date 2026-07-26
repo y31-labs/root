@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 
 import { IntegrationsSettingsSection } from '#/components/settings/integrations-settings-section';
+import { LogsSettingsSection } from '#/components/settings/logs-settings-section';
 
 export const Route = createFileRoute('/settings')({ component: SettingsRoute });
 
@@ -14,6 +15,7 @@ function SettingsRoute() {
 
         <div className='mt-12 space-y-12'>
           <IntegrationsSettingsSection />
+          <LogsSettingsSection />
         </div>
       </div>
     </main>

@@ -19,6 +19,17 @@ struct AppState {
     _logging_guard: Option<logging::LoggingGuard>,
 }
 
+#[tauri::command]
+fn open_logs_folder(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let log_directory = state.data_dir.join("logs");
+    std::fs::create_dir_all(&log_directory).map_err(|error| error.to_string())?;
+    std::process::Command::new("open")
+        .arg(log_directory)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -105,6 +116,7 @@ pub fn run() {
             codex::interrupt_codex_turn,
             codex::get_codex_run,
             codex::list_codex_models,
+            open_logs_folder,
             codex::resolve_codex_approval,
             codex::start_codex_text,
             codex::stream_codex_run
