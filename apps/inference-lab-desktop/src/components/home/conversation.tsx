@@ -5,14 +5,14 @@ import {
   MessageResponse,
 } from '@workspace/ui/components/ai-elements/message';
 import { Shimmer } from '@workspace/ui/components/ai-elements/shimmer';
-import { useEffect, useState } from 'react';
 import { StickToBottom } from 'use-stick-to-bottom';
 
 import { FileAttachments } from '#/components/file-attachments';
 import { ApprovalRow, type ApprovalDecision } from '#/components/home/approval-row';
-import { TaskSequence } from '#/components/home/task-sequence';
+import { MessageTranscript } from '#/components/home/message-transcript';
+import { TurnDuration } from '#/components/home/turn-duration';
 import type { ChatApproval, ChatMessage } from '#/lib/chat-message';
-import type { ChatTranscriptPart, CodexApprovalDecision, CodexApprovalMethod } from '#/lib/types';
+import type { CodexApprovalDecision, CodexApprovalMethod } from '#/lib/types';
 
 export type { ChatMessage } from '#/lib/chat-message';
 
@@ -132,96 +132,10 @@ export function ChatConversation({
   );
 }
 
-type MessageTranscriptPart = Extract<ChatTranscriptPart, { type: 'message' }>;
-type TaskTranscriptPart = Exclude<ChatTranscriptPart, MessageTranscriptPart>;
-type TranscriptSegment =
-  | { type: 'message'; part: MessageTranscriptPart }
-  | { type: 'tasks'; id: string; parts: TaskTranscriptPart[] };
-
-function MessageTranscript({
-  parts,
-  streaming,
-}: {
-  parts: ChatTranscriptPart[];
-  streaming: boolean;
-}) {
-  const segments = transcriptSegments(parts);
-
-  return segments.map((segment, index) => {
-    const active = streaming && index === segments.length - 1;
-    if (segment.type === 'message') {
-      return (
-        <MessageResponse className='h-auto' isAnimating={active} key={segment.part.id}>
-          {segment.part.text}
-        </MessageResponse>
-      );
-    }
-    return <TaskSequence active={active} key={segment.id} parts={segment.parts} />;
-  });
-}
-
-const transcriptSegments = (parts: ChatTranscriptPart[]): TranscriptSegment[] => {
-  const segments: TranscriptSegment[] = [];
-
-  for (const part of parts) {
-    if (part.type === 'message') {
-      if (part.text.trim()) segments.push({ type: 'message', part });
-      continue;
-    }
-
-    const last = segments.at(-1);
-    if (last?.type === 'tasks') {
-      last.parts.push(part);
-      continue;
-    }
-    segments.push({ type: 'tasks', id: `tasks-${part.id}`, parts: [part] });
-  }
-
-  return segments;
-};
-
 const approvalTitle = (approval: ChatApproval) => {
   if (approval.status === 'expired') return `${approval.title} — expired`;
   if (approval.status !== 'resolved') return approval.title;
   if (approval.decision === 'accept') return 'Allowed once';
   if (approval.decision === 'acceptForSession') return 'Allowed for session';
   return 'Denied';
-};
-
-function TurnDuration({
-  completedAtMs,
-  startedAtMs,
-  streaming,
-}: {
-  completedAtMs?: number;
-  startedAtMs: number;
-  streaming: boolean;
-}) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!streaming) return;
-    setNow(Date.now());
-    const interval = window.setInterval(() => setNow(Date.now()), 1_000);
-    return () => window.clearInterval(interval);
-  }, [streaming]);
-
-  const elapsed = formatElapsedTime(Math.max(0, (completedAtMs ?? now) - startedAtMs));
-
-  return (
-    <p className='mb-4 border-b pb-3 text-xs tabular-nums text-muted-foreground'>
-      {streaming ? 'Working' : 'Worked'} for {elapsed}
-    </p>
-  );
-}
-
-const formatElapsedTime = (durationMs: number) => {
-  const totalSeconds = Math.floor(durationMs / 1_000);
-  const hours = Math.floor(totalSeconds / 3_600);
-  const minutes = Math.floor((totalSeconds % 3_600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
 };

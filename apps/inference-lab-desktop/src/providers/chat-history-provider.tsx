@@ -4,26 +4,18 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
 
+import {
+  useChatTitleGeneration,
+  type ChatTitleGenerationRequest,
+} from '#/hooks/use-chat-title-generation';
+import { useLatest } from '#/hooks/use-latest';
 import type { ChatRecord, ChatSaveResult, ChatSummary } from '#/lib/chat-history';
-import type { ModelSettings } from '#/lib/types';
+import { updateSetMembership } from '#/lib/sets';
 import { useLocalApi } from '#/providers/local-api-provider';
-
-interface ChatTitleGenerationRequest {
-  chatId: string;
-  filenames: string[];
-  firstPrompt: string;
-  settings?: ModelSettings;
-}
-
-interface QueuedChatTitleGeneration extends ChatTitleGenerationRequest {
-  resolve: (title: string | undefined) => void;
-  started: boolean;
-}
 
 interface ChatHistoryContextValue {
   activeChatId?: string;
@@ -63,28 +55,24 @@ const ChatHistoryContext = createContext<ChatHistoryContextValue>(noChatHistory)
 const sortChats = (chats: ChatSummary[]) =>
   [...chats].sort((left, right) => right.updatedAtMs - left.updatedAtMs);
 
-const updateIdSet = (current: Set<string>, id: string, included: boolean) => {
-  if (current.has(id) === included) return current;
-  const next = new Set(current);
-  if (included) next.add(id);
-  else next.delete(id);
-  return next;
-};
-
 export function ChatHistoryProvider({ children }: { children: ReactNode }) {
   const api = useLocalApi();
   const [activeChatId, setActiveChatId] = useState<string>();
-  const activeChatIdRef = useRef(activeChatId);
-  activeChatIdRef.current = activeChatId;
+  const activeChatIdRef = useLatest(activeChatId);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [archivedChatId, setArchivedChatId] = useState<string>();
-  const [generatingTitleChatIds, setGeneratingTitleChatIds] = useState<Set<string>>(
-    () => new Set(),
-  );
   const [historyWarning, setHistoryWarning] = useState<string>();
   const [runningChatIds, setRunningChatIds] = useState<Set<string>>(() => new Set());
   const [sessionVersion, setSessionVersion] = useState(0);
-  const queuedTitleGenerations = useRef(new Map<string, QueuedChatTitleGeneration>());
+  const onTitleGenerated = useCallback((chatId: string, title: string) => {
+    setChats((current) => current.map((chat) => (chat.id === chatId ? { ...chat, title } : chat)));
+  }, []);
+  const {
+    cancelChatTitleGeneration,
+    generateChatTitle,
+    generatingTitleChatIds,
+    runChatTitleGeneration,
+  } = useChatTitleGeneration(api, onTitleGenerated);
 
   useEffect(() => {
     let active = true;
@@ -125,73 +113,22 @@ export function ChatHistoryProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const activateChat = useCallback((chatId: string) => setActiveChatId(chatId), []);
-  const finishTitleGeneration = useCallback(
-    (request: QueuedChatTitleGeneration, title: string | undefined) => {
-      if (queuedTitleGenerations.current.get(request.chatId) !== request) return;
-      queuedTitleGenerations.current.delete(request.chatId);
-      setGeneratingTitleChatIds((current) => updateIdSet(current, request.chatId, false));
-      request.resolve(title);
-    },
-    [],
-  );
-  const runQueuedTitleGeneration = useCallback(
-    (chatId: string) => {
-      const queued = queuedTitleGenerations.current.get(chatId);
-      if (!queued || queued.started) return;
-      queued.started = true;
-      void api
-        .generateChatTitle(queued.firstPrompt, queued.filenames, queued.settings)
-        .then(async (generatedTitle) => {
-          if (queuedTitleGenerations.current.get(chatId) !== queued) return undefined;
-          const title = typeof generatedTitle === 'string' ? generatedTitle.trim() : '';
-          if (!title) return undefined;
-          await api.renameChat(chatId, title);
-          setChats((current) =>
-            current.map((chat) => (chat.id === chatId ? { ...chat, title } : chat)),
-          );
-          return title;
-        })
-        .catch((error: unknown) => {
-          console.error(error);
-          return undefined;
-        })
-        .then((title) => finishTitleGeneration(queued, title));
-    },
-    [api, finishTitleGeneration],
-  );
-  const generateChatTitle = useCallback(
-    (request: ChatTitleGenerationRequest) =>
-      new Promise<string | undefined>((resolve) => {
-        const existing = queuedTitleGenerations.current.get(request.chatId);
-        if (existing) {
-          existing.resolve(undefined);
-        }
-        queuedTitleGenerations.current.set(request.chatId, {
-          ...request,
-          resolve,
-          started: false,
-        });
-        setGeneratingTitleChatIds((current) => updateIdSet(current, request.chatId, true));
-      }),
-    [],
-  );
   const setChatRunning = useCallback((chatId: string, running: boolean) => {
-    setRunningChatIds((current) => updateIdSet(current, chatId, running));
+    setRunningChatIds((current) => updateSetMembership(current, chatId, running));
   }, []);
   const archiveChat = useCallback(
     async (chatId: string) => {
       await api.archiveChat(chatId);
       setChats((current) => current.filter((chat) => chat.id !== chatId));
-      const titleGeneration = queuedTitleGenerations.current.get(chatId);
-      if (titleGeneration) finishTitleGeneration(titleGeneration, undefined);
-      setRunningChatIds((current) => updateIdSet(current, chatId, false));
+      cancelChatTitleGeneration(chatId);
+      setRunningChatIds((current) => updateSetMembership(current, chatId, false));
       if (activeChatIdRef.current === chatId) {
         setArchivedChatId(chatId);
         setActiveChatId(undefined);
         setSessionVersion((current) => current + 1);
       }
     },
-    [api, finishTitleGeneration],
+    [api, cancelChatTitleGeneration],
   );
   const loadChat = useCallback((chatId: string) => api.getChat(chatId), [api]);
   const persistChat = useCallback(
@@ -206,10 +143,10 @@ export function ChatHistoryProvider({ children }: { children: ReactNode }) {
       setChats((current) =>
         sortChats([summary, ...current.filter((candidate) => candidate.id !== summary.id)]),
       );
-      runQueuedTitleGeneration(result.id);
+      runChatTitleGeneration(result.id);
       return result;
     },
-    [api, runQueuedTitleGeneration],
+    [api, runChatTitleGeneration],
   );
 
   const value = useMemo(

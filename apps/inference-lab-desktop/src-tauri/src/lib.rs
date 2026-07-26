@@ -110,16 +110,16 @@ pub fn run() {
             chat_history::list_chats,
             chat_history::rename_chat,
             chat_history::save_chat,
-            codex::codex_integration_status,
-            codex::connect_codex,
-            codex::generate_chat_title,
-            codex::interrupt_codex_turn,
-            codex::get_codex_run,
-            codex::list_codex_models,
+            codex::integration::codex_integration_status,
+            codex::integration::connect_codex,
+            codex::title::generate_chat_title,
+            codex::run_commands::interrupt_codex_turn,
+            codex::run_commands::get_codex_run,
+            codex::integration::list_codex_models,
             open_logs_folder,
-            codex::resolve_codex_approval,
-            codex::start_codex_text,
-            codex::stream_codex_run
+            codex::run_commands::resolve_codex_approval,
+            codex::turn::start_codex_text,
+            codex::run_commands::stream_codex_run
         ])
         .run(tauri::generate_context!())
         .expect("failed to run y31 desktop");

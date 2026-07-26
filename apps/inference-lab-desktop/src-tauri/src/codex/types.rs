@@ -1,19 +1,10 @@
-use serde::{Deserialize, Deserializer, Serialize};
+mod model;
+
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-fn normalize_model_display_name(display_name: String) -> String {
-    display_name
-        .strip_prefix("GPT-")
-        .unwrap_or(&display_name)
-        .replace('-', " ")
-}
-
-fn deserialize_model_display_name<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    String::deserialize(deserializer).map(normalize_model_display_name)
-}
+pub(super) use model::ModelSpeed;
+pub(crate) use model::{Model, ModelSettings};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -96,50 +87,6 @@ pub(crate) enum CodexApprovalDecision {
     Accept,
     AcceptForSession,
     Decline,
-}
-
-#[derive(Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ModelSettings {
-    pub(super) model: String,
-    pub(super) effort: String,
-    pub(super) speed: ModelSpeed,
-}
-
-#[derive(Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) enum ModelSpeed {
-    Standard,
-    Fast,
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct EffortOption {
-    #[serde(rename(deserialize = "reasoningEffort"))]
-    pub(super) effort: String,
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ServiceTier {
-    pub(super) id: String,
-    pub(super) name: String,
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct Model {
-    pub(super) model: String,
-    #[serde(deserialize_with = "deserialize_model_display_name")]
-    pub(super) display_name: String,
-    #[serde(rename(deserialize = "supportedReasoningEfforts"))]
-    pub(super) supported_efforts: Vec<EffortOption>,
-    #[serde(rename(deserialize = "defaultReasoningEffort"))]
-    pub(super) default_effort: String,
-    pub(super) service_tiers: Vec<ServiceTier>,
-    pub(super) default_service_tier: Option<String>,
-    pub(super) is_default: bool,
 }
 
 #[derive(Clone, Serialize)]
@@ -247,18 +194,6 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-
-    #[test]
-    fn normalizes_model_display_names() {
-        assert_eq!(
-            normalize_model_display_name("GPT-5.6-Sol".to_string()),
-            "5.6 Sol"
-        );
-        assert_eq!(
-            normalize_model_display_name("Custom-Model".to_string()),
-            "Custom Model"
-        );
-    }
 
     #[test]
     fn stream_events_use_the_frontend_contract() {

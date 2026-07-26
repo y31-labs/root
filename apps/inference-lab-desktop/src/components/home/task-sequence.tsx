@@ -3,11 +3,11 @@ import { Task, TaskTrigger } from '@workspace/ui/components/ai-elements/task';
 import { ChevronDown, ListTodo } from 'lucide-react';
 import { useStickToBottomContext } from 'use-stick-to-bottom';
 
+import { ActivityTask } from '#/components/home/activity-task';
 import {
-  ActivityTask,
   activityTaskCompletionPhrases,
   activityTaskProgressLabel,
-} from '#/components/home/activity-task';
+} from '#/components/home/activity-task-summary';
 import { AnimatedTaskContent } from '#/components/home/animated-task-content';
 import { ReasoningTask } from '#/components/home/reasoning-task';
 import type { ChatTranscriptPart } from '#/lib/types';

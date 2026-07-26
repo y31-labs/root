@@ -1,5 +1,6 @@
 mod detail;
 mod item;
+mod label;
 
 use serde_json::Value;
 

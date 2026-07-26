@@ -1,15 +1,15 @@
 import type { StreamChunk } from '@tanstack/ai/client';
 import { describe, expect, it, vi } from 'vitest';
 
+import { createCodexChatConnection } from '#/lib/codex-chat-connection';
 import {
   CODEX_ACTIVITY_DELTA_EVENT,
   CODEX_ACTIVITY_EVENT,
   CODEX_APPROVAL_EVENT,
   CODEX_REASONING_DELTA_EVENT,
-  CodexChatConnection,
   createCodexStreamTranslator,
   createCodexTextPartId,
-} from '#/lib/codex-chat-connection';
+} from '#/lib/codex-stream-translator';
 import type { ChatStreamEvent } from '#/lib/types';
 
 const runContext = {
@@ -157,7 +157,7 @@ describe('createCodexStreamTranslator', () => {
 describe('CodexChatConnection', () => {
   it('starts a native background run and streams it through the subscription', async () => {
     const startCodexText = vi.fn(async () => runInfo);
-    const connection = new CodexChatConnection({
+    const connection = createCodexChatConnection({
       api: {
         getCodexRun: vi.fn(async () => null),
         interruptCodexTurn: vi.fn(async () => undefined),
@@ -218,7 +218,7 @@ describe('CodexChatConnection', () => {
   });
 
   it('replays a run when its chat is restored after navigation', async () => {
-    const connection = new CodexChatConnection({
+    const connection = createCodexChatConnection({
       api: {
         getCodexRun: vi.fn(async () => ({ ...runInfo, active: true })),
         interruptCodexTurn: vi.fn(async () => undefined),
@@ -249,7 +249,7 @@ describe('CodexChatConnection', () => {
   });
 
   it('turns a native background failure into a terminal run error', async () => {
-    const connection = new CodexChatConnection({
+    const connection = createCodexChatConnection({
       api: {
         getCodexRun: vi.fn(async () => null),
         interruptCodexTurn: vi.fn(async () => undefined),
@@ -281,7 +281,7 @@ describe('CodexChatConnection', () => {
       finish = () => resolve({ threadId: 'late-thread' });
     });
     const interruptCodexTurn = vi.fn(async () => undefined);
-    const connection = new CodexChatConnection({
+    const connection = createCodexChatConnection({
       api: {
         getCodexRun: vi.fn(async () => null),
         interruptCodexTurn,

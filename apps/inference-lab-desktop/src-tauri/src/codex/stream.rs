@@ -13,7 +13,7 @@ use self::{
         reasoning_summary_delta,
     },
 };
-use super::{request, types::CodexStreamEvent};
+use super::{session::request, types::CodexStreamEvent};
 use crate::AppState;
 
 const TURN_TIMEOUT: Duration = Duration::from_secs(300);
