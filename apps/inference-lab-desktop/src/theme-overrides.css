@@ -33,11 +33,6 @@ html {
   white-space: nowrap;
 }
 
-.chat-history-title[data-overflowing] {
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 1.25rem), transparent);
-  mask-image: linear-gradient(to right, black calc(100% - 1.25rem), transparent);
-}
-
 .chat-history-title-track {
   display: inline-flex;
   min-width: max-content;
@@ -47,10 +42,6 @@ html {
 
 .chat-history-title-copy {
   flex: none;
-}
-
-[data-sidebar='menu-button']:hover .chat-history-title[data-overflowing] {
-  animation: chat-title-marquee-mask 0s linear 0.5s forwards;
 }
 
 [data-sidebar='menu-button']:hover .chat-history-title[data-overflowing] .chat-history-title-track {
@@ -63,30 +54,7 @@ html {
   }
 }
 
-@keyframes chat-title-marquee-mask {
-  to {
-    -webkit-mask-image: linear-gradient(
-      to right,
-      transparent,
-      black 0.75rem,
-      black calc(100% - 0.75rem),
-      transparent
-    );
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      black 0.75rem,
-      black calc(100% - 0.75rem),
-      transparent
-    );
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  [data-sidebar='menu-button']:hover .chat-history-title[data-overflowing] {
-    animation: none;
-  }
-
   [data-sidebar='menu-button']:hover
     .chat-history-title[data-overflowing]
     .chat-history-title-track {

@@ -61,7 +61,7 @@ export function ChatHistoryTitle({ generating, title }: ChatHistoryTitleProps) {
 
   return (
     <div
-      className='chat-history-title min-w-0 flex-1 group-data-[collapsible=icon]:hidden'
+      className='chat-history-title scroll-fade-x min-w-0 flex-1 group-data-[collapsible=icon]:hidden'
       data-overflowing={overflowing || undefined}
       ref={containerRef}
       style={style}
