@@ -78,7 +78,7 @@ export function ChatConversation({
                   !message.text &&
                   !message.parts?.length &&
                   !message.approvals?.length && (
-                    <Shimmer as='span' className='text-sm'>
+                    <Shimmer as='span' className='text-sm' duration={3}>
                       Thinking
                     </Shimmer>
                   )}

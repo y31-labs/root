@@ -99,6 +99,7 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                     <SidebarMenuAction
                       aria-label={`Archive ${chat.title}`}
+                      className='text-muted-foreground peer-hover/menu-button:text-muted-foreground peer-data-active/menu-button:text-muted-foreground hover:text-foreground'
                       showOnHover
                       onClick={(event) => {
                         event.stopPropagation();
