@@ -373,9 +373,12 @@ describe('persistent chat history', () => {
 
     act(() => result.current.history.newChat());
     await waitFor(() => expect(result.current.chat.messages).toEqual([]));
+    expect(result.current.chat.conversationStarted).toBe(false);
     expect(invoke.mock.calls.some(([command]) => command === 'interrupt_codex_turn')).toBe(false);
 
     act(() => result.current.history.openChat(runningChatId!));
+    expect(result.current.chat.conversationStarted).toBe(true);
+    expect(result.current.chat.messages).toEqual([]);
     await waitFor(() => expect(emissions).toHaveLength(2));
     act(() => {
       emissions[1]?.({ type: 'started', threadId: 'thread-1', turnId: 'turn-1' });
