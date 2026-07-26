@@ -1,6 +1,8 @@
 import { Shimmer } from '@workspace/ui/components/ai-elements/shimmer';
 import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
+import styles from '#/components/navigation/chat-history-title.module.css';
+
 interface ChatHistoryTitleProps {
   generating: boolean;
   title: string;
@@ -61,17 +63,17 @@ export function ChatHistoryTitle({ generating, title }: ChatHistoryTitleProps) {
 
   return (
     <div
-      className='chat-history-title scroll-fade-x min-w-0 flex-1 group-data-[collapsible=icon]:hidden'
+      className={`${styles.title} scroll-fade-x min-w-0 flex-1 group-data-[collapsible=icon]:hidden`}
       data-overflowing={overflowing || undefined}
       ref={containerRef}
       style={style}
     >
-      <span className='chat-history-title-track'>
-        <span className='chat-history-title-copy' ref={titleRef}>
+      <span className={styles.track}>
+        <span className={styles.copy} ref={titleRef}>
           {generating ? <Shimmer as='span'>{title}</Shimmer> : title}
         </span>
         {overflowing ? (
-          <span aria-hidden='true' className='chat-history-title-copy'>
+          <span aria-hidden='true' className={styles.copy}>
             {generating ? <Shimmer as='span'>{title}</Shimmer> : title}
           </span>
         ) : null}
