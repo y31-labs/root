@@ -381,6 +381,7 @@ export const useCodexChat = ({
     () => buildChatMessages(turns, chat.messages, activeAssistantMessageId.current),
     [chat.messages, turns],
   );
+  const conversationStarted = chatHistory.activeChatId !== undefined || messages.length > 0;
 
   useEffect(() => {
     const metadata = chatMetadata.current;
@@ -516,6 +517,7 @@ export const useCodexChat = ({
   };
 
   return {
+    conversationStarted,
     loadingHistory,
     messages,
     pending:

@@ -16,6 +16,7 @@ function HomeRoute() {
   const modelSettings = useModelSettings(api.listModels);
   const { permissionMode, setPermissionMode } = usePermissionMode();
   const {
+    conversationStarted,
     loadingHistory,
     messages,
     pending,
@@ -39,7 +40,7 @@ function HomeRoute() {
         onApprovalDecision={resolveApproval}
       />
       <ChatInput
-        conversationStarted={messages.length > 0}
+        conversationStarted={conversationStarted}
         modelSettings={modelSettings}
         pending={pending}
         permissionMode={permissionMode}
