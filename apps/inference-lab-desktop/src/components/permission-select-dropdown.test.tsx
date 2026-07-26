@@ -33,7 +33,7 @@ const modelSettings: ModelSettingsState = {
 };
 
 describe('PermissionSelectDropdown', () => {
-  it('uses the warning color for full access', () => {
+  it('uses the danger color for full access', async () => {
     render(
       <PermissionSelectDropdown
         permissionMode='danger-full-access'
@@ -42,7 +42,21 @@ describe('PermissionSelectDropdown', () => {
     );
 
     const trigger = screen.getByRole('button', { name: 'Permissions: Full access' });
-    expect(trigger.querySelector('svg')?.classList.contains('text-warning')).toBe(true);
+    const triggerIcon = trigger.querySelector('svg');
+    expect(triggerIcon?.style.color).toBe('var(--danger)');
+    expect(triggerIcon?.getAttribute('stroke')).toBe('var(--danger)');
+
+    fireEvent.click(trigger);
+    const title = await screen.findByText('Full access');
+    const option = title.closest('[data-slot="dropdown-menu-radio-item"]');
+    fireEvent.pointerMove(option!);
+    expect(title.style.color).toBe('var(--danger)');
+    expect(
+      [...(option?.querySelectorAll('svg') ?? [])].some(
+        (icon) =>
+          icon.style.color === 'var(--danger)' && icon.getAttribute('stroke') === 'var(--danger)',
+      ),
+    ).toBe(true);
   });
 
   it('describes each access level, selects workspace access, and closes', async () => {
@@ -75,10 +89,7 @@ describe('PermissionSelectDropdown', () => {
     const onAction = vi.fn();
     render(
       <>
-        <PermissionSelectDropdown
-          permissionMode='read-only'
-          onPermissionModeChange={vi.fn()}
-        />
+        <PermissionSelectDropdown permissionMode='read-only' onPermissionModeChange={vi.fn()} />
         <ModelSelectDropdown modelSettings={modelSettings} />
         <button type='button' onClick={onAction}>
           Other action

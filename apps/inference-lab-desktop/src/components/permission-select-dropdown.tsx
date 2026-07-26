@@ -12,6 +12,8 @@ import { Eye, FolderPen, ShieldAlert } from 'lucide-react';
 
 import type { PermissionMode } from '#/lib/types';
 
+const dangerTextStyle = { color: 'var(--danger)' };
+
 const permissionOptions: Record<
   PermissionMode,
   {
@@ -62,7 +64,8 @@ export function PermissionSelectDropdown({
             variant='ghost'
           >
             <selected.icon
-              className={permissionMode === 'danger-full-access' ? 'text-warning' : undefined}
+              stroke={permissionMode === 'danger-full-access' ? 'var(--danger)' : undefined}
+              style={permissionMode === 'danger-full-access' ? dangerTextStyle : undefined}
             />
           </PromptInputButton>
         }
@@ -81,13 +84,16 @@ export function PermissionSelectDropdown({
           >
             {Object.entries(permissionOptions).map(
               ([permission, { icon: Icon, label, description }]) => {
-                const className = permission === 'danger-full-access' ? 'text-warning' : undefined;
+                const style = permission === 'danger-full-access' ? dangerTextStyle : undefined;
 
                 return (
                   <DropdownMenuRadioItem closeOnClick key={permission} value={permission}>
-                    <Icon className={className} />
+                    <Icon
+                      stroke={permission === 'danger-full-access' ? 'var(--danger)' : undefined}
+                      style={style}
+                    />
                     <span className='grid'>
-                      <span className={className}>{label}</span>
+                      <span style={style}>{label}</span>
                       <span className='whitespace-nowrap text-xs text-muted-foreground'>
                         {description}
                       </span>
