@@ -84,7 +84,7 @@ export function AppSidebar() {
                   <SidebarMenuItem key={chat.id}>
                     <SidebarMenuButton
                       aria-label={chat.title}
-                      className='data-active:font-normal'
+                      className='data-active:font-normal md:pr-2! md:group-focus-within/menu-item:pr-8! md:group-hover/menu-item:pr-8!'
                       isActive={activeChatId === chat.id}
                       tooltip={chat.title}
                       onClick={() => handleOpenChat(chat.id)}
