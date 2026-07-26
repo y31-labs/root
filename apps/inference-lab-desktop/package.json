@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --bun vite --port 1421",
-    "build": "bun --bun vite build",
+    "dev": "vite --port 1421",
+    "build": "vite build",
     "format:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml",
-    "test": "bun --bun vitest run src",
+    "test": "vitest run src",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "typecheck": "bunx tsc --noEmit",
     "tauri": "tauri"

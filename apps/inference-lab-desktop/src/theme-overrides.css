@@ -50,24 +50,11 @@ html {
 }
 
 [data-sidebar='menu-button']:hover .chat-history-title[data-overflowing] {
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent,
-    black 0.75rem,
-    black calc(100% - 0.75rem),
-    transparent
-  );
-  mask-image: linear-gradient(
-    to right,
-    transparent,
-    black 0.75rem,
-    black calc(100% - 0.75rem),
-    transparent
-  );
+  animation: chat-title-marquee-mask 0s linear 0.5s forwards;
 }
 
 [data-sidebar='menu-button']:hover .chat-history-title[data-overflowing] .chat-history-title-track {
-  animation: chat-title-marquee var(--chat-title-marquee-duration) linear infinite;
+  animation: chat-title-marquee var(--chat-title-marquee-duration) linear 0.5s infinite;
 }
 
 @keyframes chat-title-marquee {
@@ -76,7 +63,30 @@ html {
   }
 }
 
+@keyframes chat-title-marquee-mask {
+  to {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 0.75rem,
+      black calc(100% - 0.75rem),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 0.75rem,
+      black calc(100% - 0.75rem),
+      transparent
+    );
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  [data-sidebar='menu-button']:hover .chat-history-title[data-overflowing] {
+    animation: none;
+  }
+
   [data-sidebar='menu-button']:hover
     .chat-history-title[data-overflowing]
     .chat-history-title-track {
