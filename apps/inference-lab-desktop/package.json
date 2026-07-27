@@ -3,11 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check:format:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check",
     "dev": "vite --port 1421",
     "build": "vite build",
     "format:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml",
+    "lint": "oxlint src vite.config.ts",
+    "lint:rust": "cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets --all-features --locked -- -D warnings",
     "test": "vitest run src",
-    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml --locked",
     "typecheck": "bunx tsc --noEmit",
     "tauri": "tauri"
   },
