@@ -1,4 +1,4 @@
-import { Link, useMatchRoute, useNavigate } from '@tanstack/react-router';
+import { useMatchRoute, useNavigate } from '@tanstack/react-router';
 import {
   Sidebar,
   SidebarContent,
@@ -16,15 +16,19 @@ import { Spinner } from '@workspace/ui/components/ui/spinner';
 import { AppWindow, Archive, Settings, SquarePen } from 'lucide-react';
 
 import { ChatHistoryTitle } from '#/components/navigation/chat-history-title';
+import { SidebarLinkButton } from '#/components/navigation/sidebar-link-button';
 import { APP_NAME } from '#/lib/app-config';
 import { useChatHistory } from '#/providers/chat-history-provider';
 import { useGeneratedApps } from '#/providers/generated-apps-provider';
+import { Route as GeneratedAppRoute } from '#/routes/apps.$appId';
+import { Route as IndexRoute } from '#/routes/index';
+import { Route as SettingsRoute } from '#/routes/settings';
 
 export function AppSidebar() {
   const matchRoute = useMatchRoute();
   const navigate = useNavigate();
   const { apps } = useGeneratedApps();
-  const appMatch = matchRoute({ to: '/apps/$appId' });
+  const isHomeRoute = !!matchRoute({ to: IndexRoute.to, fuzzy: false });
   const {
     activeChatId,
     archiveChat,
@@ -55,12 +59,10 @@ export function AppSidebar() {
     <Sidebar collapsible='icon'>
       <SidebarHeader className='pt-12'>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip={APP_NAME} render={<Link to='/' />}>
-              <img src='/y31-logo.svg' alt='' aria-hidden='true' className='h-4 w-auto' />
-              <span className='font-semibold'>{APP_NAME}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <SidebarLinkButton title={APP_NAME} route={IndexRoute} showActiveState={false}>
+            <img src='/y31-logo.svg' alt='' aria-hidden='true' className='h-4 w-auto' />
+            <span className='font-semibold'>{APP_NAME}</span>
+          </SidebarLinkButton>
           <SidebarMenuItem>
             <SidebarMenuButton tooltip='New chat' onClick={handleNewChat}>
               <SquarePen />
@@ -71,26 +73,25 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarSeparator className='mx-2 data-horizontal:w-[calc(100%-1rem)]' />
       <SidebarContent>
-        {apps.length && (
+        {apps.length > 0 ? (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
                 {apps.map((app) => (
-                  <SidebarMenuItem key={app.id}>
-                    <SidebarMenuButton
-                      isActive={appMatch ? appMatch.appId === app.id : false}
-                      tooltip={app.title}
-                      render={<Link to='/apps/$appId' params={{ appId: app.id }} />}
-                    >
-                      <AppWindow />
-                      <span>{app.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <SidebarLinkButton
+                    key={app.id}
+                    title={app.title}
+                    route={GeneratedAppRoute}
+                    params={{ appId: app.id }}
+                  >
+                    <AppWindow />
+                    <span>{app.title}</span>
+                  </SidebarLinkButton>
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        )}
+        ) : null}
         <SidebarSeparator className='mx-2 data-horizontal:w-[calc(100%-1rem)]' />
         <SidebarGroup>
           <SidebarGroupContent>
@@ -110,7 +111,7 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       aria-label={chat.title}
                       className='data-active:font-normal md:pr-2! md:group-focus-within/menu-item:pr-8! md:group-hover/menu-item:pr-8!'
-                      isActive={!appMatch && activeChatId === chat.id}
+                      isActive={isHomeRoute && activeChatId === chat.id}
                       tooltip={chat.title}
                       onClick={() => handleOpenChat(chat.id)}
                     >
@@ -146,12 +147,10 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip='Settings' render={<Link to='/settings' />}>
-              <Settings />
-              <span>Settings</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <SidebarLinkButton title='Settings' route={SettingsRoute} fuzzy={false}>
+            <Settings />
+            <span>Settings</span>
+          </SidebarLinkButton>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
