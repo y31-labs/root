@@ -1,36 +1,8 @@
-import {
-  Activity,
-  Bell,
-  Calendar,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  CircleAlert,
-  Clock,
-  Database,
-  FileText,
-  Filter,
-  Gauge,
-  Inbox,
-  Info,
-  LoaderCircle,
-  MessageSquare,
-  Pause,
-  Play,
-  RefreshCw,
-  Search,
-  Settings,
-  Sparkles,
-  Triangle,
-  X,
-  Zap,
-} from 'lucide-react';
 import * as React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
-import * as sdk from '#/features/apps/runtime/generated-app-sdk';
+import { installGeneratedAppModules } from '#/features/apps/runtime/generated-app-modules';
 import { configureLocalAppBridge } from '#/features/apps/runtime/generated-app-sdk';
-import * as ui from '#/features/apps/runtime/generated-app-ui';
 import type {
   FrameToHostMessage,
   HostToFrameMessage,
@@ -52,16 +24,6 @@ let root: Root | undefined;
 let resizeObserver: ResizeObserver | undefined;
 
 const send = (message: FrameToHostMessage) => window.parent.postMessage(message, '*');
-
-const createShim = (moduleName: 'icons' | 'react' | 'sdk' | 'ui', exports: string[]) => {
-  const declarations = exports.map(
-    (name) => `export const ${name} = globalThis.__Y31_RUNTIME__.${moduleName}.${name};`,
-  );
-  if (moduleName === 'react') {
-    declarations.unshift('export default globalThis.__Y31_RUNTIME__.react;');
-  }
-  return URL.createObjectURL(new Blob([declarations.join('\n')], { type: 'text/javascript' }));
-};
 
 const render = (node: React.ReactNode) => {
   root ??= createRoot(document.getElementById('root')!);
@@ -110,13 +72,7 @@ const loadApp = async (message: Extract<HostToFrameMessage, { type: 'y31:initial
     setState: (key, value) => send({ type: 'y31:state-set', token, key, value }),
   });
 
-  Object.assign(globalThis, { __Y31_RUNTIME__: { icons: iconSdk, react: React, sdk, ui } });
-  const urls = {
-    icons: createShim('icons', ICON_EXPORTS),
-    react: createShim('react', REACT_EXPORTS),
-    sdk: createShim('sdk', SDK_EXPORTS),
-    ui: createShim('ui', UI_EXPORTS),
-  };
+  const urls = installGeneratedAppModules();
   const bundle = rewriteGeneratedAppBundle(message.bundle, urls);
   const appUrl = URL.createObjectURL(new Blob([bundle], { type: 'text/javascript' }));
 
@@ -170,108 +126,3 @@ window.addEventListener('message', (event: MessageEvent<HostToFrameMessage>) => 
 });
 
 send({ type: 'y31:ready' });
-
-const REACT_EXPORTS = [
-  'Children',
-  'Fragment',
-  'cloneElement',
-  'createContext',
-  'createElement',
-  'forwardRef',
-  'memo',
-  'useCallback',
-  'useContext',
-  'useEffect',
-  'useId',
-  'useMemo',
-  'useReducer',
-  'useRef',
-  'useState',
-];
-const SDK_EXPORTS = ['useAppInfo', 'useCapability', 'usePersistentState'];
-const UI_EXPORTS = [
-  'AppStyles',
-  'Badge',
-  'Box',
-  'Button',
-  'DataTable',
-  'Field',
-  'Grid',
-  'Inline',
-  'Input',
-  'Label',
-  'Page',
-  'Section',
-  'SelectField',
-  'Separator',
-  'SliderField',
-  'Stack',
-  'Stat',
-  'Surface',
-  'SwitchField',
-  'Textarea',
-];
-const ICON_EXPORTS = [
-  'Activity',
-  'Bell',
-  'Calendar',
-  'Check',
-  'ChevronDown',
-  'ChevronRight',
-  'CircleAlert',
-  'Clock',
-  'Database',
-  'FileText',
-  'Filter',
-  'Gauge',
-  'Inbox',
-  'Info',
-  'LoaderCircle',
-  'MessageSquare',
-  'Pause',
-  'Play',
-  'RefreshCw',
-  'Search',
-  'Settings',
-  'Sparkles',
-  'Triangle',
-  'X',
-  'Zap',
-];
-
-const iconSdk = {
-  Activity,
-  Bell,
-  Calendar,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  CircleAlert,
-  Clock,
-  Database,
-  FileText,
-  Filter,
-  Gauge,
-  Inbox,
-  Info,
-  LoaderCircle,
-  MessageSquare,
-  Pause,
-  Play,
-  RefreshCw,
-  Search,
-  Settings,
-  Sparkles,
-  Triangle,
-  X,
-  Zap,
-};
-
-declare global {
-  var __Y31_RUNTIME__: {
-    icons: typeof iconSdk;
-    react: typeof React;
-    sdk: typeof sdk;
-    ui: typeof ui;
-  };
-}

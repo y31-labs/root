@@ -38,7 +38,7 @@ export function GeneratedAppsProvider({ children }: { children: ReactNode }) {
     [api],
   );
 
-  useEffect(() => void refresh(), [refresh]);
+  useEffect(() => refresh(), [refresh]);
 
   const value = useMemo(() => ({ apps, loading, refresh }), [apps, loading, refresh]);
 

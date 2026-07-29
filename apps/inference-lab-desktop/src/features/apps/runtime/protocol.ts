@@ -1,6 +1,15 @@
 export type JsonPrimitive = boolean | number | string | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
+export const isJsonValue = (value: unknown, depth = 0): value is JsonValue => {
+  if (depth > 20) return false;
+  if (value === null || typeof value === 'boolean' || typeof value === 'string') return true;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (Array.isArray(value)) return value.every((item) => isJsonValue(item, depth + 1));
+  if (typeof value !== 'object') return false;
+  return Object.values(value).every((item) => isJsonValue(item, depth + 1));
+};
+
 export interface LocalAppPermission {
   capabilityId: string;
   effects: Array<'filesystem' | 'network' | 'read' | 'secret' | 'write'>;
