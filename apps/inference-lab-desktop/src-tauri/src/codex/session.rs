@@ -19,7 +19,7 @@ pub(super) async fn request(
 ) -> Result<Value, String> {
     let mut guard = state.codex.lock().await;
     if guard.is_none() {
-        *guard = Some(CodexClient::start().await?);
+        *guard = Some(CodexClient::start(state.app_tools.clone()).await?);
     }
     let client = guard.as_mut().expect("Codex client initialized");
     match client.request(method, params).await {
@@ -42,7 +42,7 @@ pub(super) async fn request(
 pub(super) async fn notifications(state: &AppState) -> Result<broadcast::Receiver<Value>, String> {
     let mut guard = state.codex.lock().await;
     if guard.is_none() {
-        *guard = Some(CodexClient::start().await?);
+        *guard = Some(CodexClient::start(state.app_tools.clone()).await?);
     }
     Ok(guard
         .as_ref()

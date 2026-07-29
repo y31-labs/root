@@ -53,6 +53,8 @@ export function TaskSequence({ active = false, parts }: TaskSequenceProps) {
       <AnimatedTaskContent
         aria-label='Task sequence'
         className='scroll-fade max-h-[50dvh] overflow-y-auto [&>div]:mt-2 [&>div]:space-y-2 [&>div]:border-0 [&>div]:pl-6'
+        role='region'
+        tabIndex={0}
       >
         {parts.map((part) =>
           part.type === 'reasoning' ? (

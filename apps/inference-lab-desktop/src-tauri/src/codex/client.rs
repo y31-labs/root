@@ -14,6 +14,7 @@ use tokio::{
 };
 
 use super::discovery;
+use crate::generated_apps::AppToolRuntime;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -29,7 +30,7 @@ pub(crate) struct CodexClient {
 }
 
 impl CodexClient {
-    pub(super) async fn start() -> Result<Self, String> {
+    pub(super) async fn start(app_tools: AppToolRuntime) -> Result<Self, String> {
         let mut child = Command::new(discovery::executable()?)
             .args(["app-server", "--listen", "stdio://"])
             .stdin(Stdio::piped())
@@ -50,6 +51,7 @@ impl CodexClient {
         let reader_pending = pending.clone();
         let (notifications, _) = broadcast::channel(256);
         let reader_notifications = notifications.clone();
+        let reader_stdin = stdin.clone();
         tauri::async_runtime::spawn(async move {
             let mut lines = BufReader::new(stdout).lines();
             while let Ok(Some(line)) = lines.next_line().await {
@@ -76,6 +78,24 @@ impl CodexClient {
                             Ok(message.get("result").cloned().unwrap_or(Value::Null))
                         };
                         let _ = sender.send(result);
+                        continue;
+                    }
+                }
+                if message.get("method").and_then(Value::as_str) == Some("item/tool/call") {
+                    if let Some(request_id) = message.get("id").cloned() {
+                        let result = match app_tools.handle_tool_call(&message) {
+                            Ok(result) => json!({ "id": request_id, "result": result }),
+                            Err(error) => json!({
+                                "id": request_id,
+                                "result": {
+                                    "success": false,
+                                    "contentItems": [{ "type": "inputText", "text": error }]
+                                }
+                            }),
+                        };
+                        let mut stdin = reader_stdin.lock().await;
+                        let _ = stdin.write_all(format!("{result}\n").as_bytes()).await;
+                        let _ = stdin.flush().await;
                         continue;
                     }
                 }

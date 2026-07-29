@@ -1,4 +1,4 @@
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useMatchRoute, useNavigate } from '@tanstack/react-router';
 import {
   Sidebar,
   SidebarContent,
@@ -13,14 +13,18 @@ import {
   SidebarSeparator,
 } from '@workspace/ui/components/ui/sidebar';
 import { Spinner } from '@workspace/ui/components/ui/spinner';
-import { Archive, Settings, SquarePen } from 'lucide-react';
+import { AppWindow, Archive, Settings, SquarePen } from 'lucide-react';
 
 import { ChatHistoryTitle } from '#/components/navigation/chat-history-title';
 import { APP_NAME } from '#/lib/app-config';
 import { useChatHistory } from '#/providers/chat-history-provider';
+import { useGeneratedApps } from '#/providers/generated-apps-provider';
 
 export function AppSidebar() {
+  const matchRoute = useMatchRoute();
   const navigate = useNavigate();
+  const { apps } = useGeneratedApps();
+  const appMatch = matchRoute({ to: '/apps/$appId' });
   const {
     activeChatId,
     archiveChat,
@@ -67,6 +71,27 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarSeparator className='mx-2 data-horizontal:w-[calc(100%-1rem)]' />
       <SidebarContent>
+        {apps.length && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {apps.map((app) => (
+                  <SidebarMenuItem key={app.id}>
+                    <SidebarMenuButton
+                      isActive={appMatch ? appMatch.appId === app.id : false}
+                      tooltip={app.title}
+                      render={<Link to='/apps/$appId' params={{ appId: app.id }} />}
+                    >
+                      <AppWindow />
+                      <span>{app.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+        <SidebarSeparator className='mx-2 data-horizontal:w-[calc(100%-1rem)]' />
         <SidebarGroup>
           <SidebarGroupContent>
             {historyWarning ? (
@@ -85,7 +110,7 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       aria-label={chat.title}
                       className='data-active:font-normal md:pr-2! md:group-focus-within/menu-item:pr-8! md:group-hover/menu-item:pr-8!'
-                      isActive={activeChatId === chat.id}
+                      isActive={!appMatch && activeChatId === chat.id}
                       tooltip={chat.title}
                       onClick={() => handleOpenChat(chat.id)}
                     >
