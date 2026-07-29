@@ -167,10 +167,9 @@ describe('ChatConversation', () => {
     expect(screen.queryByRole('list', { name: 'Agent activity' })).toBeNull();
     fireEvent.click(sequenceTrigger);
     const sequence = screen.getByRole('region', { name: 'Task sequence' });
-    const collapsiblePanel = sequence.parentElement?.parentElement;
-    expect(collapsiblePanel?.className).toContain('h-(--collapsible-panel-height)');
-    expect(collapsiblePanel?.className).toContain('data-starting-style:h-0');
-    expect(collapsiblePanel?.className).toContain('data-ending-style:h-0');
+    expect(sequence.className).toContain('h-(--collapsible-panel-height)');
+    expect(sequence.className).toContain('data-starting-style:h-0');
+    expect(sequence.className).toContain('data-ending-style:h-0');
     expect(sequence.className).toContain('max-h-[50dvh]');
     expect(sequence.className).toContain('overflow-y-auto');
     expect(sequence.className).toContain('scroll-fade');
