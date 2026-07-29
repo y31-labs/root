@@ -24,6 +24,7 @@ import {
 } from '#/lib/codex-chat-turns';
 import type { ModelSettings, PermissionMode } from '#/lib/types';
 import { useChatHistory } from '#/providers/chat-history-provider';
+import { useGeneratedApps } from '#/providers/generated-apps-provider';
 import { useLocalApi } from '#/providers/local-api-provider';
 
 const CHAT_SAVE_DELAY_MS = 300;
@@ -42,6 +43,7 @@ export const useCodexChat = ({
   workingDirectory,
 }: UseCodexChatOptions) => {
   const api = useLocalApi();
+  const generatedApps = useGeneratedApps();
   const chatHistory = useChatHistory();
   const chatHistoryRef = useLatest(chatHistory);
   const config = useLatest({
@@ -360,6 +362,7 @@ export const useCodexChat = ({
         connection.discardSubmission(userMessageId);
         submissionInFlight.current = false;
         chatHistoryRef.current.setChatRunning(submittedChatId, false);
+        void generatedApps.refresh();
       });
   };
 

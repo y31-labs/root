@@ -42,7 +42,14 @@ pub(crate) async fn start_codex_text(
     let mut notifications = notifications(&state).await?;
     let cwd = resolve_working_directory(input.working_directory.as_deref(), &state.data_dir)?;
     let resumed = input.thread_id.is_some();
-    let thread_id = open_thread(&state, input.thread_id, &cwd, input.permission_mode).await?;
+    let thread_id = open_thread(
+        &state,
+        &input.chat_id,
+        input.thread_id,
+        &cwd,
+        input.permission_mode,
+    )
+    .await?;
     let PreparedTurnInput {
         input: turn_input,
         attachment_dir,

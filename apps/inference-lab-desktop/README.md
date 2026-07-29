@@ -4,10 +4,13 @@
 
 ## Architecture
 
-- The Rust crate manages the local Codex app-server connection, attachment cleanup, and logging.
+- The Rust crate manages the local Codex app-server connection, attachment cleanup, logging, and
+  compiled local React app persistence.
 - The frontend uses native commands for Codex status, connection, model listing, streamed text,
   and approval responses.
-- Project generation, generated-app plugins, and inference-service settings are not part of this app.
+- Chats can publish local React apps through Codex dynamic tools using a small SDK of shared UI
+  imports and host hooks. The native host compiles and validates source, owns capability and MCP
+  authorization, and runs generated code inside a network-disabled sandboxed frame.
 
 ## Commands
 
