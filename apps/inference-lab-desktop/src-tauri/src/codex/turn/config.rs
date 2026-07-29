@@ -8,9 +8,14 @@ use super::super::{
 };
 use crate::AppState;
 
-const CHAT_INSTRUCTIONS: &str = r#"You are the text assistant inside y31, an application for exploring and shaping internal tools and workflows.
+const CHAT_INSTRUCTIONS: &str = concat!(
+    r#"You are the text assistant inside y31, an application for exploring and shaping local internal tools and workflows.
 
-Respond directly to the user's request in clear plain text. You may use tools to inspect and, when the active permission setting allows it, modify the selected working folder. Respect approval decisions and keep the response focused and useful."#;
+Respond directly to the user's request in clear plain text. When the user describes an app, dashboard, tracker, status view, workflow, or internal tool, build or revise a local app with the local_app tools instead of only explaining how to build one. You may use installed skills and MCP tools for domain context, but local app runtime access is limited to explicit host-validated capability grants. You may also inspect and, when the active permission setting allows it, modify the selected working folder. Respect approval decisions and keep the response focused and useful.
+
+"#,
+    include_str!("../../../skills/local-app-builder/SKILL.md")
+);
 
 pub(crate) fn turn_start_params(
     thread_id: &str,
@@ -58,6 +63,7 @@ pub(crate) fn resolve_working_directory(
 
 pub(super) async fn open_thread(
     state: &AppState,
+    chat_id: &str,
     thread_id: Option<String>,
     cwd: &str,
     permission_mode: PermissionMode,
@@ -88,16 +94,20 @@ pub(super) async fn open_thread(
                     "approvalPolicy": permission_mode.approval_policy(),
                     "approvalsReviewer": "user",
                     "sandbox": permission_mode.sandbox(),
+                    "dynamicTools": crate::generated_apps::dynamic_tool_specs(),
                     "developerInstructions": CHAT_INSTRUCTIONS,
-                    "serviceName": "y31-desktop"
+                    "serviceName": "y31-desktop",
+                    "threadSource": "user"
                 }),
             )
             .await?
         }
     };
-    response
+    let thread_id = response
         .pointer("/thread/id")
         .and_then(Value::as_str)
         .map(str::to_string)
-        .ok_or_else(|| "Codex did not return a thread id".to_string())
+        .ok_or_else(|| "Codex did not return a thread id".to_string())?;
+    state.app_tools.bind_thread(&thread_id, chat_id)?;
+    Ok(thread_id)
 }

@@ -2,6 +2,7 @@ mod attachments;
 mod client;
 mod discovery;
 pub(crate) mod integration;
+pub(crate) mod mcp;
 pub(crate) mod run_commands;
 pub(crate) mod runs;
 mod session;

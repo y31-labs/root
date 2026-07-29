@@ -1,5 +1,6 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
 
+import type { JsonValue, LocalAppPermission } from '#/features/apps/runtime/protocol';
 import type {
   ChatHistoryStatus,
   ChatRecord,
@@ -59,6 +60,28 @@ export interface ChatAttachmentInput {
   mediaType: string;
 }
 
+export interface GeneratedAppSummary {
+  id: string;
+  title: string;
+  description: string;
+  revision: number;
+  authoringChatId: string;
+  updatedAtMs: number;
+}
+
+export interface GeneratedAppRecord extends GeneratedAppSummary {
+  bundle: string;
+  permissions: LocalAppPermission[];
+  source: string;
+}
+
+export interface McpServerSummary {
+  name: string;
+  enabled: boolean;
+  authentication: 'none' | 'oauth';
+  transport: string;
+}
+
 const createChannel: ChannelFactory = <T>(onMessage: (message: T) => void) =>
   new Channel<T>(onMessage);
 
@@ -71,9 +94,16 @@ export const createLocalApi = (
 
   return {
     archiveChat: (chatId: string) => request<void>('archive_chat', { chatId }),
+    connectMcpServer: (name: string) => request<void>('connect_mcp_server', { name }),
     chatHistoryStatus: () => request<ChatHistoryStatus>('chat_history_status'),
     getChat: (chatId: string) => request<ChatRecord | null>('get_chat', { chatId }),
+    getGeneratedApp: (appId: string) =>
+      request<GeneratedAppRecord | null>('get_generated_app', { appId }),
+    getGeneratedAppState: (appId: string) =>
+      request<Record<string, JsonValue>>('get_generated_app_state', { appId }),
     listChats: () => request<ChatSummary[]>('list_chats'),
+    listGeneratedApps: () => request<GeneratedAppSummary[]>('list_generated_apps'),
+    listMcpServers: () => request<McpServerSummary[]>('list_mcp_servers'),
     generateChatTitle: (
       firstPrompt: string,
       filenames: string[],
@@ -88,6 +118,8 @@ export const createLocalApi = (
       }),
     renameChat: (chatId: string, title: string) => request<void>('rename_chat', { chatId, title }),
     saveChat: (chat: ChatRecord) => request<ChatSaveResult>('save_chat', { chat }),
+    saveGeneratedAppState: (appId: string, revision: number, state: Record<string, JsonValue>) =>
+      request<void>('save_generated_app_state', { input: { appId, revision, state } }),
     codexIntegrationStatus: () => request<CodexIntegrationStatus>('codex_integration_status'),
     connectCodex: () => request<void>('connect_codex'),
     openLogsFolder: () => request<void>('open_logs_folder'),
@@ -96,6 +128,16 @@ export const createLocalApi = (
     getCodexRun: (chatId: string) => request<CodexRunStatus | null>('get_codex_run', { chatId }),
     interruptCodexTurn: (threadId: string, turnId: string) =>
       request<void>('interrupt_codex_turn', { threadId, turnId }),
+    invokeGeneratedAppCapability: (
+      appId: string,
+      revision: number,
+      capabilityId: string,
+      input: JsonValue,
+      approved: boolean,
+    ) =>
+      request<JsonValue>('invoke_generated_app_capability', {
+        input: { appId, revision, capabilityId, input, approved },
+      }),
     startCodexText: (
       chatId: string,
       assistantMessageId: string,

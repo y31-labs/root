@@ -1,5 +1,6 @@
 mod chat_history;
 mod codex;
+mod generated_apps;
 mod logging;
 
 use std::{path::PathBuf, sync::Mutex};
@@ -16,6 +17,7 @@ struct AppState {
     chat_history: Mutex<chat_history::ChatHistoryStore>,
     codex: AsyncMutex<Option<codex::CodexClient>>,
     codex_runs: codex::runs::CodexRuns,
+    app_tools: generated_apps::AppToolRuntime,
     _logging_guard: Option<logging::LoggingGuard>,
 }
 
@@ -62,11 +64,13 @@ pub fn run() {
             if let Some(warning) = chat_history_warning {
                 tracing::warn!(warning, "chat history was recovered");
             }
+            let app_tools = generated_apps::AppToolRuntime::new(data_dir.clone());
             app.manage(AppState {
                 data_dir,
                 chat_history: Mutex::new(chat_history),
                 codex: AsyncMutex::new(None),
                 codex_runs: codex::runs::CodexRuns::default(),
+                app_tools,
                 _logging_guard: logging_guard,
             });
             let show = MenuItem::with_id(app, "show", "Show y31", true, None::<&str>)?;
@@ -116,6 +120,13 @@ pub fn run() {
             codex::run_commands::interrupt_codex_turn,
             codex::run_commands::get_codex_run,
             codex::integration::list_codex_models,
+            codex::mcp::connect_mcp_server,
+            codex::mcp::list_mcp_servers,
+            generated_apps::get_generated_app,
+            generated_apps::get_generated_app_state,
+            generated_apps::invoke_generated_app_capability,
+            generated_apps::list_generated_apps,
+            generated_apps::save_generated_app_state,
             open_logs_folder,
             codex::run_commands::resolve_codex_approval,
             codex::turn::start_codex_text,
