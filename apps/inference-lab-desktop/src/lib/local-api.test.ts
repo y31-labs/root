@@ -174,4 +174,41 @@ describe('local API', () => {
     expect(invoke).toHaveBeenNthCalledWith(5, 'archive_chat', { chatId: 'chat-1' });
     expect(invoke).toHaveBeenNthCalledWith(6, 'chat_history_status', undefined);
   });
+
+  it('routes local apps and MCP authentication through native commands', async () => {
+    const invoke = vi.fn(async () => undefined);
+    const api = createLocalApi(invoke);
+
+    await api.listGeneratedApps();
+    await api.getGeneratedApp('status-board');
+    await api.getGeneratedAppState('status-board');
+    await api.saveGeneratedAppState('status-board', 2, { filter: 'open' });
+    await api.invokeGeneratedAppCapability('status-board', 2, 'local.now', {}, false);
+    await api.listMcpServers();
+    await api.connectMcpServer('atlassian');
+
+    expect(invoke.mock.calls).toEqual([
+      ['list_generated_apps', undefined],
+      ['get_generated_app', { appId: 'status-board' }],
+      ['get_generated_app_state', { appId: 'status-board' }],
+      [
+        'save_generated_app_state',
+        { input: { appId: 'status-board', revision: 2, state: { filter: 'open' } } },
+      ],
+      [
+        'invoke_generated_app_capability',
+        {
+          input: {
+            appId: 'status-board',
+            revision: 2,
+            capabilityId: 'local.now',
+            input: {},
+            approved: false,
+          },
+        },
+      ],
+      ['list_mcp_servers', undefined],
+      ['connect_mcp_server', { name: 'atlassian' }],
+    ]);
+  });
 });
