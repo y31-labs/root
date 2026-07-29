@@ -17,11 +17,12 @@ use super::discovery;
 use crate::generated_apps::AppToolRuntime;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+type PendingRequests = Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>;
 
 pub(crate) struct CodexClient {
     _child: Child,
     stdin: Arc<AsyncMutex<ChildStdin>>,
-    pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>>,
+    pending: PendingRequests,
     notifications: broadcast::Sender<Value>,
     next_id: u64,
 }
@@ -44,8 +45,7 @@ impl CodexClient {
             .stdout
             .take()
             .ok_or_else(|| "Codex app-server stdout unavailable".to_string())?;
-        let pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, String>>>>> =
-            Arc::new(Mutex::new(HashMap::new()));
+        let pending: PendingRequests = Arc::new(Mutex::new(HashMap::new()));
         let reader_pending = pending.clone();
         let (notifications, _) = broadcast::channel(256);
         let reader_notifications = notifications.clone();

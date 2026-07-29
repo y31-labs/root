@@ -433,7 +433,7 @@ fn validate_metadata(input: &PublishAppInput) -> Result<(), String> {
 }
 
 fn validate_source(source: &str) -> Result<(), String> {
-    if source.as_bytes().len() > MAX_SOURCE_BYTES {
+    if source.len() > MAX_SOURCE_BYTES {
         return Err(format!(
             "App.tsx exceeds the {MAX_SOURCE_BYTES} byte limit."
         ));
@@ -677,7 +677,7 @@ fn compile_source(data_dir: &Path, app_id: &str, source: &str) -> Result<String,
             ));
         }
         let bundle = fs::read_to_string(&output_path).map_err(display_error)?;
-        if bundle.as_bytes().len() > MAX_BUNDLE_BYTES {
+        if bundle.len() > MAX_BUNDLE_BYTES {
             return Err(format!(
                 "Compiled app exceeds the {MAX_BUNDLE_BYTES} byte limit."
             ));
@@ -890,7 +890,7 @@ fn read_record(data_dir: &Path, app_id: &str) -> Result<Option<GeneratedAppRecor
     let record: GeneratedAppRecord = serde_json::from_slice(&bytes).map_err(display_error)?;
     validate_source(&record.source)?;
     validate_permissions(&record.permissions)?;
-    if record.bundle.as_bytes().len() > MAX_BUNDLE_BYTES {
+    if record.bundle.len() > MAX_BUNDLE_BYTES {
         return Err("Stored local app bundle is too large.".to_string());
     }
     validate_compiled_imports(&record.bundle)?;
