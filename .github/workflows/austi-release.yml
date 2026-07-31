@@ -45,15 +45,21 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'release/austi' || github.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.ref }}
 
       - name: Promote main to Austi release
         if: github.event_name == 'workflow_dispatch'
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git fetch origin main release/austi
-          git merge --no-edit origin/main
+          git fetch origin main
+          if git ls-remote --exit-code --heads origin release/austi > /dev/null; then
+            git fetch origin release/austi
+            git switch --create release/austi origin/release/austi
+            git merge --no-edit origin/main
+          else
+            git switch --create release/austi origin/main
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
