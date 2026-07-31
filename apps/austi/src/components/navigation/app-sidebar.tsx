@@ -30,7 +30,6 @@ export function AppSidebar() {
     archiveChat,
     chats,
     generatingTitleChatIds,
-    historyWarning,
     newChat,
     openChat,
     runningChatIds,
