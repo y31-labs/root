@@ -27,7 +27,7 @@ bun run --filter austi test:rust
 ## Releases and updates
 
 Austi uses Tauri's signed updater with GitHub Releases. When Austi-related changes reach the
-`release` branch, the release workflow publishes the DMG, macOS updater archive, signature, and
+`release-austi` branch, the release workflow publishes the DMG, macOS updater archive, signature, and
 `latest.json`. Publishing the GitHub Release makes the update available to installed copies of
 Austi.
 
@@ -37,9 +37,10 @@ the version in the Tauri config, Cargo manifest, and lockfile, validates and tes
 commits the release version, creates the matching `austi-v<version>` tag, and publishes the release.
 Choose `keep` only to retry publishing the current version after a failed release attempt.
 
-The workflow maintains a dedicated `release-austi` branch so app releases do not change the shared
-`release` branch. Pushing an already-versioned change to `release-austi` also publishes it
-automatically.
+The workflow maintains the dedicated `release-austi` branch so desktop releases remain independent
+from the website release branches. Pushing an already-versioned change to `release-austi` also
+publishes it automatically. See [release branch conventions](../../.docs/release-branches.md) for
+the repository-wide branch map.
 
 The repository requires `TAURI_SIGNING_PRIVATE_KEY` and
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` Actions secrets. Keep an offline backup of both values: losing

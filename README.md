@@ -7,6 +7,7 @@ This repository is a Bun workspace for the Code, Trading, Portfolio, and Flowgua
 - `apps/code`: TanStack Start web app backed by the root Convex app in `convex/`.
 - `apps/code-desktop`: Tauri desktop app with Vite UI, Rust local runtime, Playwright coverage, and verifier packaging.
 - `apps/austi`: Tauri desktop app for experimenting with local Codex inference workflows.
+- `apps/austi-landing`: Astro marketing site for Austi.
 - `apps/interface-lab`: TanStack Start playground for prototyping AI-powered interfaces.
 - `apps/trading`: TanStack Start trading app with its own Convex app under `apps/trading/convex`.
 - `apps/portfolio`: Astro portfolio site.
@@ -38,6 +39,7 @@ Product-specific commands:
 bun run code:dev
 bun run desktop:dev
 bun run austi:dev
+bun run austi-landing:dev
 bun run interface-lab:dev
 bun run trading:dev
 bun run portfolio:dev
@@ -47,6 +49,7 @@ bun run code:verify
 bun run flowguard:check
 bun run trading:test
 bun run portfolio:build
+bun run austi-landing:build
 ```
 
 Formatting is available as an explicit command and is not part of `check`:
@@ -63,3 +66,4 @@ bun run format
 - Import aliases and package import rules are documented in `.docs/code-conventions.md`.
 - Theming and UI rules live in `.docs/ui-theming.md` and `.docs/code-ui-style.md`.
 - Code desktop runtime, verifier image, cleanup, and distribution details live in `.docs/code-desktop-runtime.md`.
+- Production branch naming and promotion rules live in `.docs/release-branches.md`.
