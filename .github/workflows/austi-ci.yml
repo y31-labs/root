@@ -123,4 +123,4 @@ jobs:
         run: bun run --filter austi test:rust
 
       - name: Build native bundles
-        run: bun run austi:build
+        run: bun run --filter austi tauri build --config '{"bundle":{"createUpdaterArtifacts":false}}'
