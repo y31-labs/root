@@ -36,6 +36,7 @@ fn open_logs_folder(state: tauri::State<'_, AppState>) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -64,7 +65,8 @@ pub fn run() {
             if let Some(warning) = chat_history_warning {
                 tracing::warn!(warning, "chat history was recovered");
             }
-            let app_tools = generated_apps::AppToolRuntime::new(data_dir.clone());
+            let app_tools =
+                generated_apps::AppToolRuntime::new(data_dir.clone(), app.handle().clone());
             app.manage(AppState {
                 data_dir,
                 chat_history: Mutex::new(chat_history),

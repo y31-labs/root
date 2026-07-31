@@ -5,11 +5,12 @@ use std::{
 };
 
 use serde_json::{json, Value};
+use tauri::AppHandle;
 
 use super::{
     catalog::catalog_result,
     display_error,
-    publishing::publish_app,
+    publishing::{publish_app, BunCompiler},
     store::{authoring_record, read_record},
     types::PublishAppInput,
 };
@@ -17,13 +18,15 @@ use super::{
 #[derive(Clone)]
 pub(crate) struct AppToolRuntime {
     data_dir: PathBuf,
+    compiler: BunCompiler,
     threads: Arc<Mutex<HashMap<String, String>>>,
 }
 
 impl AppToolRuntime {
-    pub(crate) fn new(data_dir: PathBuf) -> Self {
+    pub(crate) fn new(data_dir: PathBuf, app: AppHandle) -> Self {
         Self {
             data_dir,
+            compiler: BunCompiler::bundled(app),
             threads: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -74,7 +77,8 @@ impl AppToolRuntime {
             "local_app_publish" => {
                 let input: PublishAppInput =
                     serde_json::from_value(arguments).map_err(display_error)?;
-                let record = publish_app(&self.data_dir, &chat_id, thread_id, input)?;
+                let record =
+                    publish_app(&self.compiler, &self.data_dir, &chat_id, thread_id, input)?;
                 json!({
                     "id": record.id,
                     "title": record.title,

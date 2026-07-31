@@ -1,8 +1,7 @@
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{fs, path::Path, process::Command};
+
+use tauri::AppHandle;
+use tauri_plugin_shell::ShellExt;
 
 use super::{
     capabilities::validate_permissions,
@@ -15,7 +14,55 @@ use super::{
 const MAX_SOURCE_BYTES: usize = 128 * 1024;
 pub(super) const MAX_BUNDLE_BYTES: usize = 512 * 1024;
 
+#[derive(Clone)]
+pub(super) struct BunCompiler {
+    executable: BunExecutable,
+}
+
+#[derive(Clone)]
+enum BunExecutable {
+    Sidecar(AppHandle),
+    #[cfg(test)]
+    Path(std::path::PathBuf),
+}
+
+impl BunCompiler {
+    pub(super) fn bundled(app: AppHandle) -> Self {
+        Self {
+            executable: BunExecutable::Sidecar(app),
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) fn installed() -> Result<Self, String> {
+        let executable_name = if cfg!(windows) { "bun.exe" } else { "bun" };
+        let executable = std::env::var_os("PATH")
+            .and_then(|path| {
+                std::env::split_paths(&path)
+                    .map(|directory| directory.join(executable_name))
+                    .find(|candidate| candidate.is_file())
+            })
+            .ok_or_else(|| "Bun is required to run compiler tests.".to_string())?;
+        Ok(Self {
+            executable: BunExecutable::Path(executable),
+        })
+    }
+
+    fn command(&self) -> Result<Command, String> {
+        match &self.executable {
+            BunExecutable::Sidecar(app) => app
+                .shell()
+                .sidecar("bun")
+                .map(Into::into)
+                .map_err(|error| format!("The bundled Bun compiler is unavailable: {error}")),
+            #[cfg(test)]
+            BunExecutable::Path(path) => Ok(Command::new(path)),
+        }
+    }
+}
+
 pub(super) fn publish_app(
+    compiler: &BunCompiler,
     data_dir: &Path,
     chat_id: &str,
     thread_id: &str,
@@ -39,7 +86,7 @@ pub(super) fn publish_app(
         return Err("This chat does not own the requested app.".to_string());
     }
 
-    let bundle = compile_source(data_dir, &input.app_id, &input.source)?;
+    let bundle = compile_source(compiler, data_dir, &input.app_id, &input.source)?;
     let record = GeneratedAppRecord {
         id: input.app_id.clone(),
         title: input.title,
@@ -209,6 +256,7 @@ pub(super) fn validate_compiled_imports(bundle: &str) -> Result<(), String> {
 }
 
 pub(super) fn compile_source(
+    compiler: &BunCompiler,
     data_dir: &Path,
     app_id: &str,
     source: &str,
@@ -220,7 +268,8 @@ pub(super) fn compile_source(
     let entry = build_dir.join("App.tsx");
     let output_path = build_dir.join("app.js");
     fs::write(&entry, format!("import React from 'react';\n{source}")).map_err(display_error)?;
-    let output = Command::new(bun_executable()?)
+    let output = compiler
+        .command()?
         .arg("build")
         .arg(&entry)
         .args([
@@ -232,7 +281,7 @@ pub(super) fn compile_source(
         .arg(format!("--outfile={}", output_path.display()))
         .current_dir(&build_dir)
         .output()
-        .map_err(|error| format!("The local Bun compiler is unavailable: {error}"))?;
+        .map_err(|error| format!("The bundled Bun compiler is unavailable: {error}"))?;
     let result = (|| {
         if !output.status.success() {
             let details = String::from_utf8_lossy(&output.stderr);
@@ -252,26 +301,4 @@ pub(super) fn compile_source(
     })();
     let _ = fs::remove_dir_all(&build_dir);
     result
-}
-
-fn bun_executable() -> Result<PathBuf, String> {
-    let executable_name = if cfg!(windows) { "bun.exe" } else { "bun" };
-    if let Some(path) = env::var_os("PATH") {
-        for directory in env::split_paths(&path) {
-            let candidate = directory.join(executable_name);
-            if candidate.is_file() {
-                return Ok(candidate);
-            }
-        }
-    }
-    if let Some(home) = env::var_os("HOME") {
-        let candidate = PathBuf::from(home).join(".bun/bin").join(executable_name);
-        if candidate.is_file() {
-            return Ok(candidate);
-        }
-    }
-    Err(
-        "The local Bun compiler is unavailable. Install Bun before creating local apps."
-            .to_string(),
-    )
 }
