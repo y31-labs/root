@@ -14,36 +14,27 @@ pub(crate) async fn codex_integration_status(
 ) -> Result<CodexIntegrationStatus, String> {
     let executable = match discovery::executable() {
         Ok(executable) => executable,
+        Err(error) => return Ok(unavailable_status(false, None, error)),
+    };
+    let version = match discovery::command_text(&executable, &["--version"]).await {
+        Ok(version) => version,
         Err(error) => {
-            return Ok(CodexIntegrationStatus {
-                installed: false,
-                authenticated: false,
-                app_server_available: false,
-                connected: false,
-                version: None,
-                account_email: None,
-                plan_type: None,
-                detail: Some(error),
-            });
+            return Ok(unavailable_status(
+                true,
+                None,
+                format!("Codex version could not be read: {error}"),
+            ));
         }
     };
-    let version = discovery::command_text(&executable, &["--version"])
-        .await
-        .ok();
     let account = match request(&state, "account/read", json!({})).await {
         Ok(response) => response.get("account").cloned().unwrap_or(Value::Null),
         Err(error) => {
             tracing::warn!(error = %error, "Codex integration status request failed");
-            return Ok(CodexIntegrationStatus {
-                installed: true,
-                authenticated: false,
-                app_server_available: false,
-                connected: false,
-                version,
-                account_email: None,
-                plan_type: None,
-                detail: Some(format!("Codex app-server is unavailable: {error}")),
-            });
+            return Ok(unavailable_status(
+                true,
+                Some(version),
+                format!("Codex app-server is unavailable: {error}"),
+            ));
         }
     };
     let account_type = account.get("type").and_then(Value::as_str);
@@ -61,7 +52,7 @@ pub(crate) async fn codex_integration_status(
         authenticated,
         app_server_available: true,
         connected: authenticated,
-        version,
+        version: Some(version),
         account_email: account
             .get("email")
             .and_then(Value::as_str)
@@ -72,6 +63,23 @@ pub(crate) async fn codex_integration_status(
             .map(str::to_string),
         detail,
     })
+}
+
+fn unavailable_status(
+    installed: bool,
+    version: Option<String>,
+    detail: String,
+) -> CodexIntegrationStatus {
+    CodexIntegrationStatus {
+        installed,
+        authenticated: false,
+        app_server_available: false,
+        connected: false,
+        version,
+        account_email: None,
+        plan_type: None,
+        detail: Some(detail),
+    }
 }
 
 #[tauri::command]
