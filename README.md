@@ -6,7 +6,7 @@ This repository is a Bun workspace for the Code, Trading, Portfolio, and Flowgua
 
 - `apps/code`: TanStack Start web app backed by the root Convex app in `convex/`.
 - `apps/code-desktop`: Tauri desktop app with Vite UI, Rust local runtime, Playwright coverage, and verifier packaging.
-- `apps/inference-lab-desktop`: Tauri desktop app for experimenting with local Codex inference workflows.
+- `apps/austi`: Tauri desktop app for experimenting with local Codex inference workflows.
 - `apps/interface-lab`: TanStack Start playground for prototyping AI-powered interfaces.
 - `apps/trading`: TanStack Start trading app with its own Convex app under `apps/trading/convex`.
 - `apps/portfolio`: Astro portfolio site.
@@ -37,7 +37,7 @@ Product-specific commands:
 ```sh
 bun run code:dev
 bun run desktop:dev
-bun run inference-lab-desktop:dev
+bun run austi:dev
 bun run interface-lab:dev
 bun run trading:dev
 bun run portfolio:dev
