@@ -69,80 +69,71 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarSeparator className='mx-2 data-horizontal:w-[calc(100%-1rem)]' />
       <SidebarContent>
-        {apps.length && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {apps.map((app) => (
-                  <SidebarMenuItem key={app.id}>
-                    <SidebarMenuButton
-                      isActive={appMatch ? appMatch.appId === app.id : false}
-                      tooltip={app.title}
-                      render={<Link to='/apps/$appId' params={{ appId: app.id }} />}
-                    >
-                      <AppWindow />
-                      <span>{app.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+        {!!apps.length && (
+          <>
+            <SidebarSeparator className='mx-2 data-horizontal:w-[calc(100%-1rem)]' />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {apps.map((app) => (
+                    <SidebarMenuItem key={app.id}>
+                      <SidebarMenuButton
+                        isActive={appMatch ? appMatch.appId === app.id : false}
+                        tooltip={app.title}
+                        render={<Link to='/apps/$appId' params={{ appId: app.id }} />}
+                      >
+                        <AppWindow />
+                        <span>{app.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
         )}
-        <SidebarSeparator className='mx-2 data-horizontal:w-[calc(100%-1rem)]' />
-        <SidebarGroup>
-          <SidebarGroupContent>
-            {historyWarning ? (
-              <p
-                className='px-2 pb-2 text-xs text-warning group-data-[collapsible=icon]:hidden'
-                role='status'
-                title={historyWarning}
-              >
-                Chat history recovery notice
-              </p>
-            ) : null}
-            {chats.length > 0 ? (
-              <SidebarMenu>
-                {chats.map((chat) => (
-                  <SidebarMenuItem key={chat.id}>
-                    <SidebarMenuButton
-                      aria-label={chat.title}
-                      className='data-active:font-normal md:pr-2! md:group-focus-within/menu-item:pr-8! md:group-hover/menu-item:pr-8!'
-                      isActive={!appMatch && activeChatId === chat.id}
-                      tooltip={chat.title}
-                      onClick={() => handleOpenChat(chat.id)}
-                    >
-                      <ChatHistoryTitle
-                        generating={generatingTitleChatIds.has(chat.id)}
-                        title={chat.title}
-                      />
-                      {runningChatIds.has(chat.id) ? (
-                        <Spinner className='size-3 text-muted-foreground' />
-                      ) : null}
-                    </SidebarMenuButton>
-                    <SidebarMenuAction
-                      aria-label={`Archive ${chat.title}`}
-                      className='text-muted-foreground peer-hover/menu-button:text-muted-foreground peer-data-active/menu-button:text-muted-foreground hover:text-foreground'
-                      showOnHover
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleArchiveChat(chat.id, chat.title);
-                      }}
-                    >
-                      <Archive />
-                    </SidebarMenuAction>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            ) : (
-              <p className='px-2 py-1 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden'>
-                No chats yet
-              </p>
-            )}
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {!!chats.length && (
+          <>
+            <SidebarSeparator className='mx-2 data-horizontal:w-[calc(100%-1rem)]' />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {chats.map((chat) => (
+                    <SidebarMenuItem key={chat.id}>
+                      <SidebarMenuButton
+                        aria-label={chat.title}
+                        className='data-active:font-normal md:pr-2! md:group-focus-within/menu-item:pr-8! md:group-hover/menu-item:pr-8!'
+                        isActive={!appMatch && activeChatId === chat.id}
+                        tooltip={chat.title}
+                        onClick={() => handleOpenChat(chat.id)}
+                      >
+                        <ChatHistoryTitle
+                          generating={generatingTitleChatIds.has(chat.id)}
+                          title={chat.title}
+                        />
+                        {runningChatIds.has(chat.id) ? (
+                          <Spinner className='size-3 text-muted-foreground' />
+                        ) : null}
+                      </SidebarMenuButton>
+                      <SidebarMenuAction
+                        aria-label={`Archive ${chat.title}`}
+                        className='text-muted-foreground peer-hover/menu-button:text-muted-foreground peer-data-active/menu-button:text-muted-foreground hover:text-foreground'
+                        showOnHover
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleArchiveChat(chat.id, chat.title);
+                        }}
+                      >
+                        <Archive />
+                      </SidebarMenuAction>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
