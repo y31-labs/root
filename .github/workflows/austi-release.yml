@@ -2,7 +2,7 @@ name: Release Austi
 
 on:
   push:
-    branches: [release/austi]
+    branches: [release-austi]
     paths:
       - .github/workflows/austi-release.yml
       - .node-version
@@ -53,12 +53,12 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git fetch origin main
-          if git ls-remote --exit-code --heads origin release/austi > /dev/null; then
-            git fetch origin release/austi
-            git switch --create release/austi origin/release/austi
+          if git ls-remote --exit-code --heads origin release-austi > /dev/null; then
+            git fetch origin release-austi
+            git switch --create release-austi origin/release-austi
             git merge --no-edit origin/main
           else
-            git switch --create release/austi origin/main
+            git switch --create release-austi origin/main
           fi
 
       - name: Set up Node.js
@@ -127,7 +127,7 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "Release Austi v${RELEASE_VERSION}"
           fi
-          git push origin HEAD:release/austi
+          git push origin HEAD:release-austi
 
       - name: Resolve release commit
         id: release_commit
