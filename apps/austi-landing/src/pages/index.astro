@@ -1,0 +1,561 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const title = 'Austi — describe the work, keep the app';
+const description =
+  'Austi turns a conversation into a private, reusable app—built, stored, and run on your Mac.';
+
+const storySteps = [
+  {
+    number: '01',
+    label: 'Ask',
+    title: 'Say it like you would to a teammate.',
+    description:
+      'Describe the workflow, attach the context, and choose the folder Austi should work with. No schema. No setup ritual.',
+  },
+  {
+    number: '02',
+    label: 'Shape',
+    title: 'Watch the work take form.',
+    description:
+      'Austi reasons in the open, asks before it acts, and turns your process into a working interface—not another answer to copy somewhere else.',
+  },
+  {
+    number: '03',
+    label: 'Use',
+    title: 'Move from chat to the app.',
+    description:
+      'The tool opens inside Austi with the fields, state, and actions you asked for. It is ready for the actual work the moment it appears.',
+  },
+  {
+    number: '04',
+    label: 'Keep',
+    title: 'Tomorrow, it is still yours.',
+    description:
+      'Reopen it from the sidebar, keep your data, and change the app by continuing the same conversation. Useful software becomes a living thing.',
+  },
+];
+
+const featureRows = [
+  {
+    number: '01',
+    title: 'Local by default',
+    description:
+      'A native desktop home for your chats, generated apps, and their state. Your tools run in a network-disabled sandbox.',
+  },
+  {
+    number: '02',
+    title: 'Access on your terms',
+    description:
+      'Every app declares narrow capabilities. Austi asks before approved integrations can touch the network or external services.',
+  },
+  {
+    number: '03',
+    title: 'Made to change',
+    description:
+      'Open the authoring conversation, ask for an adjustment, and Austi publishes a new local revision without losing the app you rely on.',
+  },
+];
+---
+
+<Layout {title} {description}>
+  <header class="site-header" aria-label="Primary navigation">
+    <a class="brand" href="#top" aria-label="Austi home">
+      <img src="/austi-logo.svg" alt="" width="19" height="21" />
+      <span>Austi</span>
+    </a>
+    <nav>
+      <a href="#how-it-works">How it works</a>
+      <a href="#principles">Principles</a>
+    </nav>
+    <a
+      class="header-cta"
+      href="https://github.com/y31-labs/root/releases"
+      target="_blank"
+      rel="noreferrer"
+    >
+      Download
+      <span aria-hidden="true">↗</span>
+    </a>
+  </header>
+
+  <main id="main-content">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <canvas class="hero-shader" id="hero-shader" aria-hidden="true"></canvas>
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-orb hero-orb-left" aria-hidden="true"></div>
+      <div class="hero-orb hero-orb-right" aria-hidden="true"></div>
+
+      <div class="hero-content">
+        <p class="eyebrow"><span></span> Native software, made to fit</p>
+        <h1 id="hero-title">
+          Describe the work.<br />
+          <span>Keep the app.</span>
+        </h1>
+        <p class="hero-copy">
+          Austi turns a conversation into a private, reusable tool—built, stored, and run on your
+          Mac.
+        </p>
+        <div class="hero-actions">
+          <a
+            class="button button-primary"
+            href="https://github.com/y31-labs/root/releases"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Download for macOS
+            <span aria-hidden="true">↓</span>
+          </a>
+          <a class="button button-ghost" href="#how-it-works">
+            See how it works
+            <span aria-hidden="true">↘</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="hero-status">
+        <span class="status-dot"></span>
+        Preview v0.1.1
+        <span class="status-divider"></span>
+        macOS
+      </div>
+      <div class="scroll-cue" aria-hidden="true">
+        <span>Scroll to shape an app</span>
+        <i></i>
+      </div>
+    </section>
+
+    <section class="manifesto" aria-labelledby="manifesto-title">
+      <p class="section-index">A / WHY AUSTI</p>
+      <h2 id="manifesto-title">
+        Most work lives between a spreadsheet that is too generic and software that is too
+        expensive to commission. <span>Austi lives there.</span>
+      </h2>
+    </section>
+
+    <section class="story" id="how-it-works" aria-labelledby="story-title">
+      <div class="story-heading">
+        <p class="section-index">B / FROM WORDS TO SOFTWARE</p>
+        <h2 id="story-title">One conversation.<br />A tool you can return to.</h2>
+      </div>
+
+      <div class="story-stage">
+        <div class="story-copy">
+          {
+            storySteps.map((step, index) => (
+              <article class="story-step" data-step={index}>
+                <div class="step-rule">
+                  <span class="step-progress"></span>
+                </div>
+                <div class="step-meta">
+                  <span>{step.number}</span>
+                  <span>{step.label}</span>
+                </div>
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
+              </article>
+            ))
+          }
+        </div>
+
+        <div class="story-visual">
+          <div class="demo-glow" aria-hidden="true"></div>
+          <div class="desktop-window" id="desktop-demo" data-stage="0">
+            <div class="window-chrome">
+              <div class="traffic-lights" aria-hidden="true"><i></i><i></i><i></i></div>
+              <span>Austi</span>
+              <span class="window-mode">Private workspace</span>
+            </div>
+
+            <div class="app-shell">
+              <aside class="app-sidebar">
+                <div class="sidebar-brand">
+                  <img src="/austi-logo.svg" alt="" width="14" height="16" />
+                  <span>Austi</span>
+                </div>
+                <div class="sidebar-action"><b>＋</b><span>New chat</span></div>
+                <p class="sidebar-label">Apps</p>
+                <div class="sidebar-app">
+                  <span class="mini-app-icon">L</span>
+                  <span>Launch planner</span>
+                </div>
+                <div class="sidebar-spacer"></div>
+                <div class="sidebar-action sidebar-muted"><b>⌘</b><span>Settings</span></div>
+              </aside>
+
+              <div class="demo-main">
+                <section class="demo-scene demo-chat-start" data-scene="0" aria-hidden="false">
+                  <div class="empty-mark">
+                    <img src="/austi-logo.svg" alt="" width="22" height="24" />
+                  </div>
+                  <h4>What should we build?</h4>
+                  <p>Describe an internal tool, workflow, or process.</p>
+                  <div class="prompt-box">
+                    <span class="typed-prompt" id="typed-prompt"></span><i class="caret"></i>
+                    <div class="prompt-footer">
+                      <span>＋</span>
+                      <span class="folder-chip">launch-week</span>
+                      <span class="send-button">↑</span>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="demo-scene demo-conversation" data-scene="1" aria-hidden="true">
+                  <div class="message message-user">
+                    Build a weekly launch planner that tracks owners, dates, blockers, and syncs
+                    with Linear.
+                  </div>
+                  <div class="message-assistant">
+                    <span class="assistant-time">Worked for 18s</span>
+                    <p>I’ll turn that workflow into a reusable local app.</p>
+                    <div class="task-row is-done"><i>✓</i><span>Map the launch workflow</span></div>
+                    <div class="task-row is-done"><i>✓</i><span>Build the planning interface</span></div>
+                    <div class="task-row is-active"><i></i><span>Publish local app</span></div>
+                  </div>
+                </section>
+
+                <section class="demo-scene demo-publish" data-scene="2" aria-hidden="true">
+                  <div class="publish-status"><i>✓</i> Local app created</div>
+                  <div class="publish-copy">
+                    <span class="assistant-time">A moment ago</span>
+                    <h4>Launch planner is ready.</h4>
+                    <p>
+                      It keeps task state locally and asks before connecting to Linear. You can
+                      reopen it from the sidebar anytime.
+                    </p>
+                  </div>
+                  <div class="app-preview-card">
+                    <div>
+                      <span class="mini-app-icon">L</span>
+                      <p><strong>Launch planner</strong><small>Local revision 1</small></p>
+                    </div>
+                    <span>Open app →</span>
+                  </div>
+                </section>
+
+                <section class="demo-scene demo-local-app" data-scene="3" aria-hidden="true">
+                  <header class="local-app-header">
+                    <div>
+                      <span class="local-app-kicker">WEEK 32 / PRODUCT LAUNCH</span>
+                      <h4>Launch planner</h4>
+                    </div>
+                    <button class="edit-chat" type="button" tabindex="-1">Edit in chat</button>
+                  </header>
+                  <div class="launch-metrics">
+                    <div><span>Ready</span><strong id="ready-count">3</strong></div>
+                    <div><span>In motion</span><strong>2</strong></div>
+                    <div><span>Blocked</span><strong>1</strong></div>
+                  </div>
+                  <div class="launch-list">
+                    <div class="launch-list-head">
+                      <span>Launch task</span><span>Owner</span><span>Status</span>
+                    </div>
+                    <label class="launch-row is-complete">
+                      <input type="checkbox" checked tabindex="-1" />
+                      <span>Approve final positioning</span><span>Maya</span><em>Ready</em>
+                    </label>
+                    <label class="launch-row">
+                      <input type="checkbox" tabindex="-1" />
+                      <span>QA the onboarding path</span><span>Jon</span><em>In motion</em>
+                    </label>
+                    <label class="launch-row">
+                      <input type="checkbox" tabindex="-1" />
+                      <span>Schedule release notes</span><span>Inez</span><em>Blocked</em>
+                    </label>
+                    <label class="launch-row is-complete">
+                      <input type="checkbox" checked tabindex="-1" />
+                      <span>Record product walkthrough</span><span>Sam</span><em>Ready</em>
+                    </label>
+                  </div>
+                  <p class="local-save"><i></i> Changes saved locally</p>
+                </section>
+              </div>
+            </div>
+          </div>
+          <p class="demo-caption" id="demo-announcement" aria-live="polite">
+            01 — Describe the tool
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="principles" id="principles" aria-labelledby="principles-title">
+      <div class="principles-heading">
+        <p class="section-index">C / BUILT FOR TRUST</p>
+        <h2 id="principles-title">Made-to-fit software,<br />without giving up the keys.</h2>
+      </div>
+      <div class="feature-list">
+        {
+          featureRows.map((feature) => (
+            <article class="feature-row">
+              <span>{feature.number}</span>
+              <h3>{feature.title}</h3>
+              <p>{feature.description}</p>
+              <i aria-hidden="true">↗</i>
+            </article>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="local-callout" aria-labelledby="local-title">
+      <div class="local-rings" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p class="section-index">D / YOUR MACHINE, YOUR RULES</p>
+      <h2 id="local-title">It runs here.</h2>
+      <p>
+        Austi is a native desktop app. Generated tools run in a sandbox, their state stays local,
+        and outside access remains explicit.
+      </p>
+      <div class="trust-line" aria-label="Austi trust principles">
+        <span>Native</span><i></i><span>Sandboxed</span><i></i><span>Approval-based</span>
+      </div>
+    </section>
+
+    <section class="closing" aria-labelledby="closing-title">
+      <div class="closing-mark" aria-hidden="true">
+        <img src="/austi-logo.svg" alt="" width="70" height="78" />
+      </div>
+      <p class="section-index">START WITH A SENTENCE</p>
+      <h2 id="closing-title">Make the app only your work could describe.</h2>
+      <a
+        class="button button-primary button-large"
+        href="https://github.com/y31-labs/root/releases"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Download Austi
+        <span aria-hidden="true">↗</span>
+      </a>
+      <p class="closing-note">Free preview for macOS · Built on Codex</p>
+    </section>
+  </main>
+
+  <footer>
+    <a class="brand" href="#top" aria-label="Back to top">
+      <img src="/austi-logo.svg" alt="" width="16" height="18" />
+      <span>Austi</span>
+    </a>
+    <p>Software shaped around the way you work.</p>
+    <div>
+      <a href="https://github.com/y31-labs/root" target="_blank" rel="noreferrer">GitHub ↗</a>
+      <a href="#top">Back to top ↑</a>
+    </div>
+  </footer>
+
+  <script>
+    const shaderCanvas = document.querySelector<HTMLCanvasElement>('#hero-shader');
+    const hero = document.querySelector<HTMLElement>('.hero');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    const startShader = () => {
+      if (!shaderCanvas || !hero) return;
+
+      const gl = shaderCanvas.getContext('webgl', {
+        alpha: true,
+        antialias: false,
+        powerPreference: 'low-power',
+      });
+      if (!gl) return;
+
+      const vertexSource = `
+        attribute vec2 position;
+        void main() { gl_Position = vec4(position, 0.0, 1.0); }
+      `;
+      const fragmentSource = `
+        precision highp float;
+        uniform vec2 resolution;
+        uniform vec2 pointer;
+        uniform float time;
+
+        float blob(vec2 uv, vec2 center, float radius, float softness) {
+          return 1.0 - smoothstep(radius - softness, radius + softness, distance(uv, center));
+        }
+
+        void main() {
+          vec2 uv = gl_FragCoord.xy / resolution.xy;
+          uv.x *= resolution.x / resolution.y;
+          vec2 mouse = pointer;
+          mouse.x *= resolution.x / resolution.y;
+
+          float breath = sin(time * 0.42) * 0.055;
+          float slow = cos(time * 0.24) * 0.08;
+          float a = blob(uv, vec2(0.34 + slow, 0.58 + breath), 0.43 + breath, 0.3);
+          float b = blob(uv, vec2(1.02 - breath, 0.64 - slow), 0.48 - breath, 0.34);
+          float c = blob(uv, vec2(0.73 + mouse.x * 0.09, 0.20 + mouse.y * 0.07), 0.32, 0.28);
+
+          vec3 ink = vec3(0.025, 0.025, 0.035);
+          vec3 violet = vec3(0.34, 0.22, 0.72);
+          vec3 mint = vec3(0.16, 0.55, 0.49);
+          vec3 ember = vec3(0.78, 0.34, 0.22);
+          vec3 color = ink;
+          color += violet * a * 0.56;
+          color += mint * b * 0.44;
+          color += ember * c * 0.24;
+          color += vec3(0.07, 0.08, 0.13) * (a * b);
+
+          float vignette = smoothstep(1.15, 0.14, distance(uv, vec2(0.72, 0.5)));
+          color *= 0.66 + vignette * 0.5;
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `;
+
+      const compile = (type: number, source: string) => {
+        const shader = gl.createShader(type);
+        if (!shader) return null;
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
+      };
+
+      const vertexShader = compile(gl.VERTEX_SHADER, vertexSource);
+      const fragmentShader = compile(gl.FRAGMENT_SHADER, fragmentSource);
+      if (!vertexShader || !fragmentShader) return;
+
+      const program = gl.createProgram();
+      if (!program) return;
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return;
+
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+        gl.STATIC_DRAW,
+      );
+      gl.useProgram(program);
+
+      const position = gl.getAttribLocation(program, 'position');
+      const resolution = gl.getUniformLocation(program, 'resolution');
+      const pointer = gl.getUniformLocation(program, 'pointer');
+      const time = gl.getUniformLocation(program, 'time');
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+      let frame = 0;
+      let visible = true;
+      let pointerX = 0.5;
+      let pointerY = 0.5;
+      const startedAt = performance.now();
+
+      const resize = () => {
+        const density = Math.min(window.devicePixelRatio, 1.5);
+        const width = Math.round(shaderCanvas.clientWidth * density);
+        const height = Math.round(shaderCanvas.clientHeight * density);
+        if (shaderCanvas.width === width && shaderCanvas.height === height) return;
+        shaderCanvas.width = width;
+        shaderCanvas.height = height;
+        gl.viewport(0, 0, width, height);
+      };
+
+      const render = (now: number) => {
+        resize();
+        gl.uniform2f(resolution, shaderCanvas.width, shaderCanvas.height);
+        gl.uniform2f(pointer, pointerX, pointerY);
+        gl.uniform1f(time, reducedMotion.matches ? 0 : (now - startedAt) / 1000);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        if (visible && !reducedMotion.matches) frame = requestAnimationFrame(render);
+      };
+
+      hero.addEventListener('pointermove', (event) => {
+        const bounds = hero.getBoundingClientRect();
+        pointerX += (event.clientX / bounds.width - pointerX) * 0.16;
+        pointerY += (1 - event.clientY / bounds.height - pointerY) * 0.16;
+      });
+
+      new ResizeObserver(resize).observe(shaderCanvas);
+      new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        visible = entry.isIntersecting;
+        cancelAnimationFrame(frame);
+        if (visible) frame = requestAnimationFrame(render);
+      }).observe(hero);
+
+      reducedMotion.addEventListener('change', () => {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(render);
+      });
+      frame = requestAnimationFrame(render);
+    };
+
+    startShader();
+
+    const steps = [...document.querySelectorAll<HTMLElement>('[data-step]')];
+    const scenes = [...document.querySelectorAll<HTMLElement>('[data-scene]')];
+    const demo = document.querySelector<HTMLElement>('#desktop-demo');
+    const typedPrompt = document.querySelector<HTMLElement>('#typed-prompt');
+    const announcement = document.querySelector<HTMLElement>('#demo-announcement');
+    const prompt =
+      'Build a weekly launch planner that tracks owners, dates, blockers, and syncs with Linear.';
+    const labels = [
+      '01 — Describe the tool',
+      '02 — Watch Austi build',
+      '03 — Open the local app',
+      '04 — Use it again tomorrow',
+    ];
+    let activeStep = -1;
+    let scrollFrame = 0;
+
+    const setActiveStep = (index: number) => {
+      if (activeStep === index || !demo) return;
+      activeStep = index;
+      demo.dataset.stage = String(index);
+      steps.forEach((step, stepIndex) => step.classList.toggle('is-active', stepIndex === index));
+      scenes.forEach((scene, sceneIndex) => {
+        scene.classList.toggle('is-active', sceneIndex === index);
+        scene.setAttribute('aria-hidden', String(sceneIndex !== index));
+      });
+      document.querySelectorAll<HTMLElement>('.demo-local-app button, .demo-local-app input').forEach(
+        (control) => (control.tabIndex = index === 3 ? 0 : -1),
+      );
+      if (announcement) announcement.textContent = labels[index] ?? labels[0] ?? '';
+    };
+
+    const updateStory = () => {
+      scrollFrame = 0;
+      if (!steps.length) return;
+      const firstStep = steps[0];
+      if (!firstStep) return;
+      const focusY = window.innerHeight * 0.48;
+      let closest = 0;
+      let closestDistance = Number.POSITIVE_INFINITY;
+      steps.forEach((step, index) => {
+        const bounds = step.getBoundingClientRect();
+        const distance = Math.abs(bounds.top + bounds.height * 0.5 - focusY);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closest = index;
+        }
+      });
+      setActiveStep(closest);
+
+      if (typedPrompt) {
+        const firstBounds = firstStep.getBoundingClientRect();
+        const travel = Math.max(firstBounds.height * 0.72, 1);
+        const progress = Math.min(
+          1,
+          Math.max(0.18, (window.innerHeight * 0.76 - firstBounds.top) / travel),
+        );
+        typedPrompt.textContent = prompt.slice(0, Math.round(prompt.length * progress));
+      }
+    };
+
+    const queueStoryUpdate = () => {
+      if (!scrollFrame) scrollFrame = requestAnimationFrame(updateStory);
+    };
+    window.addEventListener('scroll', queueStoryUpdate, { passive: true });
+    window.addEventListener('resize', queueStoryUpdate);
+    updateStory();
+
+    const taskInputs = document.querySelectorAll<HTMLInputElement>('.launch-row input');
+    const readyCount = document.querySelector<HTMLElement>('#ready-count');
+    const updateReadyCount = () => {
+      taskInputs.forEach((input) => input.closest('.launch-row')?.classList.toggle('is-complete', input.checked));
+      if (readyCount) readyCount.textContent = String([...taskInputs].filter((input) => input.checked).length + 1);
+    };
+    taskInputs.forEach((input) => input.addEventListener('change', updateReadyCount));
+  </script>
+</Layout>
