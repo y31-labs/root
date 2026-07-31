@@ -13,7 +13,7 @@ use tokio::{
     time::timeout,
 };
 
-use super::discovery;
+use super::{compatibility, discovery};
 use crate::generated_apps::AppToolRuntime;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
@@ -31,7 +31,9 @@ pub(crate) struct CodexClient {
 
 impl CodexClient {
     pub(super) async fn start(app_tools: AppToolRuntime) -> Result<Self, String> {
-        let mut child = Command::new(discovery::executable()?)
+        let executable = discovery::executable()?;
+        compatibility::verify(&executable).await?;
+        let mut child = Command::new(executable)
             .args(["app-server", "--listen", "stdio://"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

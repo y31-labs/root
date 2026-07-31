@@ -1,5 +1,6 @@
 mod attachments;
 mod client;
+mod compatibility;
 mod discovery;
 pub(crate) mod integration;
 pub(crate) mod mcp;
