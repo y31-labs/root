@@ -6,7 +6,7 @@ use super::{
     capabilities::validate_permissions,
     catalog::dynamic_tool_specs,
     now_ms,
-    publishing::{compile_source, publish_app, validate_source},
+    publishing::{compile_source, publish_app, validate_source, BunCompiler},
     types::{LocalAppPermission, PublishAppInput},
 };
 
@@ -34,6 +34,7 @@ fn publish_input(expected_revision: u64) -> PublishAppInput {
 
 #[test]
 fn validates_source_imports_and_browser_boundaries() {
+    let compiler = BunCompiler::installed().unwrap();
     assert!(validate_source(&valid_source()).is_ok());
     assert!(validate_source("import x from 'remote'; export default function App() {}").is_err());
     assert!(validate_source("export default function App() { fetch('/secret'); }").is_err());
@@ -44,7 +45,7 @@ fn validates_source_imports_and_browser_boundaries() {
         now_ms()
     ));
     let invalid_export = "import { Card } from '@y31/local-app/ui'; export default function App() { return <Card />; }";
-    assert!(compile_source(&directory, "invalid-import", invalid_export).is_err());
+    assert!(compile_source(&compiler, &directory, "invalid-import", invalid_export).is_err());
     let _ = fs::remove_dir_all(directory);
 }
 
@@ -77,17 +78,46 @@ fn requires_user_approval_and_network_effects_for_mcp_tools() {
 
 #[test]
 fn publishes_compiled_immutable_revisions_owned_by_a_chat() {
+    let compiler = BunCompiler::installed().unwrap();
     let directory = std::env::temp_dir().join(format!(
         "y31-source-app-test-{}-{}",
         std::process::id(),
         now_ms()
     ));
-    let first = publish_app(&directory, "chat-1", "thread-1", publish_input(0)).unwrap();
+    let first = publish_app(
+        &compiler,
+        &directory,
+        "chat-1",
+        "thread-1",
+        publish_input(0),
+    )
+    .unwrap();
     assert_eq!(first.revision, 1);
     assert!(first.bundle.contains("React.createElement"));
-    assert!(publish_app(&directory, "chat-2", "thread-2", publish_input(1)).is_err());
-    assert!(publish_app(&directory, "chat-1", "thread-1", publish_input(0)).is_err());
-    let second = publish_app(&directory, "chat-1", "thread-1", publish_input(1)).unwrap();
+    assert!(publish_app(
+        &compiler,
+        &directory,
+        "chat-2",
+        "thread-2",
+        publish_input(1)
+    )
+    .is_err());
+    assert!(publish_app(
+        &compiler,
+        &directory,
+        "chat-1",
+        "thread-1",
+        publish_input(0)
+    )
+    .is_err());
+    let second = publish_app(
+        &compiler,
+        &directory,
+        "chat-1",
+        "thread-1",
+        publish_input(1),
+    )
+    .unwrap();
     assert_eq!(second.revision, 2);
     assert!(directory.join("apps/playground/versions/1.json").exists());
     assert!(directory.join("apps/playground/versions/2.json").exists());
