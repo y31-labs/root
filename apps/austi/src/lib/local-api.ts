@@ -93,6 +93,7 @@ export const createLocalApi = (
     call(command, args) as Promise<T>;
 
   return {
+    activeCodexTaskCount: () => request<number>('active_codex_task_count'),
     archiveChat: (chatId: string) => request<void>('archive_chat', { chatId }),
     connectMcpServer: (name: string) => request<void>('connect_mcp_server', { name }),
     chatHistoryStatus: () => request<ChatHistoryStatus>('chat_history_status'),
@@ -160,6 +161,7 @@ export const createLocalApi = (
           permissionMode,
         },
       }),
+    stopActiveCodexTasks: () => request<void>('stop_active_codex_tasks'),
     streamCodexRun: (runId: string, onEvent: (event: ChatStreamEvent) => void) =>
       request<ChatTextResult>('stream_codex_run', {
         runId,
