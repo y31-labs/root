@@ -32,13 +32,13 @@ Austi uses Tauri's signed updater with GitHub Releases. When Austi-related chang
 Austi.
 
 For the normal release path, open **Actions → Release Austi → Run workflow**, choose a patch,
-minor, or major version update, and run it. The workflow merges `main` into `release/austi`, updates
+minor, or major version update, and run it. The workflow merges `main` into `release-austi`, updates
 the version in the Tauri config, Cargo manifest, and lockfile, validates and tests the result,
 commits the release version, creates the matching `austi-v<version>` tag, and publishes the release.
 Choose `keep` only to retry publishing the current version after a failed release attempt.
 
-The workflow maintains a dedicated `release/austi` branch so app releases do not change the shared
-`release` branch. Pushing an already-versioned change to `release/austi` also publishes it
+The workflow maintains a dedicated `release-austi` branch so app releases do not change the shared
+`release` branch. Pushing an already-versioned change to `release-austi` also publishes it
 automatically.
 
 The repository requires `TAURI_SIGNING_PRIVATE_KEY` and
