@@ -26,11 +26,16 @@ Feature work lands on `main` through a pull request first. After its checks pass
 branches and do not commit feature work directly to them.
 
 The Austi desktop workflow owns promotion to `release-austi`, including version commits and tags.
-Run **Actions → Release Austi** instead of moving that branch manually.
+Run **Actions → Release product**, choose `austi`, and select the version update instead of moving
+that branch manually.
 
 For a Vercel project, update its dedicated release branch from `main` after the relevant application
 has been validated. Vercel's configured production branch must match the branch map above. A push to
 one release branch must not deploy any other project.
+
+The same **Release product** action is the normal entry point for web releases. Choose
+`austi-landing`, `portfolio`, or `y31`; the version input is ignored for web products. The action
+refuses to overwrite a release branch that has diverged from `main`.
 
 Before deleting or renaming a release branch:
 

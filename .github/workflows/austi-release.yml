@@ -11,6 +11,12 @@ on:
       - bun.lock
       - package.json
       - rust-toolchain.toml
+  workflow_call:
+    inputs:
+      version_update:
+        description: Version update
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       version_update:
@@ -45,10 +51,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.ref }}
+          ref: ${{ github.event_name != 'push' && 'main' || github.ref }}
 
       - name: Promote main to Austi release
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name != 'push'
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
@@ -89,7 +95,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Update release version
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name != 'push'
         env:
           VERSION_UPDATE: ${{ inputs.version_update }}
         run: bun apps/austi/scripts/bump-version.ts "$VERSION_UPDATE"
@@ -119,7 +125,7 @@ jobs:
         run: bun run --filter austi test:rust
 
       - name: Commit release promotion
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name != 'push'
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |

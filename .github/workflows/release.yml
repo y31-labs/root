@@ -1,0 +1,78 @@
+name: Release product
+run-name: Release ${{ inputs.product }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      product:
+        description: Product to release
+        required: true
+        type: choice
+        options:
+          - austi
+          - austi-landing
+          - portfolio
+          - y31
+      version_update:
+        description: Austi desktop version update (ignored for web products)
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - keep
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.product }}
+  cancel-in-progress: false
+
+jobs:
+  release-austi:
+    name: Release Austi desktop
+    if: inputs.product == 'austi'
+    uses: ./.github/workflows/austi-release.yml
+    with:
+      version_update: ${{ inputs.version_update }}
+    secrets: inherit
+
+  release-web-product:
+    name: Promote web product
+    if: inputs.product != 'austi'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release branch
+        id: release_branch
+        env:
+          PRODUCT: ${{ inputs.product }}
+        run: |
+          case "$PRODUCT" in
+            austi-landing) branch="release-austi-landing" ;;
+            portfolio) branch="release-portfolio" ;;
+            y31) branch="release-y31" ;;
+            *) echo "Unsupported web product: $PRODUCT" >&2; exit 1 ;;
+          esac
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Promote main to release branch
+        env:
+          RELEASE_BRANCH: ${{ steps.release_branch.outputs.branch }}
+        run: |
+          git fetch origin main
+          if git ls-remote --exit-code --heads origin "$RELEASE_BRANCH" > /dev/null; then
+            git fetch origin "$RELEASE_BRANCH"
+            if ! git merge-base --is-ancestor "origin/$RELEASE_BRANCH" origin/main; then
+              echo "$RELEASE_BRANCH has commits that are not in main; reconcile it before releasing." >&2
+              exit 1
+            fi
+          fi
+          git push origin "origin/main:refs/heads/$RELEASE_BRANCH"

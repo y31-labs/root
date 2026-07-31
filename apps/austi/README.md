@@ -31,11 +31,12 @@ Austi uses Tauri's signed updater with GitHub Releases. When Austi-related chang
 `latest.json`. Publishing the GitHub Release makes the update available to installed copies of
 Austi.
 
-For the normal release path, open **Actions → Release Austi → Run workflow**, choose a patch,
-minor, or major version update, and run it. The workflow merges `main` into `release-austi`, updates
-the version in the Tauri config, Cargo manifest, and lockfile, validates and tests the result,
-commits the release version, creates the matching `austi-v<version>` tag, and publishes the release.
-Choose `keep` only to retry publishing the current version after a failed release attempt.
+For the normal release path, open **Actions → Release product → Run workflow**, choose `austi`,
+select a patch, minor, or major version update, and run it. The workflow merges `main` into
+`release-austi`, updates the version in the Tauri config, Cargo manifest, and lockfile, validates and
+tests the result, commits the release version, creates the matching `austi-v<version>` tag, and
+publishes the release. Choose `keep` only to retry publishing the current version after a failed
+release attempt.
 
 The workflow maintains the dedicated `release-austi` branch so desktop releases remain independent
 from the website release branches. Pushing an already-versioned change to `release-austi` also
