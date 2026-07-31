@@ -31,6 +31,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["dmg", "app"],
     "externalBin": ["binaries/bun"],
     "icon": [
@@ -44,6 +45,12 @@
       "minimumSystemVersion": "13.0",
       "hardenedRuntime": true,
       "signingIdentity": "-"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgwMjYwMkFFRjk1REMyQzQKUldURXdsMzVyZ0ltZ0paL1hGQzZaTmkxbXQ3eXJKdFdsVHpJZVBkcTZzR2Z0VW1GQTh0TmQ2dW4K",
+      "endpoints": ["https://github.com/y31-labs/root/releases/latest/download/latest.json"]
     }
   }
 }

@@ -147,6 +147,15 @@ impl CodexRuns {
             .map(|active| !active.is_empty())
             .unwrap_or(true)
     }
+
+    pub(super) fn active_runs(&self) -> Result<Vec<CodexRunInfo>, String> {
+        let active = self.active.lock().map_err(display_error)?;
+        let runs = self.runs.lock().map_err(display_error)?;
+        Ok(active
+            .iter()
+            .filter_map(|run_id| runs.get(run_id).map(|run| run.info.clone()))
+            .collect())
+    }
 }
 
 fn display_error(error: impl std::fmt::Display) -> String {
@@ -196,5 +205,23 @@ mod tests {
             runs.insert(info("run-3", "chat-1")).err().unwrap(),
             "This chat already has a running Codex turn."
         );
+    }
+
+    #[test]
+    fn returns_only_active_runs_for_update_shutdown() {
+        let runs = CodexRuns::default();
+        let completed = runs.insert(info("run-1", "chat-1")).unwrap();
+        completed
+            .finish(CodexRunOutcome::Completed(CodexTextResult {
+                thread_id: "thread-1".to_string(),
+            }))
+            .unwrap();
+        runs.finish("run-1").unwrap();
+        runs.insert(info("run-2", "chat-2")).unwrap();
+
+        let active = runs.active_runs().unwrap();
+
+        assert_eq!(active.len(), 1);
+        assert_eq!(active[0].run_id, "run-2");
     }
 }

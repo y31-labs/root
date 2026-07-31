@@ -1,0 +1,98 @@
+name: Release Austi
+
+on:
+  push:
+    branches: [release]
+    paths:
+      - .github/workflows/austi-release.yml
+      - .node-version
+      - apps/austi/**
+      - packages/ui/**
+      - bun.lock
+      - package.json
+      - rust-toolchain.toml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: austi-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build Apple Silicon release
+    runs-on: blacksmith-6vcpu-macos-15
+    timeout-minutes: 60
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '13.0'
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Set up Bun
+        id: bun
+        uses: oven-sh/setup-bun@ecf28ddc73e819eb6fa29df6b34ef8921c743461 # v2.1.3
+        with:
+          bun-version-file: package.json
+
+      - name: Cache Bun packages
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-${{ runner.arch }}-bun-${{ steps.bun.outputs.bun-version }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-bun-
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
+        with:
+          cache-workspaces: apps/austi/src-tauri -> target
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate release version
+        shell: bash
+        run: |
+          app_version="$(bun -e 'console.log((await Bun.file("apps/austi/src-tauri/tauri.conf.json").json()).version)')"
+          cargo_version="$(sed -n '/^\[package\]/,/^\[/s/^version = "\([^"]*\)"/\1/p' apps/austi/src-tauri/Cargo.toml)"
+          if [[ "$app_version" != "$cargo_version" ]]; then
+            echo "tauri.conf.json ($app_version) and Cargo.toml ($cargo_version) versions differ"
+            exit 1
+          fi
+
+      - name: Test frontend
+        run: bun run --filter austi test
+
+      - name: Check Rust formatting
+        run: bun run --filter austi check:format:rust
+
+      - name: Lint Rust
+        run: bun run --filter austi lint:rust
+
+      - name: Test Rust
+        run: bun run --filter austi test:rust
+
+      - name: Build signed updater and publish release
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # action-v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/austi
+          tauriScript: bun tauri
+          tagName: austi-v__VERSION__
+          releaseName: Austi v__VERSION__
+          releaseBody: Download the DMG to install Austi. Existing installations update from this release after it is published.
+          releaseDraft: false
+          prerelease: false
+          generateReleaseNotes: true
+          uploadUpdaterJson: true

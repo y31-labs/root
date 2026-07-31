@@ -36,7 +36,9 @@ fn open_logs_folder(state: tauri::State<'_, AppState>) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
@@ -118,6 +120,7 @@ pub fn run() {
             chat_history::save_chat,
             codex::integration::codex_integration_status,
             codex::integration::connect_codex,
+            codex::run_commands::active_codex_task_count,
             codex::title::generate_chat_title,
             codex::run_commands::interrupt_codex_turn,
             codex::run_commands::get_codex_run,
@@ -131,6 +134,7 @@ pub fn run() {
             generated_apps::store::save_generated_app_state,
             open_logs_folder,
             codex::run_commands::resolve_codex_approval,
+            codex::run_commands::stop_active_codex_tasks,
             codex::turn::start_codex_text,
             codex::run_commands::stream_codex_run
         ])

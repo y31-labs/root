@@ -15,6 +15,7 @@ import {
 import { Spinner } from '@workspace/ui/components/ui/spinner';
 import { AppWindow, Archive, Settings, SquarePen } from 'lucide-react';
 
+import { AppUpdateNotice } from '#/components/app-update-notice';
 import { ChatHistoryTitle } from '#/components/navigation/chat-history-title';
 import { APP_NAME } from '#/lib/app-config';
 import { useChatHistory } from '#/providers/chat-history-provider';
@@ -54,7 +55,7 @@ export function AppSidebar() {
     <Sidebar collapsible='icon'>
       <SidebarHeader className='pt-12'>
         <SidebarMenu>
-          <SidebarMenuItem>
+          <SidebarMenuItem className='flex items-center gap-2'>
             <SidebarMenuButton tooltip={APP_NAME} render={<Link to='/' />}>
               <img src='/austi-logo.svg' alt='' aria-hidden='true' className='h-4 w-auto' />
               <span className='font-semibold'>{APP_NAME}</span>
@@ -136,11 +137,12 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
+          <SidebarMenuItem className='flex items-center gap-2'>
             <SidebarMenuButton tooltip='Settings' render={<Link to='/settings' />}>
               <Settings />
               <span>Settings</span>
             </SidebarMenuButton>
+            <AppUpdateNotice />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

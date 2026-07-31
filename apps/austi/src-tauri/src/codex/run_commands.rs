@@ -1,6 +1,7 @@
 use serde_json::{json, Value};
 use tauri::{ipc::Channel, State};
 use tokio::sync::broadcast;
+use tokio::time::{sleep, timeout, Duration};
 
 use super::{
     runs::CodexRunOutcome,
@@ -8,6 +9,31 @@ use super::{
     types::{CodexApprovalDecision, CodexRunStatus, CodexStreamEvent, CodexTextResult},
 };
 use crate::AppState;
+
+const UPDATE_TASK_STOP_TIMEOUT: Duration = Duration::from_secs(15);
+const UPDATE_TASK_STOP_POLL_INTERVAL: Duration = Duration::from_millis(50);
+
+#[tauri::command]
+pub(crate) fn active_codex_task_count(state: State<'_, AppState>) -> Result<usize, String> {
+    state.codex_runs.active_runs().map(|runs| runs.len())
+}
+
+#[tauri::command]
+pub(crate) async fn stop_active_codex_tasks(state: State<'_, AppState>) -> Result<(), String> {
+    for run in state.codex_runs.active_runs()? {
+        let _ = interrupt_turn(&state, &run.thread_id, &run.turn_id).await;
+    }
+
+    timeout(UPDATE_TASK_STOP_TIMEOUT, async {
+        while state.codex_runs.has_active() {
+            sleep(UPDATE_TASK_STOP_POLL_INTERVAL).await;
+        }
+    })
+    .await
+    .map_err(|_| {
+        "Codex tasks did not stop in time. Wait for them to finish and try again.".to_string()
+    })
+}
 
 #[tauri::command]
 pub(crate) fn get_codex_run(

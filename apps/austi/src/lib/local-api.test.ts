@@ -48,6 +48,7 @@ describe('local API', () => {
     const onEvent = vi.fn();
     const api = createLocalApi(invoke, makeChannel);
 
+    await api.activeCodexTaskCount();
     await api.codexIntegrationStatus();
     await api.connectCodex();
     await api.listModels();
@@ -75,10 +76,11 @@ describe('local API', () => {
     await api.streamCodexRun('run-1', onEvent);
     await api.getCodexRun('chat-1');
 
-    expect(invoke).toHaveBeenNthCalledWith(1, 'codex_integration_status', undefined);
-    expect(invoke).toHaveBeenNthCalledWith(2, 'connect_codex', undefined);
-    expect(invoke).toHaveBeenNthCalledWith(3, 'list_codex_models', undefined);
-    expect(invoke).toHaveBeenNthCalledWith(4, 'generate_chat_title', {
+    expect(invoke).toHaveBeenNthCalledWith(1, 'active_codex_task_count', undefined);
+    expect(invoke).toHaveBeenNthCalledWith(2, 'codex_integration_status', undefined);
+    expect(invoke).toHaveBeenNthCalledWith(3, 'connect_codex', undefined);
+    expect(invoke).toHaveBeenNthCalledWith(4, 'list_codex_models', undefined);
+    expect(invoke).toHaveBeenNthCalledWith(5, 'generate_chat_title', {
       input: {
         firstPrompt: 'Draft an intake flow',
         filenames: ['brief.pdf'],
@@ -90,7 +92,7 @@ describe('local API', () => {
       },
     });
     expect(makeChannel).toHaveBeenCalledWith(onEvent);
-    expect(invoke).toHaveBeenNthCalledWith(5, 'start_codex_text', {
+    expect(invoke).toHaveBeenNthCalledWith(6, 'start_codex_text', {
       input: {
         chatId: 'chat-1',
         assistantMessageId: 'message-2',
@@ -112,20 +114,23 @@ describe('local API', () => {
         permissionMode: 'workspace-write',
       },
     });
-    expect(invoke).toHaveBeenNthCalledWith(6, 'stream_codex_run', {
+    expect(invoke).toHaveBeenNthCalledWith(7, 'stream_codex_run', {
       runId: 'run-1',
       onEvent: channel,
     });
-    expect(invoke).toHaveBeenNthCalledWith(7, 'get_codex_run', { chatId: 'chat-1' });
+    expect(invoke).toHaveBeenNthCalledWith(8, 'get_codex_run', { chatId: 'chat-1' });
 
     await api.interruptCodexTurn('thread-1', 'turn-1');
-    expect(invoke).toHaveBeenNthCalledWith(8, 'interrupt_codex_turn', {
+    expect(invoke).toHaveBeenNthCalledWith(9, 'interrupt_codex_turn', {
       threadId: 'thread-1',
       turnId: 'turn-1',
     });
 
+    await api.stopActiveCodexTasks();
+    expect(invoke).toHaveBeenNthCalledWith(10, 'stop_active_codex_tasks', undefined);
+
     await api.resolveCodexApproval(42, 'item/commandExecution/requestApproval', 'acceptForSession');
-    expect(invoke).toHaveBeenNthCalledWith(9, 'resolve_codex_approval', {
+    expect(invoke).toHaveBeenNthCalledWith(11, 'resolve_codex_approval', {
       requestId: 42,
       method: 'item/commandExecution/requestApproval',
       decision: 'acceptForSession',
