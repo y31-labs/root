@@ -11,3 +11,7 @@ This directory documents the product principles that should guide Austi's design
 These principles are decision criteria, not marketing copy. When implementation choices conflict,
 prefer the option that better preserves durable user value, local ownership, explicit authority,
 and deterministic execution.
+
+Marketing and landing-page direction:
+
+- [Landing concept](landing-concept.md)
