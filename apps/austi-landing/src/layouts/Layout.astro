@@ -19,8 +19,8 @@ const socialImage = new URL('/og.png', site);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#070709" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="color-scheme" content="dark light" />
 
     <title>{title}</title>
     <link rel="canonical" href={canonical} />
@@ -34,13 +34,21 @@ const socialImage = new URL('/og.png', site);
     <meta property="og:image" content={socialImage} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Austi — describe the work, keep the app" />
+    <meta property="og:image:alt" content="Austi — an app that’ll make you question your job" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImage} />
   </head>
   <body>
+    <!--
+      THESIS: Austi absorbs recurring work without absorbing the user's judgment; the page refuses the cheerful app-generator hero and opens like an after-hours performance review.
+      OWN-WORLD: Matte near-black office fields, fluorescent warm paper, payroll red, and acid status yellow; enormous compressed type surrounds precise native-software evidence and ruled workplace documents.
+      STORY: Feel the job joke, see one request become a durable Launch planner, prove preserved revisions and narrow authority, then download the macOS preview.
+      FIRST VIEWPORT: A thin night header sits above a huge left-aligned promise; a near-life-size finished Launch planner rises beneath it as the largest object, with request provenance secondary and the primary action beside the promise.
+      FORM: Night Shift Performance Review, grounded direction 4, seed 1b578f16.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+    -->
     <a class="skip-link" href="#main-content">Skip to content</a>
     <slot />
   </body>

@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-01T20:31:48Z",
+  "title": "Design System: Austi",
+  "extensions": {
+    "colorMeta": {
+      "night-office": { "role": "neutral", "displayName": "Night Office", "canonical": "#0a0a0a", "tonalRamp": ["oklch(15% 0 89.9)", "oklch(27% 0 89.9)", "oklch(39% 0 89.9)", "oklch(51% 0 89.9)", "oklch(63% 0 89.9)", "oklch(75% 0 89.9)", "oklch(87% 0 89.9)", "oklch(95% 0 89.9)"] },
+      "paper": { "role": "neutral", "displayName": "Fluorescent Paper", "canonical": "#eeece5", "tonalRamp": ["oklch(15% 0.010 93.6)", "oklch(27% 0.010 93.6)", "oklch(39% 0.010 93.6)", "oklch(51% 0.010 93.6)", "oklch(63% 0.010 93.6)", "oklch(75% 0.010 93.6)", "oklch(87% 0.010 93.6)", "oklch(95% 0.010 93.6)"] },
+      "paper-bright": { "role": "neutral", "displayName": "Bright Paper", "canonical": "#f8f6ef", "tonalRamp": ["oklch(15% 0.010 93.6)", "oklch(27% 0.010 93.6)", "oklch(39% 0.010 93.6)", "oklch(51% 0.010 93.6)", "oklch(63% 0.010 93.6)", "oklch(75% 0.010 93.6)", "oklch(87% 0.010 93.6)", "oklch(95% 0.010 93.6)"] },
+      "paper-recessed": { "role": "neutral", "displayName": "Recessed Paper", "canonical": "#e7e4dc", "tonalRamp": ["oklch(15% 0.011 89.7)", "oklch(27% 0.011 89.7)", "oklch(39% 0.011 89.7)", "oklch(51% 0.011 89.7)", "oklch(63% 0.011 89.7)", "oklch(75% 0.011 89.7)", "oklch(87% 0.011 89.7)", "oklch(95% 0.011 89.7)"] },
+      "ink": { "role": "neutral", "displayName": "Document Ink", "canonical": "#11110f", "tonalRamp": ["oklch(15% 0.004 106.8)", "oklch(27% 0.004 106.8)", "oklch(39% 0.004 106.8)", "oklch(51% 0.004 106.8)", "oklch(63% 0.004 106.8)", "oklch(75% 0.004 106.8)", "oklch(87% 0.004 106.8)", "oklch(95% 0.004 106.8)"] },
+      "chalk": { "role": "neutral", "displayName": "Night Chalk", "canonical": "#f6f3eb", "tonalRamp": ["oklch(15% 0.011 89.7)", "oklch(27% 0.011 89.7)", "oklch(39% 0.011 89.7)", "oklch(51% 0.011 89.7)", "oklch(63% 0.011 89.7)", "oklch(75% 0.011 89.7)", "oklch(87% 0.011 89.7)", "oklch(95% 0.011 89.7)"] },
+      "muted-night": { "role": "neutral", "displayName": "Muted Night", "canonical": "#aaa8a1", "tonalRamp": ["oklch(15% 0.010 93.6)", "oklch(27% 0.010 93.6)", "oklch(39% 0.010 93.6)", "oklch(51% 0.010 93.6)", "oklch(63% 0.010 93.6)", "oklch(75% 0.010 93.6)", "oklch(87% 0.010 93.6)", "oklch(95% 0.010 93.6)"] },
+      "muted-paper": { "role": "neutral", "displayName": "Muted Paper", "canonical": "#66645f", "tonalRamp": ["oklch(15% 0.008 88.7)", "oklch(27% 0.008 88.7)", "oklch(39% 0.008 88.7)", "oklch(51% 0.008 88.7)", "oklch(63% 0.008 88.7)", "oklch(75% 0.008 88.7)", "oklch(87% 0.008 88.7)", "oklch(95% 0.008 88.7)"] },
+      "line-night": { "role": "neutral", "displayName": "Night Rule", "canonical": "rgb(246 243 235 / 15%)", "tonalRamp": ["oklch(15% 0.011 89.7 / 15%)", "oklch(27% 0.011 89.7 / 15%)", "oklch(39% 0.011 89.7 / 15%)", "oklch(51% 0.011 89.7 / 15%)", "oklch(63% 0.011 89.7 / 15%)", "oklch(75% 0.011 89.7 / 15%)", "oklch(87% 0.011 89.7 / 15%)", "oklch(95% 0.011 89.7 / 15%)"] },
+      "line-paper": { "role": "neutral", "displayName": "Paper Rule", "canonical": "rgb(17 17 15 / 18%)", "tonalRamp": ["oklch(15% 0.004 106.8 / 18%)", "oklch(27% 0.004 106.8 / 18%)", "oklch(39% 0.004 106.8 / 18%)", "oklch(51% 0.004 106.8 / 18%)", "oklch(63% 0.004 106.8 / 18%)", "oklch(75% 0.004 106.8 / 18%)", "oklch(87% 0.004 106.8 / 18%)", "oklch(95% 0.004 106.8 / 18%)"] },
+      "payroll": { "role": "primary", "displayName": "Payroll Red", "canonical": "#ff4f42", "tonalRamp": ["oklch(15% 0.214 28.4)", "oklch(27% 0.214 28.4)", "oklch(39% 0.214 28.4)", "oklch(51% 0.214 28.4)", "oklch(63% 0.214 28.4)", "oklch(75% 0.214 28.4)", "oklch(87% 0.214 28.4)", "oklch(95% 0.214 28.4)"] },
+      "payroll-hover": { "role": "primary", "displayName": "Payroll Hover", "canonical": "#ff655b", "tonalRamp": ["oklch(15% 0.190 26.8)", "oklch(27% 0.190 26.8)", "oklch(39% 0.190 26.8)", "oklch(51% 0.190 26.8)", "oklch(63% 0.190 26.8)", "oklch(75% 0.190 26.8)", "oklch(87% 0.190 26.8)", "oklch(95% 0.190 26.8)"] },
+      "payroll-paper": { "role": "primary", "displayName": "Payroll Paper", "canonical": "#c2352d", "tonalRamp": ["oklch(15% 0.179 28)", "oklch(27% 0.179 28)", "oklch(39% 0.179 28)", "oklch(51% 0.179 28)", "oklch(63% 0.179 28)", "oklch(75% 0.179 28)", "oklch(87% 0.179 28)", "oklch(95% 0.179 28)"] },
+      "payroll-ink": { "role": "primary", "displayName": "Payroll Ink", "canonical": "#130604", "tonalRamp": ["oklch(15% 0.026 33.5)", "oklch(27% 0.026 33.5)", "oklch(39% 0.026 33.5)", "oklch(51% 0.026 33.5)", "oklch(63% 0.026 33.5)", "oklch(75% 0.026 33.5)", "oklch(87% 0.026 33.5)", "oklch(95% 0.026 33.5)"] },
+      "signal": { "role": "secondary", "displayName": "Acid Status", "canonical": "#dfff57", "tonalRamp": ["oklch(15% 0.191 119.5)", "oklch(27% 0.191 119.5)", "oklch(39% 0.191 119.5)", "oklch(51% 0.191 119.5)", "oklch(63% 0.191 119.5)", "oklch(75% 0.191 119.5)", "oklch(87% 0.191 119.5)", "oklch(95% 0.191 119.5)"] },
+      "local": { "role": "tertiary", "displayName": "Local Green", "canonical": "#278a51", "tonalRamp": ["oklch(15% 0.126 153.6)", "oklch(27% 0.126 153.6)", "oklch(39% 0.126 153.6)", "oklch(51% 0.126 153.6)", "oklch(63% 0.126 153.6)", "oklch(75% 0.126 153.6)", "oklch(87% 0.126 153.6)", "oklch(95% 0.126 153.6)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Compressed Display", "purpose": "The largest provocative brand statement." },
+      "headline": { "displayName": "Section Headline", "purpose": "Section theses and closing statements." },
+      "title": { "displayName": "Work Title", "purpose": "Authoring scenes, document prompts, and important software headings." },
+      "body": { "displayName": "Body", "purpose": "Foundational reading and explanatory copy." },
+      "label": { "displayName": "Operational Label", "purpose": "Actions, metadata, table state, and control descriptions." }
+    },
+    "shadows": [
+      { "name": "hero-software", "value": "0 2.8rem 6rem rgb(0 0 0 / 36%)", "purpose": "The largest software artifact floating over a night field." },
+      { "name": "authority-sheet", "value": "0 3rem 7rem rgb(0 0 0 / 45%)", "purpose": "The permission decision floating over a night field." },
+      { "name": "payroll-hover", "value": "0 0.75rem 1.8rem rgb(255 79 66 / 18%)", "purpose": "Short red-tinged lift for a hovered primary action." }
+    ],
+    "motion": [
+      { "name": "state-fast", "value": "160ms ease-out", "purpose": "Links, actions, stage selection, and permission-control state." },
+      { "name": "scene-enter", "value": "opacity 280ms ease-out, transform 480ms cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "A short upward reveal for the active authoring scene." },
+      { "name": "app-settle", "value": "500ms cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Settles the generated app between stages." },
+      { "name": "curtain-build", "value": "620ms cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Constructs the app in four staggered vertical strips." },
+      { "name": "rows-in", "value": "520ms cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Reveals built table rows." },
+      { "name": "stage-progress", "value": "5200ms linear", "purpose": "Times each automatic Ask, Build, Open, Keep stage." },
+      { "name": "reduced-motion", "value": "0.01ms", "purpose": "Collapses all animation and transition duration when reduced motion is requested." }
+    ],
+    "breakpoints": [
+      { "name": "evidence-compress", "value": "1180px" },
+      { "name": "stage-stack", "value": "900px" },
+      { "name": "phone", "value": "640px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Download",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The payroll-red download action used in the header, opening, and close.",
+      "html": "<a class=\"ds-button-primary\" href=\"#\">Download the preview<svg viewBox=\"0 0 18 18\" aria-hidden=\"true\"><path d=\"M9 2.5v9m0 0 3.5-3.5M9 11.5 5.5 8M3.5 15h11\"></path></svg></a>",
+      "css": ".ds-button-primary{display:inline-flex;min-height:3rem;padding-inline:1rem;align-items:center;justify-content:center;gap:.75rem;border:1px solid transparent;border-radius:.65rem;background:var(--payroll);color:#130604;font-family:var(--font-body);font-size:.78rem;font-weight:720;text-decoration:none;transition:background 160ms ease-out,box-shadow 160ms ease-out,transform 160ms ease-out}.ds-button-primary:hover{background:#ff655b;box-shadow:0 .75rem 1.8rem rgb(255 79 66 / 18%);transform:translateY(-2px)}.ds-button-primary:focus-visible{outline:2px solid var(--payroll);outline-offset:4px}.ds-button-primary svg{width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}"
+    },
+    {
+      "name": "Product Stage Controller",
+      "kind": "nav",
+      "refersTo": "stage-item-active",
+      "description": "The ruled four-step control for Ask, Build, Open, and Keep.",
+      "html": "<nav class=\"ds-stage\" aria-label=\"Product stages\"><button class=\"ds-stage-item ds-active\"><strong>Ask</strong><small>Start with what you want done</small></button><button class=\"ds-stage-item\"><strong>Build</strong><small>Watch the idea find its interface</small></button><button class=\"ds-stage-item\"><strong>Open</strong><small>Skip the recap. Open the app.</small></button><button class=\"ds-stage-item\"><strong>Keep</strong><small>Change it without starting over</small></button></nav>",
+      "css": ".ds-stage{display:grid;overflow-x:auto;border-block:1px solid var(--line-paper);grid-template-columns:repeat(4,minmax(10.5rem,1fr));font-family:var(--font-body)}.ds-stage-item{position:relative;display:flex;min-height:7.6rem;padding:1.2rem clamp(.9rem,2vw,2rem);align-items:flex-start;flex-direction:column;gap:.45rem;border:0;border-right:1px solid var(--line-paper);background:transparent;color:var(--muted-paper);cursor:pointer;text-align:left;transition:background 160ms ease-out,color 160ms ease-out}.ds-stage-item:last-child{border-right:0}.ds-stage-item:hover{background:rgb(17 17 15 / 5%);color:var(--ink)}.ds-stage-item:focus-visible{outline:2px solid var(--payroll);outline-offset:-4px}.ds-stage-item.ds-active{background:var(--ink);color:var(--chalk)}.ds-stage-item.ds-active:after{position:absolute;right:0;bottom:0;left:0;height:3px;background:var(--payroll);content:\"\"}.ds-stage-item strong{font-family:var(--font-display);font-size:1.7rem;letter-spacing:-.035em}.ds-stage-item small{font-size:.62rem;opacity:.7}"
+    },
+    {
+      "name": "Authoring Request Card",
+      "kind": "input",
+      "refersTo": "request-card",
+      "description": "Illustrative natural-language provenance, presented as evidence rather than a live field.",
+      "html": "<div class=\"ds-request-card\"><span>Build a weekly launch planner that tracks owners, dates, and blockers.</span><i aria-hidden=\"true\"><svg viewBox=\"0 0 18 18\"><path d=\"M9 14V4m0 0L5 8m4-4 4 4\"></path></svg></i></div>",
+      "css": ".ds-request-card{position:relative;display:flex;min-height:9.2rem;padding:1.2rem 3.5rem 2.5rem 1.2rem;align-items:flex-start;border:1px solid var(--line-paper);border-radius:.65rem;background:var(--paper);color:var(--ink);font-family:var(--font-display);font-size:clamp(1.15rem,1.7vw,1.55rem);letter-spacing:-.03em;line-height:1.28}.ds-request-card i{position:absolute;right:.75rem;bottom:.75rem;display:grid;width:2.25rem;height:2.25rem;place-items:center;border-radius:50%;background:var(--payroll);color:var(--ink)}.ds-request-card svg{width:1rem;height:1rem;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}"
+    },
+    {
+      "name": "Planner Window",
+      "kind": "card",
+      "refersTo": "planner-window",
+      "description": "Bright-paper native software with compact chrome, ruled work, and local state.",
+      "html": "<article class=\"ds-planner\"><header><span class=\"ds-traffic\"><i></i><i></i><i></i></span><strong>Launch planner</strong><span class=\"ds-saved\"><i></i>Saved locally</span></header><main><h3>This week</h3><div class=\"ds-row\"><span>Landing page</span><small>In progress</small></div><div class=\"ds-row\"><span>Email campaign</span><small>In progress</small></div><div class=\"ds-row\"><span>Launch video</span><small>Planned</small></div></main></article>",
+      "css": ".ds-planner{overflow:hidden;border-radius:.8rem;background:var(--paper-bright);box-shadow:0 2.8rem 6rem rgb(0 0 0 / 36%);color:var(--ink);font-family:var(--font-body)}.ds-planner>header{display:grid;min-height:2.9rem;padding-inline:1rem;grid-template-columns:1fr 1fr 1fr;align-items:center;border-bottom:1px solid var(--line-paper);color:var(--muted-paper);font-size:.61rem}.ds-planner>header>strong{justify-self:center;color:var(--ink)}.ds-traffic{display:flex;gap:.35rem}.ds-traffic i{width:.52rem;height:.52rem;border:1px solid rgb(17 17 15 / 35%);border-radius:50%}.ds-saved{display:inline-flex;justify-self:end;align-items:center;gap:.4rem}.ds-saved i{width:.42rem;height:.42rem;border-radius:50%;background:#278a51}.ds-planner main{padding:1.5rem}.ds-planner h3{margin:0 0 1.2rem;font-family:var(--font-display);font-size:2rem;letter-spacing:-.04em}.ds-row{display:flex;min-height:3.2rem;align-items:center;justify-content:space-between;border-top:1px solid var(--line-paper);font-size:.68rem}.ds-row small{color:var(--muted-paper);font-size:.58rem}"
+    },
+    {
+      "name": "Acid Status Chip",
+      "kind": "chip",
+      "refersTo": "status-chip",
+      "description": "A rare acid marker for changed data or one-action authority.",
+      "html": "<span class=\"ds-status-chip\">One action</span>",
+      "css": ".ds-status-chip{display:inline-flex;width:fit-content;padding:.25rem .45rem;border-radius:999px;background:var(--signal);color:var(--ink);font-family:var(--font-body);font-size:.56rem;font-weight:720}"
+    },
+    {
+      "name": "Revision Ledger",
+      "kind": "custom",
+      "refersTo": "planner-window",
+      "description": "A ruled before-and-after document that isolates one changed fact.",
+      "html": "<article class=\"ds-ledger\"><header><span>Launch planner</span><strong>Revision 2</strong></header><div class=\"ds-ledger-row\"><span>Landing page</span><span>May 12</span><small>Preserved</small></div><div class=\"ds-ledger-row ds-changed\"><span>Launch video</span><span><del>May 15</del><ins>May 17</ins></span><strong>Changed</strong></div><footer><span><i></i>Revision 2 published</span><span>6 rows preserved</span></footer></article>",
+      "css": ".ds-ledger{padding:1.5rem;background:var(--paper-bright);color:var(--ink);font-family:var(--font-body)}.ds-ledger header,.ds-ledger footer{display:flex;min-height:4rem;align-items:center;justify-content:space-between;color:var(--muted-paper);font-size:.68rem}.ds-ledger header{border-bottom:1px solid var(--line-paper)}.ds-ledger-row{display:grid;min-height:3.6rem;padding-inline:.5rem;grid-template-columns:1.3fr .7fr .55fr;align-items:center;border-bottom:1px solid var(--line-paper);font-size:.72rem}.ds-ledger-row>span:nth-child(2),.ds-ledger-row small{color:var(--muted-paper)}.ds-changed{background:rgb(223 255 87 / 42%)}.ds-changed ins{margin-left:.5rem;color:#237245;text-decoration:none;font-weight:720}.ds-changed strong{width:fit-content;padding:.25rem .45rem;border-radius:999px;background:var(--signal);font-size:.55rem}.ds-ledger footer i{display:inline-block;width:.42rem;height:.42rem;margin-right:.5rem;border-radius:50%;background:#278a51}"
+    },
+    {
+      "name": "Permission Sheet",
+      "kind": "custom",
+      "refersTo": "permission-sheet",
+      "description": "A native decision surface that exposes narrow authority before outside access.",
+      "html": "<article class=\"ds-permission\"><header><span class=\"ds-glyph\">L</span><span><small>Illustrative permission request</small><strong>Launch planner</strong><em>is requesting outside access</em></span><b>One action</b></header><dl><div><dt>Operation</dt><dd>Create one project issue</dd></div><div><dt>Data</dt><dd>Title, owner, due date</dd></div><div><dt>Duration</dt><dd>This action only</dd></div></dl><div class=\"ds-actions\"><button>Keep local</button><button>Allow this action</button></div></article>",
+      "css": ".ds-permission{overflow:hidden;border-radius:.85rem;background:var(--paper-bright);box-shadow:0 3rem 7rem rgb(0 0 0 / 45%);color:var(--ink);font-family:var(--font-body)}.ds-permission>header{display:grid;min-height:6.5rem;padding:1.2rem;grid-template-columns:auto 1fr auto;align-items:center;border-bottom:1px solid var(--line-paper);gap:.85rem}.ds-glyph{display:grid;width:2.2rem;height:2.2rem;place-items:center;border-radius:.5rem;background:var(--payroll);color:#130604;font-weight:800}.ds-permission header>span:nth-child(2){display:flex;flex-direction:column}.ds-permission header small{color:var(--payroll-dark);font-size:.52rem;font-weight:720}.ds-permission header strong{font-family:var(--font-display);font-size:1.15rem}.ds-permission header em{color:var(--muted-paper);font-size:.62rem;font-style:normal}.ds-permission header b{padding:.3rem .5rem;border-radius:999px;background:var(--signal);font-size:.56rem}.ds-permission dl{margin:0;padding-inline:1.2rem}.ds-permission dl div{display:grid;min-height:4.2rem;grid-template-columns:.65fr 1.35fr;align-items:center;border-bottom:1px solid var(--line-paper);gap:1rem}.ds-permission dt{color:var(--muted-paper);font-size:.62rem}.ds-permission dd{margin:0;font-size:.72rem;font-weight:610}.ds-actions{display:grid;padding:1.2rem;grid-template-columns:1fr 1fr;gap:.65rem}.ds-actions button{min-height:3rem;border:1px solid var(--line-paper);border-radius:.55rem;background:transparent;color:var(--ink);font-family:var(--font-body);font-size:.68rem;font-weight:680;transition:background 160ms ease-out,color 160ms ease-out}.ds-actions button:hover{background:#e3dfd4}.ds-actions button:focus-visible{outline:2px solid var(--payroll);outline-offset:4px}.ds-actions button:last-child{border-color:var(--ink);background:var(--ink);color:var(--chalk)}.ds-actions button:last-child:hover{background:var(--payroll);color:var(--ink)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Night Shift Performance Review",
+    "overview": "Austi is after-hours workplace software: matte, dry, exact, and a little confrontational. Near-black office fields and fluorescent warm paper alternate like a darkened floor and the documents left on its desks. Enormous compressed headlines carry the joke; ruled native-software evidence carries the proof.\n\nThe system makes intelligence tangible without making it theatrical. It surrounds dense, credible interfaces with severe whitespace, uses payroll red to mark agency and acid yellow to mark exceptional state, and keeps the rest in disciplined ink, chalk, and paper. The visual anti-reference is the cheerful app-generator hero: no optimistic gradient cloud, decorative AI glow, or friendly card mosaic.",
+    "keyCharacteristics": [
+      "Matte near-black fields alternating with fluorescent warm paper.",
+      "Oversized, compressed Bricolage statements beside precise Inter evidence.",
+      "Payroll red for action, emphasis, and the one human interruption.",
+      "Acid yellow used only for exceptional state or a changed fact.",
+      "Native-software windows and workplace documents built from ruled rows.",
+      "Sparse marketing space surrounding dense, credible operational detail."
+    ],
+    "rules": [
+      { "name": "The Two Payroll Reds Rule", "body": "Use bright Payroll Red for fills and short emphasis on night; use Payroll Paper for text on warm paper.", "section": "colors" },
+      { "name": "The Acid Exception Rule", "body": "Acid Status marks a consequential exception or changed fact. Never spend it on decoration, section atmosphere, or routine success.", "section": "colors" },
+      { "name": "The Field Owns the Contrast Rule", "body": "Night uses chalk and Muted Night; paper uses ink and Muted Paper. Do not carry a muted token across fields by habit.", "section": "colors" },
+      { "name": "The Two Voices Rule", "body": "Bricolage delivers judgment and names the work; Inter records what happened, who owns it, and what the software will do.", "section": "typography" },
+      { "name": "The Compression Does the Shouting Rule", "body": "Build impact with scale, width, tight leading, and negative tracking—not with ultra-bold weight or all caps.", "section": "typography" },
+      { "name": "The Office-to-Document Rule", "body": "Large fields create atmosphere; rules, rows, and bounded documents carry information. Do not replace that relationship with a uniform grid of panels.", "section": "layout" },
+      { "name": "The Evidence Gets the Room Rule", "body": "When text and software share a row, the software is the larger object. At narrow widths, stack the proof without shrinking it into an unreadable thumbnail.", "section": "layout" },
+      { "name": "The Earned Elevation Rule", "body": "If a surface is not floating over another field, awaiting a consequential decision, or reacting to direct input, it stays shadowless.", "section": "elevation" },
+      { "name": "The Rounded Object Rule", "body": "Round a control, app window, or status token because it is a discrete object. Never round the page into a collection of interchangeable cards.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do alternate matte Night Office and fluorescent paper fields to establish the world.",
+      "Do place enormous compressed statements beside or above near-life-size software evidence.",
+      "Do use Payroll Red for action and human emphasis, Payroll Paper for readable red text on paper, and Acid Status only for exceptional state.",
+      "Do organize software, revisions, and authority with rows, hairlines, and explicit labels.",
+      "Do keep operational detail compact while the surrounding composition stays sparse.",
+      "Do preserve semantic controls, visible Payroll focus outlines, the mobile stage swap, and the reduced-motion fallback."
+    ],
+    "donts": [
+      "Don't introduce cheerful AI gradients, glassmorphism, ambient neon, or decorative glow.",
+      "Don't turn the page into a grid of rounded marketing cards or floating feature tiles.",
+      "Don't let acid yellow or local green become general-purpose accent colors.",
+      "Don't use the bright Payroll Red for text on warm paper; use Payroll Paper.",
+      "Don't fake impact with all caps, ultra-bold display type, or dense supporting copy.",
+      "Don't rasterize product evidence or make illustrative request cards look editable."
+    ]
+  }
+}
