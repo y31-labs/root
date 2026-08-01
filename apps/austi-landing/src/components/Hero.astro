@@ -1,0 +1,54 @@
+---
+interface Props {
+  downloadUrl: string;
+}
+
+const { downloadUrl } = Astro.props;
+---
+
+<section class="hero dark-field" id="top" aria-label="Austi introduction">
+  <div class="hero-intro">
+    <h1 class="hero-heading">Austi</h1>
+    <p>The app that lets you question your employment.</p>
+    <a class="hero-download" href={downloadUrl} target="_blank" rel="noreferrer">
+      <img
+        class="hero-download-hdr"
+        data-hero-download-hdr
+        src="/images/hero-cta-superwhite.avif"
+        alt=""
+        width="64"
+        height="64"
+        fetchpriority="high"
+        decoding="sync"
+        aria-hidden="true"
+      />
+      <span>Download</span>
+      <svg viewBox="0 0 18 18" aria-hidden="true">
+        <path d="M9 2.5v9m0 0 3.5-3.5M9 11.5 5.5 8M3.5 15h11"></path>
+      </svg>
+    </a>
+  </div>
+  <figure class="hero-scene" aria-label="An empty chair at a messy work table">
+    <img
+      src="/images/hero-empty-desk.png"
+      alt="An empty office chair tucked behind a messy work table"
+      width="1672"
+      height="941"
+      fetchpriority="high"
+    />
+  </figure>
+</section>
+
+<script>
+  const hdrImage = document.querySelector<HTMLImageElement>('[data-hero-download-hdr]');
+
+  if (hdrImage) {
+    const revealHdr = () => hdrImage.classList.add('is-loaded');
+
+    if (hdrImage.complete) {
+      if (hdrImage.naturalWidth > 0) revealHdr();
+    } else {
+      hdrImage.addEventListener('load', revealHdr, { once: true });
+    }
+  }
+</script>
