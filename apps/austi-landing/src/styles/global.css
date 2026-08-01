@@ -539,7 +539,7 @@ button:focus-visible {
   position: fixed;
   top: max(2.25rem, calc(env(safe-area-inset-top) + 1.25rem));
   right: auto;
-  left: 55.5%;
+  left: 50%;
   display: flex;
   width: fit-content;
   max-width: calc(100vw - 2rem);
@@ -623,7 +623,7 @@ button:focus-visible {
   position: absolute;
   z-index: 2;
   top: max(7.5rem, 12.5dvh);
-  left: 55.5%;
+  left: 50%;
   display: flex;
   width: min(100%, 48rem);
   align-items: center;
@@ -694,11 +694,15 @@ button:focus-visible {
   opacity: 0;
   pointer-events: none;
   dynamic-range-limit: no-limit;
-  transition: opacity var(--hero-download-reveal);
 }
 
 .hero-download-hdr.is-loaded {
-  opacity: 1;
+  animation: hero-download-reveal var(--hero-download-reveal) both;
+}
+
+@keyframes hero-download-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .hero-download > span,
