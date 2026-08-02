@@ -36,7 +36,7 @@ const escapeSites = [
 ] as const;
 ---
 
-<Layout {title} {description}>
+<Layout {title} {description} robots="noindex, follow">
   <SiteHeader />
   <main class="download-page paper-field" id="main-content">
     <p class="download-fallback">Download didn't start automatically, <a href={directDownloadUrl} data-download-link>click here</a></p>

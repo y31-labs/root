@@ -114,10 +114,14 @@
   pointer-events: none;
 }
 
+.hero-scene picture,
 .hero-scene img {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.hero-scene img {
   object-fit: cover;
   object-position: center bottom;
   user-select: none;

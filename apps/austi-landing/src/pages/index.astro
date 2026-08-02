@@ -10,9 +10,50 @@ const title = 'Austi — an app that’ll make you question your job';
 const description =
   'Tell Austi what keeps repeating. It builds a private Mac app that takes it from here.';
 const downloadUrl = '/download';
+const siteUrl = 'https://austi.works/';
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': `${siteUrl}#website`,
+      name: 'Austi',
+      url: siteUrl,
+      description,
+      inLanguage: 'en',
+    },
+    {
+      '@type': 'WebPage',
+      '@id': `${siteUrl}#webpage`,
+      url: siteUrl,
+      name: title,
+      description,
+      isPartOf: { '@id': `${siteUrl}#website` },
+      mainEntity: { '@id': `${siteUrl}#software` },
+      inLanguage: 'en',
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': `${siteUrl}#software`,
+      name: 'Austi',
+      url: siteUrl,
+      downloadUrl: `${siteUrl}download`,
+      image: `${siteUrl}og.jpg`,
+      description,
+      operatingSystem: 'macOS',
+      applicationCategory: 'ProductivityApplication',
+      featureList: [
+        'Build local apps from natural-language requests',
+        'Run repeated workflows without another model prompt',
+        'Preserve app state and revisions locally',
+        'Control network and credential access through explicit capabilities',
+      ],
+    },
+  ],
+};
 ---
 
-<Layout {title} {description}>
+<Layout {title} {description} {structuredData}>
   <SiteHeader />
   <main id="main-content">
     <Hero {downloadUrl} />
