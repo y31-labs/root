@@ -136,6 +136,7 @@
 
 @media (max-width: 760px) {
   .download-page { padding-top: 9rem; }
+  .escape-intro h2 { max-width: 100%; font-size: clamp(2rem, 10vw, 3.25rem); }
   .escape-sites { grid-template-columns: 1fr; }
   .escape-sites a { min-height: 13rem; border-right: 0; border-bottom: 1px solid var(--line-paper); }
   .escape-sites a:last-child { border-bottom: 0; }
