@@ -1,0 +1,95 @@
+---
+import SiteHeader from '../components/SiteHeader.astro';
+import Layout from '../layouts/Layout.astro';
+import '../styles/download.css';
+
+const title = 'Download Austi';
+const description = 'Download Austi for macOS, then go look busy.';
+const releasesApiUrl = 'https://api.github.com/repos/y31-labs/root/releases/latest';
+const directDownloadUrl = 'https://github.com/y31-labs/root/releases/download/austi-v0.1.1/Austi_0.1.1_aarch64.dmg';
+
+const escapeSites = [
+  {
+    name: 'Netflix',
+    href: 'https://www.netflix.com/',
+    label: 'Professional development',
+    note: 'Continue your 47-minute break.',
+    mark: 'netflix',
+    logoPath: 'm5.398 0 8.348 23.602c2.346.059 4.856.398 4.856.398L10.113 0H5.398zm8.489 0v9.172l4.715 13.33V0h-4.715zM5.398 1.5V24c1.873-.225 2.81-.312 4.715-.398V14.83L5.398 1.5z',
+  },
+  {
+    name: 'YouTube',
+    href: 'https://www.youtube.com/',
+    label: 'Field research',
+    note: 'One tutorial. Then seventeen reviews.',
+    mark: 'youtube',
+    logoPath: 'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z',
+  },
+  {
+    name: 'X',
+    href: 'https://x.com/',
+    label: 'Situational awareness',
+    note: 'Refresh until morale improves.',
+    mark: 'x',
+    logoPath: 'M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z',
+  },
+] as const;
+---
+
+<Layout {title} {description}>
+  <SiteHeader />
+  <main class="download-page paper-field" id="main-content">
+    <p class="download-fallback">Download didn't start automatically, <a href={directDownloadUrl} data-download-link>click here</a></p>
+
+    <section class="download-intro" aria-labelledby="download-title">
+      <span>That should do it.</span>
+      <h1 id="download-title">All done.<br />Go look busy now</h1>
+    </section>
+
+    <section class="escape-section" aria-labelledby="escape-title">
+      <div class="escape-intro">
+        <h2 id="escape-title">Our <span>professional</span> recommendations.</h2>
+        <p>Three excellent ways to remain visibly occupied.</p>
+      </div>
+
+      <nav class="escape-sites" aria-label="Places to go look busy">
+        {escapeSites.map(({ name, href, label, note, mark, logoPath }) => (
+          <a href={href} target="_blank" rel="noreferrer">
+            <span class={`escape-mark escape-mark-${mark}`} aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d={logoPath}></path></svg>
+            </span>
+            <small>{label}</small>
+            <strong>{name}</strong>
+            <span class="escape-note">
+              {note}
+              <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3.5 9h11M10 4.5 14.5 9 10 13.5"></path></svg>
+            </span>
+          </a>
+        ))}
+      </nav>
+    </section>
+  </main>
+</Layout>
+
+<script is:inline define:vars={{ releasesApiUrl }}>
+  const startDownload = async () => {
+    const downloadLink = document.querySelector('[data-download-link]');
+    if (!downloadLink) return;
+    try {
+      const response = await fetch(releasesApiUrl, { headers: { Accept: 'application/vnd.github+json' } });
+      if (response.ok) {
+        const release = await response.json();
+        const asset = release.assets?.find(({ name, browser_download_url }) =>
+          name.endsWith('_aarch64.dmg') && browser_download_url.startsWith('https://github.com/y31-labs/root/releases/download/')
+        );
+        if (asset) downloadLink.href = asset.browser_download_url;
+      }
+    } catch {
+      // Keep the server-rendered direct download URL.
+    }
+
+    downloadLink.click();
+  };
+
+  window.setTimeout(() => startDownload().catch(() => {}), 450);
+</script>

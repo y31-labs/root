@@ -1,12 +1,14 @@
 ---
 import './SiteHeader.css';
+
+const onHomePage = Astro.url.pathname === '/';
 ---
 
 <header class="site-header">
-  <a class="header-brand" href="#top" aria-label="Austi home">
+  <a class="header-brand" href={onHomePage ? '#top' : '/'} aria-label="Austi home">
     <img src="/austi-logo.svg" alt="" width="22" height="24" />
   </a>
   <nav aria-label="Main navigation">
-    <a href="#how-it-works">How it works</a>
+    <a href={onHomePage ? '#how-it-works' : '/#how-it-works'}>How it works</a>
   </nav>
 </header>
