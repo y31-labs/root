@@ -26,6 +26,8 @@
 .section-heading-centered h2 { max-width: 16ch; }
 
 .section-heading-centered p { margin-top: var(--size-xl); }
+.section-heading-dark .section-heading-highlight { color: var(--color-accent); }
+.section-heading-paper .section-heading-highlight { color: var(--color-accent-ink); }
 
 .section-heading h2 {
   max-width: 13ch;
