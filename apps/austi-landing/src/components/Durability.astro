@@ -1,0 +1,43 @@
+---
+import SectionHeading from './SectionHeading.astro';
+import './Durability.css';
+---
+
+<section class="durability paper-field" aria-labelledby="durability-title">
+  <SectionHeading
+    id="durability-title"
+    title="Gets better without forgetting."
+    copy="Return to the authoring conversation when the workflow changes. Austi publishes a new local revision and preserves the work that still belongs."
+  />
+  <div class="revision-stage" data-revision-state="before">
+    <div class="revision-request"><span>One small change</span><blockquote>“Move the launch video to Friday. Keep everything else as it is.”</blockquote><button type="button" data-revision-toggle aria-pressed="false"><span>Publish revision</span><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 14V4m0 0L5 8m4-4 4 4"></path></svg></button></div>
+    <div class="revision-table">
+      <header><span>Launch planner</span><strong id="revision-heading">Revision 1</strong></header>
+      <div class="revision-row"><span>Landing page</span><span>May 12</span><span>Preserved</span></div>
+      <div class="revision-row"><span>Email campaign</span><span>May 13</span><span>Preserved</span></div>
+      <div class="revision-row"><span>Product hunt</span><span>May 14</span><span>Preserved</span></div>
+      <div class="revision-row changed-row"><span>Launch video</span><span><del>May 15</del><ins>May 17</ins></span><strong>Changed</strong></div>
+      <div class="revision-row"><span>Blog post</span><span>May 16</span><span>Preserved</span></div>
+      <div class="revision-row"><span>Analytics setup</span><span>May 16</span><span>Preserved</span></div>
+      <footer><span><i></i><strong id="revision-state-label">Ready to publish</strong></span><span>6 rows preserved</span></footer>
+    </div>
+  </div>
+  <p class="durability-tagline">“Not my job,” you say. Finally.</p>
+</section>
+
+<script>
+  const revisionStage = document.querySelector<HTMLElement>('.revision-stage');
+  const revisionToggle = document.querySelector<HTMLButtonElement>('[data-revision-toggle]');
+  const revisionHeading = document.querySelector<HTMLElement>('#revision-heading');
+  const revisionStateLabel = document.querySelector<HTMLElement>('#revision-state-label');
+
+  revisionToggle?.addEventListener('click', () => {
+    if (!revisionStage || !revisionHeading || !revisionStateLabel) return;
+    const revised = revisionStage.dataset.revisionState === 'after';
+    revisionStage.dataset.revisionState = revised ? 'before' : 'after';
+    revisionToggle.setAttribute('aria-pressed', String(!revised));
+    revisionToggle.querySelector('span')!.textContent = revised ? 'Publish revision' : 'Show original';
+    revisionHeading.textContent = revised ? 'Revision 1' : 'Revision 2';
+    revisionStateLabel.textContent = revised ? 'Ready to publish' : 'Revision 2 published · Ready to reopen';
+  });
+</script>

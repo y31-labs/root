@@ -1,0 +1,21 @@
+---
+import './PlannerWindow.css';
+
+interface Props {
+  ariaLabel: string;
+  className?: string;
+  stateId?: string;
+  stateText?: string;
+}
+
+const { ariaLabel, className, stateId, stateText = 'Saved locally' } = Astro.props;
+---
+
+<section class:list={['planner-window', className]} aria-label={ariaLabel}>
+  <header class="window-bar">
+    <div class="traffic-lights" aria-hidden="true"><i></i><i></i><i></i></div>
+    <span>Launch planner</span>
+    <span class="saved-status"><i></i><span id={stateId}>{stateText}</span></span>
+  </header>
+  <slot />
+</section>

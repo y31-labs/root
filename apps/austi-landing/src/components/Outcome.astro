@@ -1,0 +1,35 @@
+---
+import { launchRows } from '../lib/landing-content';
+import PlannerWindow from './PlannerWindow.astro';
+import SectionHeading from './SectionHeading.astro';
+import './Outcome.css';
+---
+
+<section class="outcome dark-field" aria-labelledby="outcome-title">
+  <SectionHeading
+    id="outcome-title"
+    title="Your job, minus the doing-it-again part."
+    copy="The interface fits the workflow, remembers its state, and picks up where you left it. Less prompting. More work already done."
+    tone="dark"
+    layout="outcome"
+  />
+  <div class="outcome-stage">
+    <p class="campaign-line">Put it in <del>writing</del> <ins>apping.</ins></p>
+    <PlannerWindow className="outcome-window" ariaLabel="Detailed illustrative Launch planner app">
+      <div class="outcome-appbar"><div><span class="app-glyph">L</span><span><strong>Launch planner</strong><small>Reopened from your Mac</small></span></div><button type="button" tabindex="-1" aria-hidden="true">+ Add item</button></div>
+      <div class="outcome-columns">
+        <aside><strong>This week</strong><span class="is-active">Launch plan <small>6</small></span><span>Decisions <small>3</small></span><span>Archive <small>12</small></span><p><i></i>Changes saved locally</p></aside>
+        <div class="planner-main">
+          <header class="planner-heading"><div><span>May 12–18</span><h3>This week</h3></div><span class="week-progress">2 in progress · 4 planned</span></header>
+          <div class="launch-table outcome-table" role="table" aria-label="Detailed illustrative launch plan">
+            <div class="launch-head" role="row"><span>Item</span><span class="owner">Owner</span><span class="date">Date</span><span class="blocker">Blocker</span><span>Status</span></div>
+            {launchRows.map((row) => (
+              <div class="launch-row" role="row"><span class="task" role="cell">{row.task}</span><span class="owner" role="cell"><i>{row.initials}</i>{row.owner}</span><span class="date" role="cell">{row.due}</span><span class="blocker" data-empty={row.blocker === '—'} role="cell">{row.blocker}</span><span class="row-status" data-status={row.status.toLowerCase().replace(' ', '-')} role="cell"><i></i>{row.status}</span></div>
+            ))}
+          </div>
+          <footer class="planner-footer"><span><svg viewBox="0 0 18 18"><path d="m4 9 3 3 7-7"></path></svg>Changes saved locally</span><span>Revision 1 · Current</span></footer>
+        </div>
+      </div>
+    </PlannerWindow>
+  </div>
+</section>
