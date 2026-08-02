@@ -22,11 +22,9 @@
 }
 
 .download-intro { margin-top: clamp(4rem, 9vh, 7rem); text-align: center; }
-.download-intro > span { color: var(--color-accent-ink); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
-
 .download-intro h1 {
   max-width: 12ch;
-  margin: var(--size-lg) auto 0;
+  margin: 0 auto;
   font-size: clamp(4.5rem, 9vw, 9rem);
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.04em;
@@ -36,25 +34,22 @@
 
 .escape-section {
   width: min(100%, var(--page-width));
-  margin-top: clamp(6rem, 12vh, 10rem);
+  margin-top: clamp(16rem, 32vh, 26rem);
 }
 
 .escape-intro {
-  display: grid;
   padding-bottom: var(--size-xl);
-  grid-template-columns: minmax(0, 1.5fr) minmax(16rem, 0.5fr);
-  align-items: end;
   border-bottom: 1px solid var(--line-paper);
-  gap: var(--size-xl);
 }
 
 .escape-intro h2 {
   max-width: 13ch;
-  margin: 0;
+  margin: 0 auto;
   font-size: clamp(3.25rem, 6vw, 6rem);
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.04em;
   line-height: 0.88;
+  text-align: center;
   text-wrap: balance;
 }
 
@@ -63,15 +58,6 @@
   text-decoration-color: var(--color-accent);
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.12em;
-}
-
-.escape-intro p {
-  max-width: 28ch;
-  margin: 0;
-  justify-self: end;
-  color: var(--color-muted-paper);
-  line-height: 1.5;
-  text-wrap: balance;
 }
 
 .escape-sites {
@@ -150,8 +136,6 @@
 
 @media (max-width: 760px) {
   .download-page { padding-top: 9rem; }
-  .escape-intro { grid-template-columns: 1fr; }
-  .escape-intro p { justify-self: start; }
   .escape-sites { grid-template-columns: 1fr; }
   .escape-sites a { min-height: 13rem; border-right: 0; border-bottom: 1px solid var(--line-paper); }
   .escape-sites a:last-child { border-bottom: 0; }
