@@ -1,35 +1,106 @@
 ---
-import { launchRows } from '../lib/landing-content';
-import PlannerWindow from './PlannerWindow.astro';
 import SectionHeading from './SectionHeading.astro';
 import './Outcome.css';
+
+const features = [
+  {
+    id: 'provider',
+    title: 'Bring your Codex setup',
+    copy: 'Use the Codex authentication already configured on your Mac. Austi keeps the connection in the trusted desktop host.',
+  },
+  {
+    id: 'savings',
+    title: 'Run it without another prompt',
+    copy: 'Once the workflow is built, repeat work happens in its interface—no new model reasoning required.',
+  },
+  {
+    id: 'ux',
+    title: 'Give the work a real interface',
+    copy: 'Chat is a narrow column. Your workflow gets the controls, views, and feedback it needs.',
+  },
+  {
+    id: 'personal',
+    title: 'Make the interface yours',
+    copy: 'Give each app the density and visual character its work calls for instead of settling for one generic chat skin.',
+  },
+  {
+    id: 'security',
+    title: 'Keep authority narrow',
+    copy: 'Apps start without network or credential access. You decide which specific capabilities they can use.',
+  },
+  {
+    id: 'evolving',
+    title: 'Change it without starting over',
+    copy: 'Ask for a revision in plain language. Austi updates the app while preserving the work already inside it.',
+  },
+];
 ---
 
-<section class="outcome dark-field" aria-labelledby="outcome-title">
+<section class="outcome paper-field" aria-labelledby="outcome-title">
   <SectionHeading
     id="outcome-title"
-    title="Your job, minus the doing-it-again part."
-    copy="The interface fits the workflow, remembers its state, and picks up where you left it. Less prompting. More work already done."
-    tone="dark"
-    layout="outcome"
+    title="Built to actually be useful"
+    highlight="actually"
+    layout="centered"
   />
-  <div class="outcome-stage">
-    <p class="campaign-line">Put it in <del>writing</del> <ins>apping.</ins></p>
-    <PlannerWindow className="outcome-window" ariaLabel="Detailed illustrative Launch planner app">
-      <div class="outcome-appbar"><div><span class="app-glyph">L</span><span><strong>Launch planner</strong><small>Reopened from your Mac</small></span></div><button type="button" tabindex="-1" aria-hidden="true">+ Add item</button></div>
-      <div class="outcome-columns">
-        <aside><strong>This week</strong><span class="is-active">Launch plan <small>6</small></span><span>Decisions <small>3</small></span><span>Archive <small>12</small></span><p><i></i>Changes saved locally</p></aside>
-        <div class="planner-main">
-          <header class="planner-heading"><div><span>May 12–18</span><h3>This week</h3></div><span class="week-progress">2 in progress · 4 planned</span></header>
-          <div class="launch-table outcome-table" role="table" aria-label="Detailed illustrative launch plan">
-            <div class="launch-head" role="row"><span>Item</span><span class="owner">Owner</span><span class="date">Date</span><span class="blocker">Blocker</span><span>Status</span></div>
-            {launchRows.map((row) => (
-              <div class="launch-row" role="row"><span class="task" role="cell">{row.task}</span><span class="owner" role="cell"><i>{row.initials}</i>{row.owner}</span><span class="date" role="cell">{row.due}</span><span class="blocker" data-empty={row.blocker === '—'} role="cell">{row.blocker}</span><span class="row-status" data-status={row.status.toLowerCase().replace(' ', '-')} role="cell"><i></i>{row.status}</span></div>
-            ))}
+
+  <div class="feature-grid">
+    {features.map((feature) => (
+      <article class:list={['feature-panel', `feature-panel-${feature.id}`]}>
+        <h3 class="feature-label">{feature.title}</h3>
+        <p>{feature.copy}</p>
+
+        {feature.id === 'provider' && (
+          <div class="feature-visual provider-picker" aria-hidden="true">
+            <header><span>Codex connection</span><small><i></i>Ready</small></header>
+            <dl>
+              <div><dt>Authentication</dt><dd>Existing local session</dd></div>
+              <div><dt>Runtime</dt><dd>Managed by Austi</dd></div>
+              <div><dt>App access</dt><dd>None by default</dd></div>
+            </dl>
+            <footer>Connection stays in the desktop host</footer>
           </div>
-          <footer class="planner-footer"><span><svg viewBox="0 0 18 18"><path d="m4 9 3 3 7-7"></path></svg>Changes saved locally</span><span>Revision 1 · Current</span></footer>
-        </div>
-      </div>
-    </PlannerWindow>
+        )}
+
+        {feature.id === 'savings' && (
+          <div class="feature-visual savings-meter" aria-hidden="true">
+            <header><span>Weekly launch run</span><i></i></header>
+            <strong>0</strong>
+            <p>model turns per repeat run</p>
+            <div><span>Monday</span><span>Tuesday</span><span>Wednesday</span><span>Today</span></div>
+            <small>Runs in the app · No new model call</small>
+          </div>
+        )}
+
+        {feature.id === 'ux' && (
+          <div class="feature-visual app-preview" aria-hidden="true">
+            <header><i></i><i></i><i></i><span>Launch planner</span></header>
+            <div><aside><strong>This week</strong><span class="is-active">Launch plan</span><span>Decisions</span><span>Archive</span></aside><div class="app-preview-main"><strong>May 12–18</strong><span>Landing page <i>In progress</i></span><span>Email campaign <i>In progress</i></span><span>Launch video <i>Planned</i></span></div></div>
+          </div>
+        )}
+
+        {feature.id === 'personal' && (
+          <div class="feature-visual theme-preview" aria-hidden="true">
+            <div class="theme-swatches"><span class="is-active">Paper</span><span>Night</span><span>Dense</span></div>
+            <div class="theme-window"><header><span></span><small>Campaign tracker</small></header><strong>Make it yours.</strong><p>One workflow. Your density, type, and theme.</p><div><i></i><i></i><i></i></div></div>
+          </div>
+        )}
+
+        {feature.id === 'security' && (
+          <div class="feature-visual access-sheet" aria-hidden="true">
+            <header><span>Launch planner access</span><small>1 capability</small></header>
+            <div><span><i>F</i><strong>Local files</strong><small>Selected folder</small><b></b></span><span><i>N</i><strong>Network</strong><small>No access</small><b class="is-off"></b></span><span><i>K</i><strong>Credentials</strong><small>Never available</small><b class="is-off"></b></span></div>
+            <footer><i></i>Controlled by you</footer>
+          </div>
+        )}
+
+        {feature.id === 'evolving' && (
+          <div class="feature-visual evolution-preview" aria-hidden="true">
+            <div class="evolution-request">Add a calendar view. Keep my existing launch items.<i><svg viewBox="0 0 18 18"><path d="M9 14V4m0 0L5 8m4-4 4 4"></path></svg></i></div>
+            <div class="evolution-line"><span><i></i>Revision 1</span><b></b><span class="is-current"><i></i>Revision 2<small>Calendar added · 6 items preserved</small></span></div>
+          </div>
+        )}
+      </article>
+    ))}
   </div>
 </section>

@@ -5,14 +5,20 @@ interface Props {
   id: string;
   title: string;
   copy?: string;
+  highlight?: string;
   tone?: 'dark' | 'paper';
   layout?: 'split' | 'outcome' | 'centered';
 }
 
-const { id, title, copy, tone = 'paper', layout = 'split' } = Astro.props;
+const { id, title, copy, highlight, tone = 'paper', layout = 'split' } = Astro.props;
+const highlightIndex = highlight ? title.indexOf(highlight) : -1;
 ---
 
 <header class:list={['section-heading', `section-heading-${layout}`, `section-heading-${tone}`]}>
-  <h2 id={id}>{title}</h2>
+  <h2 id={id}>
+    {highlight && highlightIndex >= 0 ? (
+      <>{title.slice(0, highlightIndex)}<span class="section-heading-highlight">{highlight}</span>{title.slice(highlightIndex + highlight.length)}</>
+    ) : title}
+  </h2>
   {copy && <p>{copy}</p>}
 </header>
