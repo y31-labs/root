@@ -30,14 +30,21 @@ const { downloadUrl } = Astro.props;
       </svg>
     </a>
   </div>
-  <figure class="hero-scene" aria-label="An empty chair at a messy work table">
-    <img
-      src="/images/hero-empty-desk.png"
-      alt="An empty office chair tucked behind a messy work table"
-      width="1672"
-      height="941"
-      fetchpriority="high"
-    />
+  <figure class="hero-scene">
+    <picture>
+      <source
+        srcset="/images/hero-empty-desk-836.webp 836w, /images/hero-empty-desk-1672.webp 1672w"
+        sizes="100vw"
+        type="image/webp"
+      />
+      <img
+        src="/images/hero-empty-desk.png"
+        alt="An empty office chair tucked behind a messy work table"
+        width="1672"
+        height="941"
+        fetchpriority="high"
+      />
+    </picture>
   </figure>
 </section>
 
