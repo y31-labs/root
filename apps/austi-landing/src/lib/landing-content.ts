@@ -18,8 +18,24 @@ export const launchRows: LaunchRow[] = [
 ];
 
 export const stages = [
-  { name: 'Ask', label: 'Start with what you want done' },
-  { name: 'Build', label: 'Watch the idea find its interface' },
-  { name: 'Open', label: 'Skip the recap. Open the app.' },
-  { name: 'Keep', label: 'Change it without starting over' },
+  {
+    name: 'Ask',
+    label: 'Start with what you want done',
+    copy: 'Describe the recurring work in plain language. No template, setup flow, or wiring required.',
+  },
+  {
+    name: 'Build',
+    label: 'Watch the idea find its interface',
+    copy: 'Austi turns the request into structure, state, and controls you can see taking shape.',
+  },
+  {
+    name: 'Open',
+    label: 'Skip the recap. Open the app.',
+    copy: 'The result is a real local tool you can reopen whenever the same work comes back.',
+  },
+  {
+    name: 'Keep',
+    label: 'Change it without starting over',
+    copy: 'Revise the workflow in plain language while preserving the work already inside it.',
+  },
 ];

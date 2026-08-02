@@ -1,6 +1,6 @@
 ---
-import { launchRows, stages } from '../lib/landing-content';
-import PlannerWindow from './PlannerWindow.astro';
+import { stages } from '../lib/landing-content';
+import MechanismEvidence from './MechanismEvidence.astro';
 import SectionHeading from './SectionHeading.astro';
 import './Mechanism.css';
 ---
@@ -8,126 +8,64 @@ import './Mechanism.css';
 <section class="mechanism paper-field" id="how-it-works" aria-labelledby="mechanism-title">
   <SectionHeading
     id="mechanism-title"
-    title="It clocks in where the chat clocks out."
-    copy="Describe the outcome once. Austi turns it into an interface you can open, use, and improve whenever the work returns."
+    title="The best platform to automate your routine"
+    layout="centered"
   />
 
-  <div class="mechanism-stage" id="mechanism-stage" data-stage="0" data-autoplay="false">
+  <div class="mechanism-stage" id="mechanism-stage">
     <nav class="stage-controller" aria-label="Request to app stages">
       {stages.map((item, index) => (
-        <button type="button" data-stage-button={index} class:list={{ 'is-active': index === 0 }} aria-pressed={index === 0 ? 'true' : 'false'}>
-          <span>{item.name}</span><small>{item.label}</small>
-        </button>
+        <a href={`#mechanism-step-${index + 1}`} data-stage-link={index} class:list={{ 'is-active': index === 0 }} aria-current={index === 0 ? 'step' : undefined}>
+          <span class="stage-number">{String(index + 1).padStart(2, '0')} / {item.name}</span>
+          <strong>{item.label}</strong>
+          <small><span>{item.copy}</span></small>
+        </a>
       ))}
     </nav>
 
-    <div class="stage-workbench">
-      <section class="brief-pane" aria-label="Austi authoring conversation">
-        <header><span><span class="brief-brand"><img src="/austi-logo.svg" alt="" /></span>Austi</span><small id="stage-counter">Ask / 01</small></header>
-        <div class="brief-scenes">
-          <article class="brief-scene is-active" data-brief-scene="0">
-            <h3>Start with what you want done</h3>
-            <p>Start with the work, not the wiring.</p>
-            <div class="request-card"><span>Build a weekly launch planner that tracks owners, dates, and blockers.</span><i aria-hidden="true"><svg viewBox="0 0 18 18"><path d="M9 14V4m0 0L5 8m4-4 4 4"></path></svg></i></div>
-            <small>One request · No template to configure</small>
-          </article>
-          <article class="brief-scene" data-brief-scene="1" aria-hidden="true">
-            <h3>Watch the idea find its interface</h3>
-            <p>Structure, state, and controls appear in the open.</p>
-            <div class="build-log" aria-label="Illustrative build progress">
-              <span><i></i>Understanding the request<small>done</small></span>
-              <span><i></i>Designing the data model<small>done</small></span>
-              <span><i></i>Building the planner<small>done</small></span>
-              <span><i></i>Saving the local app<small>now</small></span>
-            </div>
-          </article>
-          <article class="brief-scene" data-brief-scene="2" aria-hidden="true">
-            <h3>Skip the recap. Open the app.</h3>
-            <p>Reopen it directly when the work returns.</p>
-            <div class="published-row"><span class="app-glyph">L</span><span><strong>Launch planner</strong><small>Published locally · Ready to open</small></span><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M5 13 13 5M7 5h6v6"></path></svg></div>
-            <small>Still working long after you stopped prompting.</small>
-          </article>
-          <article class="brief-scene" data-brief-scene="3" aria-hidden="true">
-            <h3>Change it without starting over</h3>
-            <p>Revise the app while preserving the work inside it.</p>
-            <div class="request-card request-card-small"><span>Move the launch video to Friday. Keep everything else as it is.</span><i aria-hidden="true"><svg viewBox="0 0 18 18"><path d="M9 14V4m0 0L5 8m4-4 4 4"></path></svg></i></div>
-            <div class="revision-proof"><i></i><strong>Revision 2 published</strong><span>6 rows preserved</span></div>
-          </article>
-        </div>
-      </section>
-
-      <PlannerWindow className="stage-window" ariaLabel="Launch planner transformation preview" stateId="stage-app-state" stateText="Request ready">
-        <div class="planner-main planner-main-compact">
-          <header class="planner-heading"><div><span>May 12–18</span><h3>This week</h3></div><span class="compact-add">+ Add item</span></header>
-          <div class="launch-table compact-table" role="presentation">
-            <div class="launch-head"><span>Item</span><span class="owner">Owner</span><span class="date">Date</span><span>Status</span></div>
-            {launchRows.map((row) => (
-              <div class:list={['launch-row', { 'is-revisable': row.revisable }]}>
-                <span class="task">{row.task}</span><span class="owner"><i>{row.initials}</i>{row.owner}</span><span class="date"><span class="due-original">{row.due}</span><span class="due-revised">May 17</span></span><span class="row-status" data-status={row.status.toLowerCase().replace(' ', '-')}><i></i>{row.status}</span>
-              </div>
-            ))}
+    <div class="stage-feed">
+      {stages.map((item, index) => (
+        <article class="stage-panel" id={`mechanism-step-${index + 1}`} data-stage-panel={index}>
+          <MechanismEvidence stage={index} />
+          <div class="mobile-stage-copy">
+            <span>{String(index + 1).padStart(2, '0')} / {item.name}</span>
+            <h3>{item.label}</h3>
+            <p>{item.copy}</p>
           </div>
-          <footer class="planner-footer"><span><svg viewBox="0 0 18 18"><path d="m4 9 3 3 7-7"></path></svg><span id="stage-save-state">Request ready</span></span><span id="stage-revision">Draft</span></footer>
-        </div>
-        <div class="stage-curtain" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-      </PlannerWindow>
+        </article>
+      ))}
     </div>
-    <p class="sr-only" id="stage-announcement" aria-live="polite">Ask Austi for the workflow.</p>
   </div>
 </section>
 
 <script>
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const stage = document.querySelector<HTMLElement>('#mechanism-stage');
-  const stageButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-stage-button]')];
-  const scenes = [...document.querySelectorAll<HTMLElement>('[data-brief-scene]')];
-  const stageCounter = document.querySelector<HTMLElement>('#stage-counter');
-  const stageAppState = document.querySelector<HTMLElement>('#stage-app-state');
-  const stageSaveState = document.querySelector<HTMLElement>('#stage-save-state');
-  const stageRevision = document.querySelector<HTMLElement>('#stage-revision');
-  const stageAnnouncement = document.querySelector<HTMLElement>('#stage-announcement');
-  const counters = ['Ask / 01', 'Build / 02', 'Open / 03', 'Keep / 04'];
-  const appStates = ['Request ready', 'Building locally', 'Published locally', 'Revision 2'];
-  const saveStates = ['Request ready', 'Saving structure', 'Changes saved locally', 'Revision 2 saved locally'];
-  const revisionStates = ['Draft', 'Building', 'Ready to reopen', '6 rows preserved'];
-  const announcements = [
-    'Ask Austi for the workflow.',
-    'Austi is building the local app.',
-    'The Launch planner is ready to reopen.',
-    'Revision 2 preserves the existing planner data.',
-  ];
-  let currentStage = 0;
-  let stageTimer = 0;
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-stage-link]')];
+  const panels = [...document.querySelectorAll<HTMLElement>('[data-stage-panel]')];
+  let frame = 0;
 
-  const setStage = (nextStage: number, manual = false) => {
-    if (!stage) return;
-    currentStage = nextStage;
-    stage.dataset.stage = String(nextStage);
-    stageButtons.forEach((button, index) => {
-      const active = index === nextStage;
-      button.classList.toggle('is-active', active);
-      button.setAttribute('aria-pressed', String(active));
+  const updateActiveStage = () => {
+    frame = 0;
+    const marker = window.innerHeight * 0.38;
+    let activeIndex = 0;
+
+    panels.forEach((panel, index) => {
+      if (panel.getBoundingClientRect().top <= marker) activeIndex = index;
     });
-    scenes.forEach((scene, index) => {
-      const active = index === nextStage;
-      scene.classList.toggle('is-active', active);
-      scene.setAttribute('aria-hidden', String(!active));
+
+    links.forEach((link, index) => {
+      const active = index === activeIndex;
+      link.classList.toggle('is-active', active);
+      if (active) link.setAttribute('aria-current', 'step');
+      else link.removeAttribute('aria-current');
     });
-    if (stageCounter) stageCounter.textContent = counters[nextStage] ?? '';
-    if (stageAppState) stageAppState.textContent = appStates[nextStage] ?? '';
-    if (stageSaveState) stageSaveState.textContent = saveStates[nextStage] ?? '';
-    if (stageRevision) stageRevision.textContent = revisionStates[nextStage] ?? '';
-    if (stageAnnouncement) stageAnnouncement.textContent = announcements[nextStage] ?? '';
-    if (manual) {
-      window.clearInterval(stageTimer);
-      stage.dataset.autoplay = 'false';
-    }
   };
 
-  stageButtons.forEach((button, index) => button.addEventListener('click', () => setStage(index, true)));
-  setStage(0);
-  if (!reducedMotion.matches) {
-    stage?.setAttribute('data-autoplay', 'true');
-    stageTimer = window.setInterval(() => setStage((currentStage + 1) % stageButtons.length), 5200);
-  }
+  const queueActiveStageUpdate = () => {
+    if (frame) return;
+    frame = window.requestAnimationFrame(updateActiveStage);
+  };
+
+  window.addEventListener('scroll', queueActiveStageUpdate, { passive: true });
+  window.addEventListener('resize', queueActiveStageUpdate);
+  updateActiveStage();
 </script>

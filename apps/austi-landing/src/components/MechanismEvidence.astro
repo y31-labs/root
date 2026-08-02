@@ -1,0 +1,60 @@
+---
+import { launchRows } from '../lib/landing-content';
+import PlannerWindow from './PlannerWindow.astro';
+
+interface Props {
+  stage: number;
+}
+
+const { stage } = Astro.props;
+const counters = ['Ask / 01', 'Build / 02', 'Open / 03', 'Keep / 04'];
+const appStates = ['Request ready', 'Building locally', 'Published locally', 'Revision 2'];
+---
+
+{stage < 2 ? (
+  <section class="brief-pane" aria-label={stage === 0 ? 'Austi request example' : 'Austi build progress example'}>
+    <header>
+      <span><span class="brief-brand"><img src="/austi-logo.svg" alt="" /></span>Austi</span>
+      <small>{counters[stage]}</small>
+    </header>
+    <div class="brief-scenes">
+      {stage === 0 ? (
+        <article class="brief-scene is-active">
+          <h3>Start with what you want done</h3>
+          <p>Start with the work, not the wiring.</p>
+          <div class="request-card"><span>Build a weekly launch planner that tracks owners, dates, and blockers.</span><i aria-hidden="true"><svg viewBox="0 0 18 18"><path d="M9 14V4m0 0L5 8m4-4 4 4"></path></svg></i></div>
+          <small>One request · No template to configure</small>
+        </article>
+      ) : (
+        <article class="brief-scene is-active">
+          <h3>Watch the idea find its interface</h3>
+          <p>Structure, state, and controls appear in the open.</p>
+          <div class="build-log" aria-label="Illustrative build progress">
+            <span><i></i>Understanding the request<small>done</small></span>
+            <span><i></i>Designing the data model<small>done</small></span>
+            <span><i></i>Building the planner<small>done</small></span>
+            <span><i></i>Saving the local app<small>now</small></span>
+          </div>
+        </article>
+      )}
+    </div>
+  </section>
+) : (
+  <PlannerWindow ariaLabel={stage === 2 ? 'Published launch planner preview' : 'Revised launch planner preview'} stateText={appStates[stage]}>
+    <div class="planner-main planner-main-compact">
+      <header class="planner-heading"><div><span>May 12–18</span><h3>This week</h3></div><span class="compact-add">+ Add item</span></header>
+      <div class="launch-table compact-table" role="presentation">
+        <div class="launch-head"><span>Item</span><span class="owner">Owner</span><span class="date">Date</span><span>Status</span></div>
+        {launchRows.map((row) => (
+          <div class:list={['launch-row', { 'is-revised': stage === 3 && row.revisable }]}>
+            <span class="task">{row.task}</span><span class="owner"><i>{row.initials}</i>{row.owner}</span><span class="date">{stage === 3 && row.revisable ? 'May 17' : row.due}</span><span class="row-status" data-status={row.status.toLowerCase().replace(' ', '-')}><i></i>{row.status}</span>
+          </div>
+        ))}
+      </div>
+      <footer class="planner-footer">
+        <span><svg viewBox="0 0 18 18"><path d="m4 9 3 3 7-7"></path></svg>{stage === 2 ? 'Changes saved locally' : 'Revision 2 saved locally'}</span>
+        <span>{stage === 2 ? 'Ready to reopen' : '6 rows preserved'}</span>
+      </footer>
+    </div>
+  </PlannerWindow>
+)}

@@ -18,6 +18,15 @@
   gap: 5rem;
 }
 
+.section-heading-centered {
+  justify-items: center;
+  text-align: center;
+}
+
+.section-heading-centered h2 { max-width: 16ch; }
+
+.section-heading-centered p { margin-top: var(--size-xl); }
+
 .section-heading h2 {
   max-width: 13ch;
   margin: 0;
