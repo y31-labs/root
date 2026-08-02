@@ -3,148 +3,33 @@ name: Austi
 description: "An app that'll make you question your job."
 colors:
   night-office: "#0a0a0a"
+  black: "#000000"
+  white: "#ffffff"
   paper: "#eeece5"
-  paper-bright: "#f8f6ef"
-  paper-recessed: "#e7e4dc"
+  surface: "#f8f6ef"
   ink: "#11110f"
-  chalk: "#f6f3eb"
-  muted-night: "#aaa8a1"
+  text: "#f6f3eb"
+  muted-dark: "#aaa8a1"
   muted-paper: "#66645f"
-  line-night: "rgb(246 243 235 / 15%)"
-  line-paper: "rgb(17 17 15 / 18%)"
-  payroll: "#ff4f42"
-  payroll-hover: "#ff655b"
-  payroll-paper: "#c2352d"
-  payroll-ink: "#130604"
+  accent: "#ff4f42"
   signal: "#dfff57"
-  local: "#278a51"
-typography:
-  display:
-    fontFamily: "Bricolage Grotesque Variable, Arial Narrow, sans-serif"
-    fontSize: "clamp(4.5rem, 6.7vw, 6.9rem)"
-    fontWeight: 550
-    lineHeight: 0.88
-    letterSpacing: "-0.04em"
-    fontVariation: "'wdth' 82"
-  headline:
-    fontFamily: "Bricolage Grotesque Variable, Arial Narrow, sans-serif"
-    fontSize: "clamp(3.6rem, 7vw, 7.1rem)"
-    fontWeight: 550
-    lineHeight: 0.93
-    letterSpacing: "-0.04em"
-  title:
-    fontFamily: "Bricolage Grotesque Variable, Arial Narrow, sans-serif"
-    fontSize: "clamp(1.9rem, 3vw, 3rem)"
-    fontWeight: 610
-    lineHeight: 1
-    letterSpacing: "-0.04em"
-  body:
-    fontFamily: "Inter Variable, Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-    fontSize: "1rem"
-    fontWeight: 400
-    lineHeight: 1.5
-    letterSpacing: "normal"
-  label:
-    fontFamily: "Inter Variable, Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-    fontSize: "0.72rem"
-    fontWeight: 680
-    lineHeight: 1.5
-    letterSpacing: "normal"
-rounded:
-  sm: "0.45rem"
-  control: "0.55rem"
-  button: "0.65rem"
-  surface: "0.8rem"
-  permission: "0.85rem"
-  pill: "999px"
-  round: "50%"
-spacing:
-  xs: "0.45rem"
+  success: "#278a51"
+sizes:
+  xs: "0.5rem"
   sm: "0.75rem"
-  md: "1.2rem"
+  md: "1rem"
   lg: "1.5rem"
   xl: "2rem"
-  page-gutter: "clamp(1.15rem, 3vw, 3.4rem)"
-  workbench-gap: "clamp(1.2rem, 3vw, 3rem)"
-  section-y: "clamp(7rem, 12vw, 13rem)"
-components:
-  navigation:
-    backgroundColor: "{colors.night-office}"
-    textColor: "{colors.chalk}"
-    typography: "{typography.label}"
-    rounded: "0"
-    padding: "0 {spacing.page-gutter}"
-    height: "5.5rem"
-  header-download:
-    backgroundColor: "{colors.payroll}"
-    textColor: "{colors.payroll-ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.button}"
-    padding: "0 1rem"
-    height: "2.65rem"
-  button-primary:
-    backgroundColor: "{colors.payroll}"
-    textColor: "{colors.payroll-ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.button}"
-    padding: "0 1rem"
-    height: "3rem"
-  button-primary-hover:
-    backgroundColor: "{colors.payroll-hover}"
-    textColor: "{colors.payroll-ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.button}"
-    padding: "0 1rem"
-    height: "3rem"
-  button-ink:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.chalk}"
-    typography: "{typography.label}"
-    rounded: "{rounded.control}"
-    padding: "0 0.9rem"
-    height: "2.8rem"
-  button-neutral:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.control}"
-    padding: "0 0.9rem"
-    height: "3rem"
-  stage-item:
-    backgroundColor: "transparent"
-    textColor: "{colors.muted-paper}"
-    typography: "{typography.title}"
-    rounded: "0"
-    padding: "1.2rem clamp(0.9rem, 2vw, 2rem)"
-    height: "7.6rem"
-  stage-item-active:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.chalk}"
-    typography: "{typography.title}"
-    rounded: "0"
-    padding: "1.2rem clamp(0.9rem, 2vw, 2rem)"
-    height: "7.6rem"
-  request-card:
-    backgroundColor: "{colors.paper}"
-    textColor: "{colors.ink}"
-    typography: "{typography.title}"
-    rounded: "{rounded.button}"
-    padding: "1.2rem 3.5rem 2.5rem 1.2rem"
-    height: "9.2rem"
-  planner-window:
-    backgroundColor: "{colors.paper-bright}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.surface}"
-  status-chip:
-    backgroundColor: "{colors.signal}"
-    textColor: "{colors.ink}"
-    typography: "{typography.label}"
-    rounded: "{rounded.pill}"
-    padding: "0.25rem 0.45rem"
-  permission-sheet:
-    backgroundColor: "{colors.paper-bright}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.permission}"
+typography:
+  fontFamily: "Clarity City, system-ui, sans-serif"
+  fontSizes:
+    xs: "0.625rem"
+    sm: "0.75rem"
+    md: "1rem"
+    lg: "clamp(3.6rem, 7vw, 7.1rem)"
+  fontWeights:
+    normal: 400
+    bold: 700
 ---
 
 # Design System: Austi
@@ -160,7 +45,7 @@ The system makes intelligence tangible without making it theatrical. It surround
 **Key Characteristics:**
 
 - Matte near-black fields alternating with fluorescent warm paper.
-- Oversized, compressed Bricolage statements beside precise Inter evidence.
+- Oversized Clarity City statements beside compact Clarity City evidence.
 - Payroll red for action, emphasis, and the one human interruption.
 - Acid yellow used only for exceptional state or a changed fact.
 - Native-software windows and workplace documents built from ruled rows.
@@ -172,10 +57,7 @@ The palette behaves like an office after closing: black architecture, paper unde
 
 ### Primary
 
-- **Payroll Red** (`payroll`, `#ff4f42`): the principal action color, brand tile, progress edge, active work state, and short emphasis on night fields.
-- **Payroll Hover** (`payroll-hover`, `#ff655b`): the controlled hover lift for payroll-filled actions.
-- **Payroll Paper** (`payroll-paper`, `#c2352d`): red text on warm paper. It is the contrast-safe paper-surface red, reaching 4.63:1 on Paper and 5.06:1 on Bright Paper.
-- **Payroll Ink** (`payroll-ink`, `#130604`): near-black content placed on bright payroll fills.
+- **Accent Red** (`accent`, `#ff4f42`): the principal action color, brand tile, progress edge, active work state, and short emphasis on night fields. Paper-safe variants are derived by mixing Accent with Ink rather than adding another palette color.
 
 ### Secondary
 
@@ -183,24 +65,23 @@ The palette behaves like an office after closing: black architecture, paper unde
 
 ### Tertiary
 
-- **Local Green** (`local`, `#278a51`): saved-local and completed state inside paper software only.
+- **Success Green** (`success`, `#278a51`): saved-local and completed state inside paper software only.
 
 ### Neutral
 
 - **Night Office** (`night-office`, `#0a0a0a`): the dominant dark field, page chrome, and browser theme color.
 - **Fluorescent Paper** (`paper`, `#eeece5`): the warm document field used for explanatory sections and request surfaces.
-- **Bright Paper** (`paper-bright`, `#f8f6ef`): software windows, dialogs, and raised document interiors.
-- **Recessed Paper** (`paper-recessed`, `#e7e4dc`): native-software sidebars and recessed navigation regions.
+- **Surface** (`surface`, `#f8f6ef`): software windows, dialogs, and raised document interiors.
+- **Recessed Paper**: derived from Paper and Ink for native-software sidebars and recessed navigation regions.
 - **Document Ink** (`ink`, `#11110f`): primary content and controls on paper.
-- **Night Chalk** (`chalk`, `#f6f3eb`): primary content on night.
-- **Muted Night** (`muted-night`, `#aaa8a1`): secondary copy and navigation on dark fields.
+- **Text** (`text`, `#f6f3eb`): primary content on night.
+- **Muted Dark** (`muted-dark`, `#aaa8a1`): secondary copy and navigation on dark fields.
 - **Muted Paper** (`muted-paper`, `#66645f`): metadata, inactive controls, and explanatory copy on paper.
-- **Night Rule** (`line-night`, `rgb(246 243 235 / 15%)`): structural hairlines on night.
-- **Paper Rule** (`line-paper`, `rgb(17 17 15 / 18%)`): structural hairlines inside paper fields and software.
+- **Night Rule** and **Paper Rule**: derived from Text and Ink with transparency, rather than maintained as extra palette colors.
 
 ### Named Rules
 
-**The Two Payroll Reds Rule.** Use bright Payroll Red for fills and short emphasis on night; use Payroll Paper for text on warm paper.
+**The Derived Color Rule.** Use the compact base palette directly; mix from it for rules, recessed surfaces, chips, and paper-safe accent text.
 
 **The Acid Exception Rule.** Acid Status marks a consequential exception or changed fact. Never spend it on decoration, section atmosphere, or routine success.
 
@@ -208,23 +89,21 @@ The palette behaves like an office after closing: black architecture, paper unde
 
 ## Typography
 
-**Display Font:** Bricolage Grotesque Variable (with Arial Narrow and sans-serif fallbacks)
-**Body Font:** Inter Variable (with Inter, system UI, and sans-serif fallbacks)
-**Label Font:** Inter Variable
+**Display, body, and label font:** Clarity City (with system UI and sans-serif fallbacks)
 
-**Character:** Bricolage is compressed, blunt, and editorial enough to make a performance-review headline feel authored rather than promoted. Inter handles interface state, evidence, and small operational language without competing for attention.
+**Character:** Clarity City keeps the performance-review headlines blunt while remaining precise enough for interface state, evidence, and small operational language.
 
 ### Hierarchy
 
-- **Display** (550, `clamp(4.5rem, 6.7vw, 6.9rem)`, 0.88 line-height, width axis 82): the most provocative brand statement; keep it under roughly nine characters per line where composition permits.
-- **Headline** (550, `clamp(3.6rem, 7vw, 7.1rem)`, 0.93 line-height): section theses and closing statements with severe leading and balanced wrapping.
-- **Title** (610, `clamp(1.9rem, 3vw, 3rem)`, 1 line-height): authoring scenes, document prompts, and important software headings.
-- **Body** (400, `1rem`, 1.5 line-height): foundational reading text; explanatory paragraphs may open to 1.55–1.65 and stay near 34–37rem.
-- **Label** (680, `0.72rem`, 1.5 line-height): actions, table metadata, states, and control descriptions. Labels remain sentence case.
+- **Large** (`clamp(3.6rem, 7vw, 7.1rem)`): section theses; exceptional display sizes are component-local primitives.
+- **Medium** (`1rem`): foundational reading text.
+- **Small** (`0.75rem`): controls and table content.
+- **Extra small** (`0.625rem`): metadata and state labels.
+- **Normal** (400) and **Bold** (700) are the only font weights.
 
 ### Named Rules
 
-**The Two Voices Rule.** Bricolage delivers judgment and names the work; Inter records what happened, who owns it, and what the software will do.
+**The One Voice Rule.** Clarity City delivers the judgment and records the operational detail; size and spacing create the hierarchy.
 
 **The Compression Does the Shouting Rule.** Build impact with scale, width, tight leading, and negative tracking—not with ultra-bold weight or all caps.
 
@@ -267,7 +146,7 @@ Hairlines are structural, not ornamental. They divide table rows, app chrome, st
 ### Buttons
 
 - **Shape:** compact, dense controls with 0.55–0.65rem corners and no pill-shaped primary action.
-- **Primary:** Payroll Red with Payroll Ink, a 3rem minimum height, 1rem horizontal padding, and a weighty Inter label. The persistent header version compresses to 2.65rem; the final download action expands to 3.8rem.
+- **Primary:** Accent Red with Ink, a 3rem minimum height, 1rem horizontal padding, and a bold Clarity City label. The final download action expands to 3.8rem.
 - **Hover / Focus:** primary controls brighten to Payroll Hover, rise 2px, and receive the Payroll Hover shadow over 160ms. Keyboard focus is always a 2px Payroll Red outline with a 4px offset.
 - **Neutral / Ink:** permission choices pair a transparent, paper-ruled neutral control with an ink-filled decisive control. The decisive control may turn Payroll Red on hover.
 
@@ -286,17 +165,17 @@ Hairlines are structural, not ornamental. They divide table rows, app chrome, st
 
 ### Request Cards
 
-- **Style:** an illustrative multiline request on Fluorescent Paper, set in Bricolage with a Paper Rule border, 0.65rem corners, and a circular Payroll send control in the lower-right corner.
+- **Style:** an illustrative multiline request on Fluorescent Paper, set in Clarity City with a Paper Rule border, 0.65rem corners, and a circular Accent send control in the lower-right corner.
 - **Behavior:** the card is evidence, not a live text input. Do not imply editability with a caret, placeholder, or focus state.
 
 ### Navigation
 
-- **Header:** a thin 5.5rem night bar with the Austi mark at left, quiet Inter links centered, and one persistent Payroll download action at right. At 900px the links disappear; at 640px the bar compresses to 4.5rem.
-- **Stage Controller:** four equal ruled cells use Bricolage names and small Inter explanations. The active cell reverses to ink and chalk, while a 3px Payroll edge records autoplay progress. On small screens it scrolls horizontally and stays before the pane it controls.
+- **Header:** a floating white capsule centers the Austi mark and a quiet Clarity City navigation link over the hero. Its viewport-aware height and safe-area offset are local header primitives.
+- **Stage Controller:** four equal ruled cells use bold Clarity City names and small Clarity City explanations. The active cell reverses to Ink and Text, while a 3px Accent edge records autoplay progress. On small screens it scrolls horizontally and stays before the pane it controls.
 
 ### Planner Window
 
-The signature software surface combines minimal macOS-like chrome, Bright Paper, ruled rows, compact Inter metadata, and Bricolage titles. Sidebars use Recessed Paper; status is carried by dots, small pills, and plain text. The largest instance may use a restrained perspective transform, while embedded workbench instances stay flat.
+The signature software surface combines minimal macOS-like chrome, Surface, ruled rows, compact Clarity City metadata, and bold Clarity City titles. Sidebars use a recessed Paper/Ink mix; status is carried by dots, small pills, and plain text. Embedded workbench instances stay flat.
 
 ### Revision Ledger
 

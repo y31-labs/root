@@ -1,0 +1,65 @@
+---
+import SectionHeading from './SectionHeading.astro';
+import './Trust.css';
+---
+
+<section class="trust dark-field" id="trust" aria-labelledby="trust-title">
+  <SectionHeading
+    id="trust-title"
+    title="Works for you. Answers to your Mac."
+    copy="Austi stores and runs apps locally. Outside access stays narrow, visible, and subject to your approval."
+    tone="dark"
+  />
+  <div class="trust-stage">
+    <div class="trust-notes">
+      <p><span>01</span><strong>Local ownership</strong>Your app, source, revisions, and working state stay on your Mac.</p>
+      <p><span>02</span><strong>Sandboxed execution</strong>The host runs generated software without handing it the keys.</p>
+      <p><span>03</span><strong>Explicit outside access</strong>Every consequential action tells you exactly what leaves and where it goes.</p>
+    </div>
+    <section class="permission-sheet" id="permission-demo" data-permission-state="pending" aria-label="Illustrative permission request">
+      <header><span class="permission-glyph">L</span><span><small>Illustrative permission request</small><strong>Launch planner</strong><em id="permission-subtitle">is requesting outside access</em></span><span class="permission-status" id="permission-status">One action</span></header>
+      <dl>
+        <div><dt>Operation</dt><dd>Create one project issue</dd></div>
+        <div><dt>Data</dt><dd>Title, owner, due date</dd></div>
+        <div><dt>Destination</dt><dd>Product launch project</dd></div>
+        <div><dt>Duration</dt><dd>This action only</dd></div>
+      </dl>
+      <div class="permission-actions"><button type="button" data-permission-action="deny">Keep local</button><button type="button" data-permission-action="allow">Allow this action</button></div>
+      <footer><p id="permission-result" aria-live="polite">Nothing leaves your Mac until you choose.</p><button type="button" data-permission-reset hidden>Reset</button></footer>
+    </section>
+  </div>
+</section>
+
+<script>
+  const permissionDemo = document.querySelector<HTMLElement>('#permission-demo');
+  const permissionActions = [...document.querySelectorAll<HTMLButtonElement>('[data-permission-action]')];
+  const permissionReset = document.querySelector<HTMLButtonElement>('[data-permission-reset]');
+  const permissionResult = document.querySelector<HTMLElement>('#permission-result');
+  const permissionStatus = document.querySelector<HTMLElement>('#permission-status');
+  const permissionSubtitle = document.querySelector<HTMLElement>('#permission-subtitle');
+
+  const resetPermission = () => {
+    if (!permissionDemo) return;
+    permissionDemo.dataset.permissionState = 'pending';
+    permissionActions.forEach((button) => (button.disabled = false));
+    if (permissionReset) permissionReset.hidden = true;
+    if (permissionResult) permissionResult.textContent = 'Nothing leaves your Mac until you choose.';
+    if (permissionStatus) permissionStatus.textContent = 'One action';
+    if (permissionSubtitle) permissionSubtitle.textContent = 'is requesting outside access';
+  };
+
+  permissionActions.forEach((button) => button.addEventListener('click', () => {
+    if (!permissionDemo) return;
+    const allowed = button.dataset.permissionAction === 'allow';
+    permissionDemo.dataset.permissionState = allowed ? 'allowed' : 'denied';
+    permissionActions.forEach((action) => (action.disabled = true));
+    if (permissionReset) permissionReset.hidden = false;
+    if (permissionResult) permissionResult.textContent = allowed
+      ? 'Completed once. Access expired after this action.'
+      : 'No action was sent. The planner keeps working locally.';
+    if (permissionStatus) permissionStatus.textContent = allowed ? 'Completed once' : 'Stayed local';
+    if (permissionSubtitle) permissionSubtitle.textContent = allowed ? 'completed the approved action' : 'kept the action on your Mac';
+  }));
+
+  permissionReset?.addEventListener('click', resetPermission);
+</script>

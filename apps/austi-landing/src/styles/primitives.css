@@ -1,0 +1,43 @@
+:root {
+  color-scheme: dark;
+
+  /* Reusable spacing and control sizes. */
+  --size-xs: 0.5rem;
+  --size-sm: 0.75rem;
+  --size-md: 1rem;
+  --size-lg: 1.5rem;
+  --size-xl: 2rem;
+
+  /* The only shared type sizes and weights. */
+  --font-size-xs: 0.625rem;
+  --font-size-sm: 0.75rem;
+  --font-size-md: 1rem;
+  --font-size-lg: clamp(3.6rem, 7vw, 7.1rem);
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+
+  /* A compact palette shared by every section. */
+  --color-night: #0a0a0a;
+  --color-black: #000;
+  --color-white: #fff;
+  --color-paper: #eeece5;
+  --color-surface: #f8f6ef;
+  --color-ink: #11110f;
+  --color-text: #f6f3eb;
+  --color-muted-dark: #aaa8a1;
+  --color-muted-paper: #66645f;
+  --color-accent: #ff4f42;
+  --color-signal: #dfff57;
+  --color-success: #278a51;
+
+  --line-dark: color-mix(in srgb, var(--color-text) 15%, transparent);
+  --line-paper: color-mix(in srgb, var(--color-ink) 18%, transparent);
+  --color-recessed: color-mix(in srgb, var(--color-paper) 82%, var(--color-ink));
+  --color-chip: color-mix(in srgb, var(--color-paper) 88%, var(--color-ink));
+  --color-accent-ink: color-mix(in srgb, var(--color-accent) 70%, var(--color-ink));
+
+  --page-width: 110rem;
+  --page-gutter: clamp(1.15rem, 3vw, 3.4rem);
+  --section-block-size: clamp(7rem, 12vw, 13rem);
+  --font-family: 'Clarity City', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}

@@ -1,0 +1,18 @@
+---
+import './SectionHeading.css';
+
+interface Props {
+  id: string;
+  title: string;
+  copy: string;
+  tone?: 'dark' | 'paper';
+  layout?: 'split' | 'outcome';
+}
+
+const { id, title, copy, tone = 'paper', layout = 'split' } = Astro.props;
+---
+
+<header class:list={['section-heading', `section-heading-${layout}`, `section-heading-${tone}`]}>
+  <h2 id={id}>{title}</h2>
+  <p>{copy}</p>
+</header>
