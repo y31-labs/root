@@ -1,0 +1,159 @@
+.download-page {
+  display: flex;
+  min-height: 100dvh;
+  padding: clamp(8rem, 15vh, 12rem) var(--page-gutter) clamp(4rem, 8vw, 7rem);
+  align-items: center;
+  flex-direction: column;
+}
+
+.download-fallback {
+  margin: 0;
+  color: var(--color-muted-paper);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.download-fallback a {
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: calc(var(--size-xs) * 0.6);
+}
+
+.download-intro { margin-top: clamp(4rem, 9vh, 7rem); text-align: center; }
+.download-intro > span { color: var(--color-accent-ink); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+
+.download-intro h1 {
+  max-width: 12ch;
+  margin: var(--size-lg) auto 0;
+  font-size: clamp(4.5rem, 9vw, 9rem);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.04em;
+  line-height: 0.84;
+  text-wrap: balance;
+}
+
+.escape-section {
+  width: min(100%, var(--page-width));
+  margin-top: clamp(6rem, 12vh, 10rem);
+}
+
+.escape-intro {
+  display: grid;
+  padding-bottom: var(--size-xl);
+  grid-template-columns: minmax(0, 1.5fr) minmax(16rem, 0.5fr);
+  align-items: end;
+  border-bottom: 1px solid var(--line-paper);
+  gap: var(--size-xl);
+}
+
+.escape-intro h2 {
+  max-width: 13ch;
+  margin: 0;
+  font-size: clamp(3.25rem, 6vw, 6rem);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.04em;
+  line-height: 0.88;
+  text-wrap: balance;
+}
+
+.escape-intro h2 span {
+  text-decoration-line: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.12em;
+}
+
+.escape-intro p {
+  max-width: 28ch;
+  margin: 0;
+  justify-self: end;
+  color: var(--color-muted-paper);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+.escape-sites {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line-paper);
+}
+
+.escape-sites a {
+  position: relative;
+  display: flex;
+  min-height: clamp(18rem, 23vw, 24rem);
+  padding: clamp(1.5rem, 2.4vw, 2.75rem);
+  flex-direction: column;
+  border-right: 1px solid var(--line-paper);
+  overflow: hidden;
+  transition: background 180ms ease-out, color 180ms ease-out;
+}
+
+.escape-sites a:last-child { border-right: 0; }
+.escape-sites a:hover,
+.escape-sites a:focus-visible { background: var(--color-ink); color: var(--color-text); }
+.escape-sites a:focus-visible { outline-offset: -6px; }
+
+.escape-mark {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  place-items: center;
+  border-radius: var(--size-xs);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.escape-mark-netflix { color: #e50914; }
+.escape-mark-youtube { color: #f00; }
+.escape-mark svg { width: 1.45rem; height: 1.45rem; fill: currentColor; stroke: none; }
+.escape-mark-netflix svg { width: 1.15rem; }
+
+.escape-sites small {
+  margin-top: var(--size-md);
+  color: var(--color-muted-paper);
+  font-size: var(--font-size-sm);
+  line-height: 1.3;
+  transition: color 180ms ease-out;
+}
+
+.escape-sites a:hover small,
+.escape-sites a:focus-visible small { color: var(--color-muted-dark); }
+
+.escape-sites strong {
+  margin-top: auto;
+  font-size: clamp(3rem, 4.6vw, 5.5rem);
+  letter-spacing: -0.04em;
+  line-height: 0.82;
+}
+
+.escape-note {
+  display: flex;
+  margin-top: var(--size-lg);
+  align-items: flex-end;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  gap: var(--size-md);
+}
+
+.escape-note svg {
+  width: var(--size-md);
+  height: var(--size-md);
+  flex: 0 0 auto;
+  transition: transform 180ms ease-out;
+}
+
+.escape-sites a:hover .escape-note svg,
+.escape-sites a:focus-visible .escape-note svg { transform: translateX(calc(var(--size-xs) * 0.5)); }
+
+@media (max-width: 760px) {
+  .download-page { padding-top: 9rem; }
+  .escape-intro { grid-template-columns: 1fr; }
+  .escape-intro p { justify-self: start; }
+  .escape-sites { grid-template-columns: 1fr; }
+  .escape-sites a { min-height: 13rem; border-right: 0; border-bottom: 1px solid var(--line-paper); }
+  .escape-sites a:last-child { border-bottom: 0; }
+  .escape-sites strong { font-size: clamp(3.5rem, 15vw, 5.5rem); }
+}

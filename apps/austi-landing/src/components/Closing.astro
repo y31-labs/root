@@ -9,7 +9,6 @@ const { downloadUrl } = Astro.props;
 ---
 
 <section class="closing paper-field" aria-labelledby="closing-title">
-  <div class="closing-copy"><h2 id="closing-title">All done.<br />Go look busy.</h2><p>Build the app only your work could describe. Keep it on the Mac already doing the work.</p></div>
-  <div class="closing-action"><a class="closing-button" href={downloadUrl} target="_blank" rel="noreferrer">Download Austi<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2.5v9m0 0 3.5-3.5M9 11.5 5.5 8M3.5 15h11"></path></svg></a><p>Preview for macOS · Apple silicon</p></div>
-  <div class="closing-mark"><span><img src="/austi-logo.svg" alt="" /></span><strong>Austi</strong></div>
+  <h2 id="closing-title">Are you still working?</h2>
+  <a class="closing-button" href={downloadUrl}>Download Austi<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2.5v9m0 0 3.5-3.5M9 11.5 5.5 8M3.5 15h11"></path></svg></a>
 </section>

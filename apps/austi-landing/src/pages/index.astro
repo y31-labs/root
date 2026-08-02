@@ -1,18 +1,15 @@
 ---
 import Closing from '../components/Closing.astro';
-import Durability from '../components/Durability.astro';
 import Hero from '../components/Hero.astro';
 import Mechanism from '../components/Mechanism.astro';
 import Outcome from '../components/Outcome.astro';
-import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
-import Trust from '../components/Trust.astro';
 import Layout from '../layouts/Layout.astro';
 
 const title = 'Austi — an app that’ll make you question your job';
 const description =
   'Tell Austi what keeps repeating. It builds a private Mac app that takes it from here.';
-const downloadUrl = 'https://github.com/y31-labs/root/releases';
+const downloadUrl = '/download';
 ---
 
 <Layout {title} {description}>
@@ -21,9 +18,6 @@ const downloadUrl = 'https://github.com/y31-labs/root/releases';
     <Hero {downloadUrl} />
     <Mechanism />
     <Outcome />
-    <Durability />
-    <Trust />
     <Closing {downloadUrl} />
   </main>
-  <SiteFooter />
 </Layout>
