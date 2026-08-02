@@ -25,14 +25,15 @@
 
 .closing-button {
   display: inline-flex;
-  min-height: calc(var(--size-xl) + var(--size-xl));
+  width: clamp(17rem, 20.5vw, 23rem);
+  min-height: clamp(3.75rem, 6.25dvh, 4.25rem);
   padding-inline: var(--size-lg);
   align-items: center;
   justify-content: center;
-  border-radius: var(--size-sm);
+  border-radius: var(--size-md);
   background: var(--color-accent);
   color: var(--color-ink);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-bold);
   gap: var(--size-sm);
   transition: box-shadow 160ms ease-out, transform 160ms ease-out;
@@ -43,5 +44,5 @@
 
 @media (max-width: 640px) {
   .closing { --closing-title-size: clamp(5rem, 22vw, 7rem); min-height: 45rem; }
-  .closing-button { width: 100%; }
+  .closing-button { width: min(17rem, 100%); }
 }
