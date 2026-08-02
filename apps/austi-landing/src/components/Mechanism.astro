@@ -42,16 +42,10 @@ import './Mechanism.css';
   const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-stage-link]')];
   const panels = [...document.querySelectorAll<HTMLElement>('[data-stage-panel]')];
   let frame = 0;
+  let navigationTarget: number | null = null;
+  let navigationTimer = 0;
 
-  const updateActiveStage = () => {
-    frame = 0;
-    const marker = window.innerHeight * 0.38;
-    let activeIndex = 0;
-
-    panels.forEach((panel, index) => {
-      if (panel.getBoundingClientRect().top <= marker) activeIndex = index;
-    });
-
+  const setActiveStage = (activeIndex: number) => {
     links.forEach((link, index) => {
       const active = index === activeIndex;
       link.classList.toggle('is-active', active);
@@ -60,10 +54,46 @@ import './Mechanism.css';
     });
   };
 
+  const updateActiveStage = () => {
+    frame = 0;
+    if (navigationTarget !== null) return;
+    const marker = window.innerHeight * 0.38;
+    let activeIndex = 0;
+
+    panels.forEach((panel, index) => {
+      if (panel.getBoundingClientRect().top <= marker) activeIndex = index;
+    });
+
+    setActiveStage(activeIndex);
+  };
+
+  const finishNavigation = () => {
+    navigationTarget = null;
+    updateActiveStage();
+  };
+
+  const queueNavigationEnd = () => {
+    window.clearTimeout(navigationTimer);
+    navigationTimer = window.setTimeout(finishNavigation, 180);
+  };
+
   const queueActiveStageUpdate = () => {
+    if (navigationTarget !== null) {
+      queueNavigationEnd();
+      return;
+    }
     if (frame) return;
     frame = window.requestAnimationFrame(updateActiveStage);
   };
+
+  links.forEach((link, index) => {
+    link.addEventListener('click', () => {
+      navigationTarget = index;
+      setActiveStage(index);
+      window.clearTimeout(navigationTimer);
+      navigationTimer = window.setTimeout(finishNavigation, 300);
+    });
+  });
 
   window.addEventListener('scroll', queueActiveStageUpdate, { passive: true });
   window.addEventListener('resize', queueActiveStageUpdate);
