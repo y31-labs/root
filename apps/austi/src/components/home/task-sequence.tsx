@@ -25,20 +25,20 @@ export function TaskSequence({ active = false, parts }: TaskSequenceProps) {
 
   return (
     <Task
-      className='my-3'
+      className='my-2'
       defaultOpen={false}
       onOpenChange={() => {
         if (!active) stopScroll();
       }}
     >
       <TaskTrigger
-        className='inline-flex max-w-full rounded-sm py-0.5 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
+        className='inline-flex max-w-full rounded-sm text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
         title={title}
       >
-        <span className='flex max-w-full min-w-0 items-center gap-2 text-sm text-muted-foreground'>
-          <ListTodo aria-hidden='true' className='size-4 shrink-0' />
+        <span className='flex max-w-full min-w-0 items-center gap-1.5 text-xs text-muted-foreground'>
+          <ListTodo aria-hidden='true' className='size-3.5 shrink-0' />
           {active ? (
-            <Shimmer as='span' className='min-w-0 truncate text-sm'>
+            <Shimmer as='span' className='min-w-0 truncate text-xs'>
               {title}
             </Shimmer>
           ) : (
@@ -46,13 +46,13 @@ export function TaskSequence({ active = false, parts }: TaskSequenceProps) {
           )}
           <ChevronDown
             aria-hidden='true'
-            className='size-4 shrink-0 transition-transform group-data-[panel-open]:rotate-180'
+            className='size-3.5 shrink-0 transition-transform group-data-[panel-open]:rotate-180'
           />
         </span>
       </TaskTrigger>
       <AnimatedTaskContent
         aria-label='Task sequence'
-        className='scroll-fade max-h-[50dvh] overflow-y-auto [&>div]:mt-2 [&>div]:space-y-2 [&>div]:border-0 [&>div]:pl-6'
+        className='scroll-fade max-h-[50dvh] overflow-y-auto [&>div]:mt-1 [&>div]:space-y-1 [&>div]:border-0 [&>div]:pl-5'
         role='region'
         tabIndex={0}
       >
