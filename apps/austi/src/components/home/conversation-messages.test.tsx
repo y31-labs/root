@@ -178,11 +178,7 @@ describe('ChatConversation messages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Ran a command' }));
     expect(screen.getByText('Ran tests')).toBeTruthy();
-    expect(
-      screen
-        .getAllByText('Thinking')
-        .every((element) => !element.classList.contains('font-semibold')),
-    ).toBe(true);
+    expect(screen.queryByText('Thinking')).toBeNull();
     const emphasizedReasoning = screen.getByText('The tests');
     expect(emphasizedReasoning.dataset.streamdown).toBe('strong');
     expect(emphasizedReasoning.closest('.h-auto')?.className).toContain(

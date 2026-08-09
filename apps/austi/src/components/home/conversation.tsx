@@ -5,12 +5,12 @@ import {
   MessageResponse,
 } from '@workspace/ui/components/ai-elements/message';
 import { Shimmer } from '@workspace/ui/components/ai-elements/shimmer';
-import { StickToBottom } from 'use-stick-to-bottom';
+import { useEffect, useRef } from 'react';
+import { StickToBottom, useStickToBottomContext } from 'use-stick-to-bottom';
 
 import { FileAttachments } from '#/components/file-attachments';
 import { ApprovalRow, type ApprovalDecision } from '#/components/home/approval-row';
 import { MessageTranscript } from '#/components/home/message-transcript';
-import { TurnDuration } from '#/components/home/turn-duration';
 import type { ChatApproval, ChatMessage } from '#/lib/chat-message';
 import type { CodexApprovalDecision, CodexApprovalMethod } from '#/lib/types';
 
@@ -31,6 +31,8 @@ export function ChatConversation({
   messages,
   onApprovalDecision,
 }: ChatConversationProps) {
+  const latestMessageId = messages.at(-1)?.id;
+
   return (
     <StickToBottom
       aria-live='polite'
@@ -48,13 +50,6 @@ export function ChatConversation({
               key={message.id}
             >
               <MessageContent className='group-[.is-assistant]:w-full group-[.is-user]:border-0 group-[.is-user]:bg-muted/40'>
-                {message.role === 'assistant' && message.startedAtMs !== undefined ? (
-                  <TurnDuration
-                    completedAtMs={message.completedAtMs}
-                    startedAtMs={message.startedAtMs}
-                    streaming={message.streaming === true}
-                  />
-                ) : null}
                 {message.attachments?.length ? (
                   <FileAttachments
                     attachments={message.attachments}
@@ -128,8 +123,22 @@ export function ChatConversation({
           </ConversationEmptyState>
         )}
       </StickToBottom.Content>
+      <ScrollOnNewMessage messageId={latestMessageId} />
     </StickToBottom>
   );
+}
+
+function ScrollOnNewMessage({ messageId }: { messageId: ChatMessage['id'] | undefined }) {
+  const previousMessageId = useRef(messageId);
+  const { scrollToBottom } = useStickToBottomContext();
+
+  useEffect(() => {
+    if (messageId === previousMessageId.current) return;
+    previousMessageId.current = messageId;
+    if (messageId !== undefined) void scrollToBottom('instant');
+  }, [messageId, scrollToBottom]);
+
+  return null;
 }
 
 const approvalTitle = (approval: ChatApproval) => {

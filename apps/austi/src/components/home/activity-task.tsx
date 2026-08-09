@@ -33,7 +33,7 @@ export function ActivityTask({ activities, active = false }: ActivityTaskProps) 
   };
 
   return (
-    <div aria-label='Agent activity' className='space-y-1' role='list'>
+    <div aria-label='Agent activity' className='space-y-0.5' role='list'>
       {items.map((activity) => (
         <ActivityItem
           activity={activity}
@@ -53,7 +53,7 @@ function ActivityItem({
   onDisclosureChange: () => void;
 }) {
   return (
-    <TaskItem className='min-w-0' role='listitem'>
+    <TaskItem className='min-w-0 text-xs' role='listitem'>
       {activity.detail ? (
         <Task defaultOpen={false} onOpenChange={onDisclosureChange}>
           <TaskTrigger
@@ -61,19 +61,19 @@ function ActivityItem({
             className='group/activity w-full rounded-sm text-left outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring'
             title={activity.label}
           >
-            <span className='flex min-w-0 items-center gap-2 py-0.5'>
+            <span className='flex min-w-0 items-center gap-1.5 py-0.5'>
               <ActivityRow activity={activity} disclosure />
             </span>
           </TaskTrigger>
           <AnimatedTaskContent
             aria-label={`${activity.label} details`}
-            className='[&>div]:mt-1 [&>div]:border-0 [&>div]:pl-6'
+            className='[&>div]:mt-0.5 [&>div]:border-0 [&>div]:pl-5'
           >
             <ActivityDetail activity={activity} />
           </AnimatedTaskContent>
         </Task>
       ) : (
-        <div className='flex min-w-0 items-center gap-2 py-0.5'>
+        <div className='flex min-w-0 items-center gap-1.5 py-0.5'>
           <ActivityRow activity={activity} />
         </div>
       )}
@@ -95,7 +95,7 @@ function ActivityRow({
       {disclosure ? (
         <ChevronDown
           aria-hidden='true'
-          className='size-3.5 shrink-0 opacity-0 transition-all group-hover/activity:opacity-100 group-data-[panel-open]/activity:rotate-180 group-data-[panel-open]/activity:opacity-100'
+          className='size-3 shrink-0 opacity-0 transition-all group-hover/activity:opacity-100 group-data-[panel-open]/activity:rotate-180 group-data-[panel-open]/activity:opacity-100'
         />
       ) : null}
     </>
@@ -105,14 +105,14 @@ function ActivityRow({
 function ActivityDetail({ activity }: { activity: ActivityDisplayItem }) {
   if (activity.kind !== 'file') {
     return (
-      <pre className='max-h-72 overflow-auto whitespace-pre-wrap rounded-md border bg-muted/20 px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground'>
+      <pre className='max-h-72 overflow-auto whitespace-pre-wrap rounded-md border bg-muted/20 px-2 py-1.5 font-mono text-[11px] leading-4 text-muted-foreground'>
         {activity.detail}
       </pre>
     );
   }
 
   return (
-    <pre className='max-h-72 overflow-auto whitespace-pre-wrap rounded-md border bg-muted/20 px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground'>
+    <pre className='max-h-72 overflow-auto whitespace-pre-wrap rounded-md border bg-muted/20 px-2 py-1.5 font-mono text-[11px] leading-4 text-muted-foreground'>
       {activity.detail?.split('\n').map((line, index) => (
         <span className={diffLineClassName(line)} key={`${index}-${line}`}>
           {line}
@@ -145,10 +145,10 @@ function ActivityStatusIcon({
       aria-label={announceStatus ? label : undefined}
       className={
         status === 'failed'
-          ? 'shrink-0 text-danger [&>svg]:size-4'
+          ? 'shrink-0 text-danger [&>svg]:size-3.5'
           : status === 'running'
-            ? 'shrink-0 animate-pulse [&>svg]:size-4'
-            : 'shrink-0 [&>svg]:size-4'
+            ? 'shrink-0 animate-pulse [&>svg]:size-3.5'
+            : 'shrink-0 [&>svg]:size-3.5'
       }
     >
       {icon}

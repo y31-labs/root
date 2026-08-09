@@ -18,13 +18,10 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup();
-  vi.useRealTimers();
 });
 
 describe('ChatConversation activity', () => {
   it('renders agent activity with status and output', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(102_000);
     render(
       <ChatConversation
         messages={[
@@ -59,7 +56,6 @@ describe('ChatConversation activity', () => {
             ],
             id: 1,
             role: 'assistant',
-            startedAtMs: 0,
             streaming: true,
             text: '',
           },
@@ -67,7 +63,6 @@ describe('ChatConversation activity', () => {
       />,
     );
 
-    expect(screen.getByText('Working for 1m 42s')).toBeTruthy();
     const sequenceTrigger = screen.getByRole('button', { name: 'Updating app.tsx' });
     expect(screen.getByText('Updating app.tsx').classList.contains('text-transparent')).toBe(true);
     expect(screen.queryByRole('list', { name: 'Agent activity' })).toBeNull();
