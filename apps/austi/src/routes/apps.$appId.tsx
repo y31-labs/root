@@ -1,6 +1,13 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Button } from '@workspace/ui/components/ui/button';
-import { ArrowLeft, MessageSquareText } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@workspace/ui/components/ui/dropdown-menu';
+import { useSidebar } from '@workspace/ui/components/ui/sidebar';
+import { Ellipsis, MessageSquareText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { GeneratedAppHost } from '#/features/apps/generated-app-host';
@@ -10,11 +17,15 @@ import { useLocalApi } from '#/providers/local-api-provider';
 
 export const Route = createFileRoute('/apps/$appId')({ component: GeneratedAppRoute });
 
+const appHeaderInlineStart =
+  'max(1rem, calc(var(--window-app-header-inline-start) - (100vw - 100%)))';
+
 function GeneratedAppRoute() {
   const { appId } = Route.useParams();
   const api = useLocalApi();
   const chatHistory = useChatHistory();
   const navigate = useNavigate();
+  const { setOpen: setSidebarOpen } = useSidebar();
   const [app, setApp] = useState<GeneratedAppRecord>();
   const [error, setError] = useState<string>();
 
@@ -43,50 +54,52 @@ function GeneratedAppRoute() {
 
   const openAuthoringChat = () => {
     if (!app) return;
+    setSidebarOpen(true);
     chatHistory.openChat(app.authoringChatId);
     void navigate({ to: '/' });
   };
 
   return (
-    <main className='min-h-0 flex-1 overflow-y-auto bg-background text-foreground'>
-      <header className='sticky top-0 z-10 flex min-h-14 items-center justify-between gap-4 border-b bg-background/95 px-5 backdrop-blur md:px-8'>
-        <div className='flex min-w-0 items-center gap-3'>
-          <Button
-            nativeButton={false}
-            size='icon-sm'
-            variant='ghost'
-            aria-label='Back to chat'
-            render={<Link to='/' />}
-          >
-            <ArrowLeft />
-          </Button>
-          <div className='min-w-0 py-2'>
-            <h1 className='truncate text-sm font-medium'>{app?.title ?? 'Local app'}</h1>
-            {app ? (
-              <p className='truncate text-xs text-muted-foreground'>
-                Local revision {app.revision}
-              </p>
-            ) : null}
-          </div>
+    <main className='flex min-h-0 flex-1 flex-col bg-background text-foreground'>
+      <header
+        data-tauri-drag-region
+        className='absolute inset-x-0 top-0 z-60 flex h-(--window-titlebar-height) items-center gap-4 bg-background/95 pr-(--window-control-inline-inset) backdrop-blur'
+        style={{ paddingInlineStart: appHeaderInlineStart }}
+      >
+        <h1 data-tauri-drag-region className='min-w-0 flex-1 truncate text-sm font-medium'>
+          {app?.title ?? 'Local app'}
+        </h1>
+        <div data-tauri-drag-region className='ml-auto flex shrink-0 items-center'>
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+              render={
+                <Button size='icon-sm' variant='ghost' aria-label='App actions'>
+                  <Ellipsis />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align='end' className='w-40'>
+              <DropdownMenuItem disabled={!app} onClick={openAuthoringChat}>
+                <MessageSquareText />
+                Edit in chat
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        {app ? (
-          <Button size='sm' variant='outline' onClick={openAuthoringChat}>
-            <MessageSquareText />
-            Edit in chat
-          </Button>
-        ) : null}
       </header>
-      {error ? (
-        <div className='mx-auto max-w-3xl px-6 py-10'>
-          <p className='text-danger' role='alert'>
-            {error}
-          </p>
-        </div>
-      ) : app ? (
-        <GeneratedAppHost api={api} app={app} key={`${app.id}:${app.revision}`} />
-      ) : (
-        <p className='px-6 py-10 text-sm text-muted-foreground'>Loading local app…</p>
-      )}
+      <div className='min-h-0 flex-1 overflow-y-auto'>
+        {error ? (
+          <div className='mx-auto max-w-3xl px-6 py-10'>
+            <p className='text-danger' role='alert'>
+              {error}
+            </p>
+          </div>
+        ) : app ? (
+          <GeneratedAppHost api={api} app={app} key={`${app.id}:${app.revision}`} />
+        ) : (
+          <p className='px-6 py-10 text-sm text-muted-foreground'>Loading local app…</p>
+        )}
+      </div>
     </main>
   );
 }
