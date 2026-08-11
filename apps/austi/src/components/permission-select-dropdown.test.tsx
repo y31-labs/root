@@ -33,6 +33,21 @@ const modelSettings: ModelSettingsState = {
 };
 
 describe('PermissionSelectDropdown', () => {
+  it.each([
+    ['read-only', 'Read only'],
+    ['workspace-write', 'Workspace'],
+  ] as const)('keeps the %s trigger icon visible', (permissionMode, label) => {
+    render(
+      <PermissionSelectDropdown
+        permissionMode={permissionMode}
+        onPermissionModeChange={vi.fn()}
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: `Permissions: ${label}` });
+    expect(trigger.querySelector('svg')?.getAttribute('stroke')).toBe('currentColor');
+  });
+
   it('uses the danger color for full access', async () => {
     render(
       <PermissionSelectDropdown
