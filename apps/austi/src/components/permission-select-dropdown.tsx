@@ -64,7 +64,7 @@ export function PermissionSelectDropdown({
             variant='ghost'
           >
             <selected.icon
-              stroke={permissionMode === 'danger-full-access' ? 'var(--danger)' : undefined}
+              color={permissionMode === 'danger-full-access' ? 'var(--danger)' : undefined}
               style={permissionMode === 'danger-full-access' ? dangerTextStyle : undefined}
             />
           </PromptInputButton>
@@ -89,7 +89,7 @@ export function PermissionSelectDropdown({
                 return (
                   <DropdownMenuRadioItem closeOnClick key={permission} value={permission}>
                     <Icon
-                      stroke={permission === 'danger-full-access' ? 'var(--danger)' : undefined}
+                      color={permission === 'danger-full-access' ? 'var(--danger)' : undefined}
                       style={style}
                     />
                     <span className='grid'>
