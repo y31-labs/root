@@ -18,6 +18,10 @@
 }
 
 :root {
+  --window-titlebar-height: 2.8rem;
+  --window-control-inline-inset: 1rem;
+  --window-sidebar-toggle-inline-start: 5.5rem;
+  --window-app-header-inline-start: 8rem;
   --success: oklch(0.527 0.154 150.069);
   --success-foreground: oklch(0.985 0 0);
   --danger: oklch(0.577 0.245 27.325);

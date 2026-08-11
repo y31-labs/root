@@ -13,7 +13,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <div
       data-tauri-drag-region
-      className='fixed inset-x-0 top-0 z-50 h-10'
+      className='fixed inset-x-0 top-0 z-50 h-(--window-titlebar-height)'
       aria-hidden='true'
       onMouseDown={() => void getCurrentWindow().startDragging()}
     />

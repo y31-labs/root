@@ -52,8 +52,8 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible='icon'>
-      <SidebarHeader className='pt-12'>
+    <Sidebar collapsible='offcanvas'>
+      <SidebarHeader className='pt-(--window-titlebar-height)'>
         <SidebarMenu>
           <SidebarMenuItem className='flex items-center gap-2'>
             <SidebarMenuButton tooltip={APP_NAME} render={<Link to='/' />}>
