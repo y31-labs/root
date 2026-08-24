@@ -1,5 +1,5 @@
 .section-heading {
-  --section-heading-size: var(--font-size-lg);
+  --section-heading-size: var(--font-size-display);
   --section-heading-gap: clamp(3rem, 9vw, 11rem);
 
   position: relative;
@@ -55,5 +55,5 @@
 }
 
 @media (max-width: 640px) {
-  .section-heading { --section-heading-size: clamp(3.5rem, 16vw, 5rem); }
+  .section-heading { --section-heading-size: var(--font-size-display-mobile); }
 }

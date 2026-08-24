@@ -1,60 +1,60 @@
----
-import { launchRows } from '../lib/landing-content';
-import PlannerWindow from './PlannerWindow.astro';
-
-interface Props {
-  stage: number;
-}
-
-const { stage } = Astro.props;
-const counters = ['Ask / 01', 'Build / 02', 'Open / 03', 'Keep / 04'];
-const appStates = ['Request ready', 'Building locally', 'Published locally', 'Revision 2'];
----
-
-{stage < 2 ? (
-  <section class="brief-pane" aria-label={stage === 0 ? 'Austi request example' : 'Austi build progress example'}>
-    <header>
-      <span><span class="brief-brand"><img src="/austi-logo.svg" alt="" width="38" height="42" /></span>Austi</span>
-      <small>{counters[stage]}</small>
-    </header>
-    <div class="brief-scenes">
-      {stage === 0 ? (
-        <article class="brief-scene is-active">
-          <h3>Start with what you want done</h3>
-          <p>Start with the work, not the wiring.</p>
-          <div class="request-card"><span>Build a weekly launch planner that tracks owners, dates, and blockers.</span><i aria-hidden="true"><svg viewBox="0 0 18 18"><path d="M9 14V4m0 0L5 8m4-4 4 4"></path></svg></i></div>
-          <small>One request · No template to configure</small>
+<section class="flow-diagram" data-flow-diagram data-flow-stage="0" aria-label="Austi maintenance coordination flow">
+  <div class="flow-canvas" data-flow-canvas>
+    <section class="flow-stage flow-stage-gather" data-flow-node="0">
+      <h3>Gather</h3>
+      <div class="flow-stack">
+        <article class="flow-box flow-source">
+          <i aria-hidden="true">
+            <svg viewBox="0 0 20 20"><path d="M6.1 2.8 8.3 7 6.8 8.5c1 2 2.7 3.7 4.7 4.7l1.5-1.5 4.2 2.2-.7 3c-.2.6-.7 1.1-1.4 1.1C7.9 17.5 2.5 12.1 2 4.9c0-.7.5-1.2 1.1-1.4l3-.7Z"></path></svg>
+          </i>
+          <strong>Phone</strong>
         </article>
-      ) : (
-        <article class="brief-scene is-active">
-          <h3>Watch the idea find its interface</h3>
-          <p>Structure, state, and controls appear in the open.</p>
-          <div class="build-log" aria-label="Illustrative build progress">
-            <span><i></i>Understanding the request<small>done</small></span>
-            <span><i></i>Designing the data model<small>done</small></span>
-            <span><i></i>Building the planner<small>done</small></span>
-            <span><i></i>Saving the local app<small>now</small></span>
-          </div>
+        <article class="flow-box flow-source">
+          <i aria-hidden="true">
+            <svg viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2"></rect><path d="m3.5 5 6.5 5 6.5-5"></path></svg>
+          </i>
+          <strong>Email</strong>
         </article>
-      )}
-    </div>
-  </section>
-) : (
-  <PlannerWindow ariaLabel={stage === 2 ? 'Published launch planner preview' : 'Revised launch planner preview'} stateText={appStates[stage]}>
-    <div class="planner-main planner-main-compact">
-      <header class="planner-heading"><div><span>May 12–18</span><h3>This week</h3></div><span class="compact-add">+ Add item</span></header>
-      <div class="launch-table compact-table" role="presentation">
-        <div class="launch-head"><span>Item</span><span class="owner">Owner</span><span class="date">Date</span><span>Status</span></div>
-        {launchRows.map((row) => (
-          <div class:list={['launch-row', { 'is-revised': stage === 3 && row.revisable }]}>
-            <span class="task">{row.task}</span><span class="owner"><i>{row.initials}</i>{row.owner}</span><span class="date">{stage === 3 && row.revisable ? 'May 17' : row.due}</span><span class="row-status" data-status={row.status.toLowerCase().replace(' ', '-')}><i></i>{row.status}</span>
-          </div>
-        ))}
+        <article class="flow-box flow-source">
+          <i aria-hidden="true">
+            <svg viewBox="0 0 20 20"><path d="M16.5 12.6A7 7 0 1 0 4.2 15l-1 3 3.2-1.1a7 7 0 0 0 10.1-4.3Z"></path><path d="M7 8.2h6M7 11.2h4"></path></svg>
+          </i>
+          <strong>WhatsApp</strong>
+        </article>
       </div>
-      <footer class="planner-footer">
-        <span><svg viewBox="0 0 18 18"><path d="m4 9 3 3 7-7"></path></svg>{stage === 2 ? 'Changes saved locally' : 'Revision 2 saved locally'}</span>
-        <span>{stage === 2 ? 'Ready to reopen' : '6 rows preserved'}</span>
-      </footer>
-    </div>
-  </PlannerWindow>
-)}
+    </section>
+
+    <div class="flow-link" data-flow-link="0" aria-hidden="true"></div>
+
+    <section class="flow-stage flow-stage-classify" data-flow-node="1">
+      <h3>Classify</h3>
+      <article class="flow-box flow-classify">
+        <span><small>Urgency</small><strong>High</strong></span>
+        <span><small>Owner</small><strong>Manager</strong></span>
+        <span><small>Action</small><strong>Approve</strong></span>
+      </article>
+    </section>
+
+    <div class="flow-link" data-flow-link="1" aria-hidden="true"></div>
+
+    <section class="flow-stage flow-stage-notify" data-flow-node="2">
+      <h3>Notify</h3>
+      <div class="flow-stack">
+        <article class="flow-box flow-recipient"><i aria-hidden="true">R</i><strong>Resident</strong></article>
+        <article class="flow-box flow-recipient"><i aria-hidden="true">M</i><strong>Manager</strong></article>
+        <article class="flow-box flow-recipient"><i aria-hidden="true">C</i><strong>Contractor</strong></article>
+      </div>
+    </section>
+
+    <div class="flow-link" data-flow-link="2" aria-hidden="true"></div>
+
+    <section class="flow-stage flow-stage-monitor" data-flow-node="3">
+      <h3>Monitor</h3>
+      <article class="flow-box flow-monitor">
+        <span data-status="done"><i></i><strong>Reported</strong></span>
+        <span data-status="active"><i></i><strong>Assigned</strong></span>
+        <span data-status="pending"><i></i><strong>Resolved</strong></span>
+      </article>
+    </section>
+  </div>
+</section>

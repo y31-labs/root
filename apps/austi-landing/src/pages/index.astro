@@ -1,16 +1,21 @@
 ---
 import Closing from '../components/Closing.astro';
+import Faq from '../components/Faq.astro';
 import Hero from '../components/Hero.astro';
 import Mechanism from '../components/Mechanism.astro';
-import Outcome from '../components/Outcome.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
+import Trust from '../components/Trust.astro';
 import Layout from '../layouts/Layout.astro';
+import { faqItems } from '../lib/landing-content';
 
-const title = 'Austi — an app that’ll make you question your job';
+const title = 'Austi | AI Maintenance Coordination for Property Managers';
 const description =
-  'Tell Austi what keeps repeating. It builds a private Mac app that takes it from here.';
-const downloadUrl = '/download';
+  'Austi explores AI-assisted maintenance coordination for residential property managers, connecting tenant reports, approvals, contractors and PMS updates.';
+const pilotUrl = 'mailto:hello@austi.works?subject=Maintenance%20workflow%20conversation';
 const siteUrl = 'https://austi.works/';
+const socialImageUrl = `${siteUrl}og-austi.png`;
+const logoUrl = `${siteUrl}austi-logo.svg`;
 const structuredData = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -21,6 +26,7 @@ const structuredData = {
       url: siteUrl,
       description,
       inLanguage: 'en',
+      publisher: { '@id': `${siteUrl}#organization` },
     },
     {
       '@type': 'WebPage',
@@ -29,36 +35,60 @@ const structuredData = {
       name: title,
       description,
       isPartOf: { '@id': `${siteUrl}#website` },
-      mainEntity: { '@id': `${siteUrl}#software` },
+      mainEntity: { '@id': `${siteUrl}#organization` },
+      primaryImageOfPage: { '@id': `${siteUrl}#primaryimage` },
+      hasPart: { '@id': `${siteUrl}#faq` },
       inLanguage: 'en',
     },
     {
-      '@type': 'SoftwareApplication',
-      '@id': `${siteUrl}#software`,
+      '@type': 'Organization',
+      '@id': `${siteUrl}#organization`,
       name: 'Austi',
       url: siteUrl,
-      downloadUrl: `${siteUrl}download`,
-      image: `${siteUrl}og-empty-desk.jpg`,
       description,
-      operatingSystem: 'macOS',
-      applicationCategory: 'ProductivityApplication',
-      featureList: [
-        'Build local apps from natural-language requests',
-        'Run repeated workflows without another model prompt',
-        'Preserve app state and revisions locally',
-        'Control network and credential access through explicit capabilities',
+      logo: logoUrl,
+      image: { '@id': `${siteUrl}#primaryimage` },
+      areaServed: [
+        { '@type': 'Country', name: 'Lithuania' },
+        { '@type': 'Country', name: 'Poland' },
       ],
+    },
+    {
+      '@type': 'ImageObject',
+      '@id': `${siteUrl}#primaryimage`,
+      url: socialImageUrl,
+      contentUrl: socialImageUrl,
+      width: 1731,
+      height: 909,
+      caption: 'Austi — AI-assisted maintenance coordination for residential property managers.',
+    },
+    {
+      '@type': 'FAQPage',
+      '@id': `${siteUrl}#faq`,
+      url: `${siteUrl}#faq`,
+      isPartOf: { '@id': `${siteUrl}#webpage` },
+      inLanguage: 'en',
+      mainEntity: faqItems.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.answer,
+        },
+      })),
     },
   ],
 };
 ---
 
 <Layout {title} {description} {structuredData}>
-  <SiteHeader />
+  <SiteHeader {pilotUrl} />
   <main id="main-content">
-    <Hero {downloadUrl} />
+    <Hero {pilotUrl} />
     <Mechanism />
-    <Outcome />
-    <Closing {downloadUrl} />
+    <Trust />
+    <Faq />
+    <Closing {pilotUrl} />
   </main>
+  <SiteFooter />
 </Layout>

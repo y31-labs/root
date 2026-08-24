@@ -8,11 +8,29 @@
   --size-lg: 1.5rem;
   --size-xl: 2rem;
 
-  /* The only shared type sizes and weights. */
-  --font-size-xs: 0.625rem;
-  --font-size-sm: 0.75rem;
+  /* Shared type scale. */
+  --font-size-xs: 0.875rem;
+  --font-size-sm: 1rem;
   --font-size-md: 1rem;
-  --font-size-lg: clamp(3.6rem, 7vw, 7.1rem);
+  --font-size-body-lg: clamp(1rem, 1.35vw, 1.25rem);
+  --font-size-kicker: clamp(1.1rem, 1.5vw, 1.4rem);
+  --font-size-kicker-lg: clamp(1.2rem, 1.8vw, 1.65rem);
+  --font-size-title-sm: clamp(1.35rem, 2vw, 1.8rem);
+  --font-size-title-md: clamp(1.8rem, 3vw, 3rem);
+  --font-size-tab-title: clamp(1.7rem, 2.5vw, 2.75rem);
+  --font-size-question: clamp(1.35rem, 2vw, 2rem);
+  --font-size-heading-sm: clamp(2rem, 3.25vw, 3.5rem);
+  --font-size-heading-md: clamp(2.25rem, 4vw, 4.5rem);
+  --font-size-heading-lg: clamp(2.5rem, 5vw, 5.5rem);
+  --font-size-display-sm: clamp(3.4rem, 5.5vw, 6rem);
+  --font-size-display: clamp(3.4rem, 6.5vw, 7rem);
+  --font-size-display-mobile: clamp(3rem, 14vw, 5rem);
+  --font-size-heading-mobile: clamp(2rem, 10vw, 3rem);
+  --font-size-metric: clamp(4rem, 8vw, 8rem);
+  --font-size-hero: clamp(4.5rem, 7.7vw, 8rem);
+  --font-size-hero-mobile: clamp(3.75rem, 17vw, 5rem);
+  --font-size-closing: clamp(4.4rem, 8.5vw, 9rem);
+  --font-size-closing-mobile: clamp(3.8rem, 17vw, 5.2rem);
   --font-weight-normal: 400;
   --font-weight-bold: 700;
 
@@ -39,5 +57,13 @@
   --page-width: 110rem;
   --page-gutter: clamp(1.15rem, 3vw, 3.4rem);
   --section-block-size: clamp(7rem, 12vw, 13rem);
+  --padding-section: var(--section-block-size) var(--page-gutter);
+  --padding-feature: clamp(1.5rem, 3vw, 3rem);
+  --padding-panel: clamp(2rem, 4vw, 4rem);
+  --padding-panel-block: clamp(3rem, 6vw, 6rem);
+  --padding-divider-block: clamp(3rem, 5vw, 5rem);
+  --padding-group-block: clamp(4rem, 8vw, 8rem);
+  --padding-workbench-header: var(--size-md) var(--size-lg);
+  --padding-chip: calc(var(--size-xs) * 0.55) var(--size-xs);
   --font-family: 'Clarity City', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }

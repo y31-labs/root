@@ -1,0 +1,35 @@
+---
+import { faqGroups, faqItems } from '../lib/landing-content';
+import './Faq.css';
+---
+
+<section class="faq paper-field" id="faq" aria-labelledby="faq-title">
+  <div class="faq-inner">
+    <aside class="faq-index">
+      <h2 id="faq-title">FAQ.</h2>
+    </aside>
+
+    <div class="faq-content">
+      {faqGroups.map((group) => (
+        <section class="faq-group" id={`faq-${group.id}`} aria-labelledby={`faq-${group.id}-title`}>
+          <header>
+            <h3 id={`faq-${group.id}-title`}>{group.name}</h3>
+          </header>
+          <div class="faq-list">
+            {faqItems.filter((item) => item.group === group.id).map((item) => (
+              <details class="faq-item">
+                <summary>
+                  <strong>{item.question}</strong>
+                  <svg class="faq-chevron" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                    <path d="m9 18 6-6-6-6"></path>
+                  </svg>
+                </summary>
+                <div><p>{item.answer}</p></div>
+              </details>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  </div>
+</section>

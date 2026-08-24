@@ -1,14 +1,57 @@
 ---
 import './SiteHeader.css';
 
+interface Props {
+  pilotUrl: string;
+}
+
+const { pilotUrl } = Astro.props;
 const onHomePage = Astro.url.pathname === '/';
 ---
 
-<header class="site-header">
-  <a class="header-brand" href={onHomePage ? '#top' : '/'} aria-label="Austi home">
-    <img src="/austi-logo.svg" alt="" width="22" height="24" />
-  </a>
-  <nav aria-label="Main navigation">
-    <a href={onHomePage ? '#how-it-works' : '/#how-it-works'}>How it works</a>
-  </nav>
-</header>
+<div class="site-header-shell" data-site-header>
+  <header class="site-header">
+    <a class="header-brand" href={onHomePage ? '#top' : '/'} aria-label="Austi home">
+      <img src="/austi-logo.svg" alt="" width="22" height="24" />
+    </a>
+    <nav aria-label="Main navigation">
+      <a href={onHomePage ? '#workflow' : '/#workflow'}>Workflow</a>
+      <a href={onHomePage ? '#controls' : '/#controls'}>Controls</a>
+      <a href={onHomePage ? '#faq' : '/#faq'}>FAQ</a>
+    </nav>
+  </header>
+  <span class="header-cta-slot">
+    <span class="header-cta-reveal">
+      <a class="header-cta" href={pilotUrl}>
+        <span>Contact us</span>
+        <svg viewBox="0 0 18 18" aria-hidden="true">
+          <path d="M3.5 9h11M10 4.5 14.5 9 10 13.5"></path>
+        </svg>
+      </a>
+    </span>
+  </span>
+</div>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-site-header]');
+  const hero = document.querySelector<HTMLElement>('#top');
+
+  if (header && hero) {
+    const updateHeader = () => {
+      header.toggleAttribute('data-hero-past', hero.getBoundingClientRect().bottom <= 0);
+    };
+
+    updateHeader();
+
+    if (typeof IntersectionObserver === 'function') {
+      const observer = new IntersectionObserver(([entry]) => {
+        if (!entry) return;
+        header.toggleAttribute('data-hero-past', entry.boundingClientRect.bottom <= 0);
+      });
+
+      observer.observe(hero);
+    } else {
+      window.addEventListener('scroll', updateHeader, { passive: true });
+    }
+  }
+</script>

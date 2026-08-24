@@ -2,77 +2,53 @@
 
 ## Platform
 
-web
+Web landing page for a pre-product B2B concept.
 
-## Users
+## Product
 
-Primary audience (inferred from the product docs and landing-page brief): technical builders and
-operators—founders, product people, and developers—who repeat structured work and want a durable
-tool instead of reconstructing the same workflow through chat.
+Austi is exploring an AI-assisted maintenance coordination layer for residential property
+managers. It is intended to connect the operational work between a tenant report and a closed
+case: intake, diagnostic questions, triage, approval, contractor selection, scheduling, follow-up,
+and the final PMS record.
 
-## Product Purpose
+The landing-page concept condenses that work into four stages: capture requests from phone, email,
+and WhatsApp; assess urgency and responsibility; coordinate the people involved; and close the case.
 
-Austi is an app-first desktop environment that turns natural-language requests into durable,
-local software. The agent interprets and revises the workflow; the resulting app becomes the
-repeatable product. Success means a useful conversation leaves the user with software they can
-reopen, operate, and evolve without replaying the original reasoning.
+## Audience
+
+The primary audience is residential property-management operators, especially heads of operations,
+maintenance coordinators, and portfolio managers in Lithuania and Poland. The landing page is a
+credibility surface for targeted research outreach, not an acquisition funnel for a finished
+product.
 
 ## Positioning
 
-Use the agent to build the workflow once; use the app to run it repeatedly. Austi amortizes
-inference into persistent software whose interface, state, revisions, permissions, and execution
-are owned by the native host rather than by a fragile chat session.
+Austi coordinates maintenance within the property manager's operating policy. It does not
+invent that policy and does not require the team to replace its existing PMS.
 
-## Operating Context
+## Current Stage
 
-Users describe dashboards, trackers, status views, internal tools, and recurring workflows in a
-desktop authoring conversation. Austi builds and publishes the app locally, exposes it in product
-navigation, keeps its working state, and provides a path back to the authoring conversation when
-the workflow needs to change.
-
-## Capabilities and Constraints
-
-- Austi is a native desktop product for macOS; this artifact is its marketing website.
-- Apps are built from trusted primitives and run in a network-disabled sandbox by default.
-- The host owns compilation, storage, authentication, permissions, capabilities, and isolation.
-- Apps declare narrow capabilities and ask before approved integrations touch external services.
-- Generated code is untrusted input and cannot grant itself access or carry credentials.
-- Published apps have stable identity, persistent state, revisions, and a path to future edits.
-- The product is focused on durable operational tools, not unrestricted automation or a universal
-  replacement for conversational work.
-- The current public release status is a preview; the landing page must not invent customers,
-  benchmarks, pricing, availability, or security claims beyond repository evidence.
-
-## Brand Commitments
-
-- Preserve the Austi name and existing logo at `public/austi-logo.svg`.
-- Voice is direct, assured, precise, and low-hype.
-- The landing page should feel modern, breathable, spacious, and professionally built by a large,
-  quality-focused software company.
-- Dia's landing page is a binding craft reference for spacious composition, people-led personality,
-  product demonstration, and small, purposeful microinteractions—not a template to copy.
-
-## Evidence on Hand
-
-- Product definition and decision criteria: `../../.docs/austi/README.md` and
-  `../../.docs/austi/core-values.md`.
-- Existing product demonstration and factual marketing copy:
-  `src/pages/index.astro`.
-- Existing brand asset: `public/austi-logo.svg`.
-- Current download destination: `https://github.com/y31-labs/root/releases`.
-- No customer logos, testimonials, usage metrics, pricing, awards, or third-party validation are
-  present; future work must not fabricate them.
+- Operator research and workflow discovery.
+- No self-service product, pricing, customer proof, or measured performance claims yet.
+- The primary CTA is a conversation about the operator's current workflow.
+- Case examples on the site are explicitly labeled as illustrative concept workflows.
 
 ## Product Principles
 
-1. Apps are the durable product; chat is the authoring surface.
-2. The agent builds and revises; the trusted host runs and governs.
-3. Purpose-built interfaces beat repeated conversation for recurring work.
-4. Local-first means user-owned, recoverable, understandable software and data.
-5. Authority stays explicit, narrow, and visible.
+1. Start from real maintenance cases, not hypothetical feature demand.
+2. Keep intake, decisions, handoffs, appointments, and outcomes connected.
+3. Let the property manager define approval limits, escalation rules, and preferred contractors.
+4. Escalate emergencies, uncertainty, and exceptions to a person with full context.
+5. Add a coordination layer around the existing PMS rather than forcing a migration.
 
-## Accessibility & Inclusion
+## Claims Policy
 
-The marketing surface must preserve semantic structure, keyboard access, visible focus, reduced
-motion support, strong text contrast, and responsive behavior from small phones through wide
-desktop screens.
+Do not publish efficiency percentages, response-time improvements, customer logos, testimonials,
+integration claims, pricing, or autonomous-action claims without evidence. Use research-stage
+language such as "exploring," "being designed," and "proposed workflow" until the product and
+results exist.
+
+## Accessibility
+
+Preserve semantic structure, keyboard access, visible focus, reduced-motion support, strong text
+contrast, and responsive behavior from small phones through wide desktop screens.
