@@ -1,9 +1,12 @@
-.site-header {
+.site-header-shell {
   --header-height: clamp(3.5rem, 5.9dvh, 4rem);
   --header-gap: clamp(1.25rem, 1.75vw, 1.75rem);
   --header-logo-size: clamp(1rem, 1.35vw, 1.35rem);
   --header-top: max(var(--size-xl), calc(env(safe-area-inset-top) + var(--size-md)));
   --header-max-width: calc(100vw - var(--size-xl));
+  --header-cta-width: clamp(7.75rem, 9.5vw, 9rem);
+  --header-shadow-color: color-mix(in srgb, var(--color-night) 24%, transparent);
+  --header-shadow: 0 calc(var(--size-md) * 0.9) calc(var(--size-lg) * 2) var(--header-shadow-color);
 
   position: fixed;
   z-index: 50;
@@ -12,15 +15,22 @@
   display: flex;
   width: fit-content;
   max-width: var(--header-max-width);
+  align-items: center;
+  gap: var(--size-sm);
+  transform: translateX(-50%);
+}
+
+.site-header {
+  display: flex;
+  width: fit-content;
   min-height: var(--header-height);
   padding: calc(var(--size-xs) * 0.8) calc(var(--size-md) * 1.25);
   align-items: center;
   border-radius: var(--size-md);
   background: var(--color-white);
-  box-shadow: 0 calc(var(--size-md) * 0.9) calc(var(--size-lg) * 2) color-mix(in srgb, var(--color-night) 24%, transparent);
+  box-shadow: var(--header-shadow);
   color: var(--color-black);
   gap: var(--header-gap);
-  transform: translateX(-50%);
 }
 
 .header-brand {
@@ -44,6 +54,7 @@
   display: flex;
   color: var(--color-muted-paper);
   font-size: var(--font-size-md);
+  gap: var(--size-md);
 }
 
 .site-header nav a {
@@ -57,14 +68,100 @@
 .header-brand:focus-visible,
 .site-header nav a:focus-visible { outline-color: var(--color-black); }
 
+.header-cta-slot {
+  width: 0;
+  min-height: var(--header-height);
+  flex: 0 0 auto;
+  border-radius: var(--size-md);
+  background: var(--color-accent);
+  box-shadow: var(--header-shadow);
+  opacity: 0;
+  transform: translateX(calc(var(--size-sm) * -1)) scale(0.92);
+  transform-origin: left center;
+  transition:
+    width 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease-out,
+    transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 560ms;
+  visibility: hidden;
+}
+
+.site-header-shell[data-hero-past] .header-cta-slot {
+  width: var(--header-cta-width);
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  transition-delay: 0s, 80ms, 0s, 0s;
+  visibility: visible;
+}
+
+.header-cta-reveal {
+  display: block;
+  width: 100%;
+  clip-path: inset(0 100% 0 0 round var(--size-md));
+  filter: blur(0.35rem);
+  transition:
+    clip-path 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 420ms ease-out;
+}
+
+.site-header-shell[data-hero-past] .header-cta-reveal {
+  clip-path: inset(0 round var(--size-md));
+  filter: blur(0);
+  transition-delay: 0s, 80ms;
+}
+
+.header-cta {
+  display: inline-flex;
+  width: var(--header-cta-width);
+  min-height: var(--header-height);
+  padding-inline: var(--size-md);
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--size-md);
+  background: var(--color-accent);
+  color: var(--color-black);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  gap: var(--size-xs);
+  white-space: nowrap;
+}
+
+.header-cta svg {
+  width: var(--size-md);
+  height: var(--size-md);
+  flex: 0 0 auto;
+  transition: transform 180ms ease-out;
+}
+
+.header-cta:hover svg,
+.header-cta:focus-visible svg { transform: translateX(calc(var(--size-xs) * 0.4)); }
+
+.header-cta:focus-visible { outline-color: var(--color-black); }
+
 @media (max-width: 640px) {
-  .site-header {
+  .site-header-shell {
     --header-height: 3.5rem;
     --header-top: max(var(--size-lg), calc(env(safe-area-inset-top) + var(--size-sm)), 3dvh);
-
-    padding: calc(var(--size-xs) * 0.7) var(--size-md);
-    gap: var(--size-sm);
+    --header-max-width: calc(100vw - var(--size-lg));
+    --header-cta-width: 9rem;
   }
 
-  .header-brand { height: calc(var(--size-xl) + 0.1rem); }
+  .site-header {
+    width: var(--header-height);
+    min-width: var(--header-height);
+    height: var(--header-height);
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .site-header nav { display: none; }
+  .header-brand { height: 100%; }
+  .header-cta { padding-inline: var(--size-lg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-cta-slot,
+  .header-cta-reveal,
+  .header-cta svg { transition-duration: 0.001ms; }
 }

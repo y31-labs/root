@@ -1,106 +1,123 @@
 ---
-import SectionHeading from './SectionHeading.astro';
+import { outcomes } from '../lib/landing-content';
 import './Outcome.css';
-
-const features = [
-  {
-    id: 'provider',
-    title: 'Bring your Codex setup',
-    copy: 'Use the Codex authentication already configured on your Mac. Austi keeps the connection in the trusted desktop host.',
-  },
-  {
-    id: 'savings',
-    title: 'Run it without another prompt',
-    copy: 'Once the workflow is built, repeat work happens in its interface—no new model reasoning required.',
-  },
-  {
-    id: 'ux',
-    title: 'Give the work a real interface',
-    copy: 'Chat is a narrow column. Your workflow gets the controls, views, and feedback it needs.',
-  },
-  {
-    id: 'personal',
-    title: 'Make the interface yours',
-    copy: 'Give each app the density and visual character its work calls for instead of settling for one generic chat skin.',
-  },
-  {
-    id: 'security',
-    title: 'Keep authority narrow',
-    copy: 'Apps start without network or credential access. You decide which specific capabilities they can use.',
-  },
-  {
-    id: 'evolving',
-    title: 'Change it without starting over',
-    copy: 'Ask for a revision in plain language. Austi updates the app while preserving the work already inside it.',
-  },
-];
 ---
 
-<section class="outcome paper-field" aria-labelledby="outcome-title">
-  <SectionHeading
-    id="outcome-title"
-    title="Built to actually be useful"
-    highlight="actually"
-    layout="centered"
-  />
+<section class="outcome dark-field" id="outcomes" aria-labelledby="outcome-title">
+  <div class="outcome-inner">
+    <header class="outcome-intro">
+      <div>
+        <p>What changes</p>
+        <h2 id="outcome-title">The team stops being the glue.</h2>
+      </div>
+      <p>Austi is meant to remove routine coordination—not the relationships, policy or judgment that belong to your people.</p>
+    </header>
 
-  <div class="feature-grid">
-    {features.map((feature) => (
-      <article class:list={['feature-panel', `feature-panel-${feature.id}`]}>
-        <h3 class="feature-label">{feature.title}</h3>
-        <p>{feature.copy}</p>
+    <section class="outcome-workbench" data-tab-group data-active-tab="0" aria-label="Proposed Austi outcomes">
+      <div class="outcome-tabs" role="tablist" aria-label="Outcome views">
+        {outcomes.map((outcome, index) => (
+          <button
+            type="button"
+            role="tab"
+            id={`outcome-tab-${index}`}
+            aria-controls={`outcome-panel-${index}`}
+            aria-selected={index === 0 ? 'true' : 'false'}
+            tabindex={index === 0 ? 0 : -1}
+          >
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <strong>{outcome.name}</strong>
+            <small>{outcome.detail}</small>
+          </button>
+        ))}
+      </div>
 
-        {feature.id === 'provider' && (
-          <div class="feature-visual provider-picker" aria-hidden="true">
-            <header><span>Codex connection</span><small><i></i>Ready</small></header>
-            <dl>
-              <div><dt>Authentication</dt><dd>Existing local session</dd></div>
-              <div><dt>Runtime</dt><dd>Managed by Austi</dd></div>
-              <div><dt>App access</dt><dd>None by default</dd></div>
-            </dl>
-            <footer>Connection stays in the desktop host</footer>
+      <div class="outcome-panels">
+        <article class="outcome-panel" id="outcome-panel-0" role="tabpanel" aria-labelledby="outcome-tab-0">
+          <header><span>One repair, viewed two ways</span><h3>From scattered handoffs to one case with an owner.</h3></header>
+          <div class="coordination-comparison">
+            <section class="fragmented-flow" aria-label="Fragmented coordination example">
+              <div class="comparison-label"><strong>Without the layer</strong><span>Five separate places</span></div>
+              <ol>
+                <li><i>IN</i><span><strong>Resident email</strong><small>Leak reported · 22:14</small></span></li>
+                <li><i>PH</i><span><strong>Clarification call</strong><small>Notes stay with one person</small></span></li>
+                <li><i>WA</i><span><strong>Owner approval</strong><small>Forwarded in a chat</small></span></li>
+                <li><i>CO</i><span><strong>Contractor thread</strong><small>Availability needs chasing</small></span></li>
+                <li><i>PM</i><span><strong>PMS update</strong><small>Still waiting after the visit</small></span></li>
+              </ol>
+              <p>The coordinator carries context between every step.</p>
+            </section>
+
+            <section class="connected-flow" aria-label="Connected coordination example">
+              <div class="comparison-label"><strong>With Austi</strong><span>One operational thread</span></div>
+              <div class="connected-case">
+                <header><span>Case 024</span><strong>Kitchen leak</strong><i>In progress</i></header>
+                <ol>
+                  <li data-state="done"><time>22:14</time><span><strong>Report understood</strong><small>Questions + evidence complete</small></span></li>
+                  <li data-state="done"><time>22:20</time><span><strong>Policy checked</strong><small>Approval route identified</small></span></li>
+                  <li data-state="active"><time>22:23</time><span><strong>Decision requested</strong><small>Manager sees the full case</small></span></li>
+                  <li><time>Next</time><span><strong>Contractor + schedule</strong><small>Prepared to continue</small></span></li>
+                </ol>
+              </div>
+              <p>The team enters when judgment is required, with the context already assembled.</p>
+            </section>
           </div>
-        )}
+        </article>
 
-        {feature.id === 'savings' && (
-          <div class="feature-visual savings-meter" aria-hidden="true">
-            <header><span>Weekly launch run</span><i></i></header>
-            <strong>0</strong>
-            <p>model turns per repeat run</p>
-            <div><span>Monday</span><span>Tuesday</span><span>Wednesday</span><span>Today</span></div>
-            <small>Runs in the app · No new model call</small>
+        <article class="outcome-panel" id="outcome-panel-1" role="tabpanel" aria-labelledby="outcome-tab-1" hidden>
+          <header><span>Illustrative after-hours intake</span><h3>A complete first response can begin before the desk opens.</h3></header>
+          <div class="response-sequence">
+            <section class="response-clock">
+              <p>Report arrives</p>
+              <strong>22:14</strong>
+              <span>Resident uses their normal channel</span>
+            </section>
+            <ol class="response-events">
+              <li><time>22:14</time><span><strong>Request acknowledged</strong><small>The resident knows the report is being handled.</small></span></li>
+              <li><time>22:15</time><span><strong>Diagnostic questions sent</strong><small>Symptoms, risk, evidence and access.</small></span></li>
+              <li><time>22:19</time><span><strong>Initial brief complete</strong><small>Urgency and likely trade proposed.</small></span></li>
+              <li><time>22:20</time><span><strong>Human boundary checked</strong><small>Emergency, uncertainty and approval rules applied.</small></span></li>
+            </ol>
+            <section class="response-handoff">
+              <p>What the coordinator receives</p>
+              <h4>A decision-ready case, not a missed call.</h4>
+              <ul>
+                <li>Resident answers</li>
+                <li>Media evidence</li>
+                <li>Urgency rationale</li>
+                <li>Policy checkpoint</li>
+                <li>Proposed next move</li>
+              </ul>
+            </section>
           </div>
-        )}
+        </article>
 
-        {feature.id === 'ux' && (
-          <div class="feature-visual app-preview" aria-hidden="true">
-            <header><i></i><i></i><i></i><span>Launch planner</span></header>
-            <div><aside><strong>This week</strong><span class="is-active">Launch plan</span><span>Decisions</span><span>Archive</span></aside><div class="app-preview-main"><strong>May 12–18</strong><span>Landing page <i>In progress</i></span><span>Email campaign <i>In progress</i></span><span>Launch video <i>Planned</i></span></div></div>
+        <article class="outcome-panel" id="outcome-panel-2" role="tabpanel" aria-labelledby="outcome-tab-2" hidden>
+          <header><span>Clear system boundary</span><h3>Austi coordinates the work. Your PMS keeps the record.</h3></header>
+          <div class="system-boundary">
+            <section class="coordination-layer">
+              <div class="boundary-title"><span>Austi</span><strong>Operational coordination</strong></div>
+              <ul>
+                <li><strong>Conversation</strong><span>Questions and updates</span></li>
+                <li><strong>Decision route</strong><span>Rules and approvals</span></li>
+                <li><strong>People</strong><span>Resident, manager, contractor</span></li>
+                <li><strong>Progress</strong><span>Follow-up and closure</span></li>
+              </ul>
+            </section>
+            <div class="boundary-transfer" aria-hidden="true"><span>Complete case</span><i></i></div>
+            <section class="record-layer">
+              <div class="boundary-title"><span>Your PMS</span><strong>Source of truth</strong></div>
+              <dl>
+                <div><dt>Case summary</dt><dd>Prepared</dd></div>
+                <div><dt>Decision history</dt><dd>Attached</dd></div>
+                <div><dt>Appointment</dt><dd>Recorded</dd></div>
+                <div><dt>Completion evidence</dt><dd>Attached</dd></div>
+                <div><dt>Invoice details</dt><dd>Ready</dd></div>
+              </dl>
+              <p>Exact integration and write-back are defined with the operator’s existing setup.</p>
+            </section>
           </div>
-        )}
-
-        {feature.id === 'personal' && (
-          <div class="feature-visual theme-preview" aria-hidden="true">
-            <div class="theme-swatches"><span class="is-active">Paper</span><span>Night</span><span>Dense</span></div>
-            <div class="theme-window"><header><span></span><small>Campaign tracker</small></header><strong>Make it yours.</strong><p>One workflow. Your density, type, and theme.</p><div><i></i><i></i><i></i></div></div>
-          </div>
-        )}
-
-        {feature.id === 'security' && (
-          <div class="feature-visual access-sheet" aria-hidden="true">
-            <header><span>Launch planner access</span><small>1 capability</small></header>
-            <div><span><i>F</i><strong>Local files</strong><small>Selected folder</small><b></b></span><span><i>N</i><strong>Network</strong><small>No access</small><b class="is-off"></b></span><span><i>K</i><strong>Credentials</strong><small>Never available</small><b class="is-off"></b></span></div>
-            <footer><i></i>Controlled by you</footer>
-          </div>
-        )}
-
-        {feature.id === 'evolving' && (
-          <div class="feature-visual evolution-preview" aria-hidden="true">
-            <div class="evolution-request">Add a calendar view. Keep my existing launch items.<i><svg viewBox="0 0 18 18"><path d="M9 14V4m0 0L5 8m4-4 4 4"></path></svg></i></div>
-            <div class="evolution-line"><span><i></i>Revision 1</span><b></b><span class="is-current"><i></i>Revision 2<small>Calendar added · 6 items preserved</small></span></div>
-          </div>
-        )}
-      </article>
-    ))}
+        </article>
+      </div>
+    </section>
   </div>
 </section>

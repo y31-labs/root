@@ -1,0 +1,6 @@
+apps/austi-landing/**/*.avif filter=lfs diff=lfs merge=lfs -text
+apps/austi-landing/**/*.gif filter=lfs diff=lfs merge=lfs -text
+apps/austi-landing/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+apps/austi-landing/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+apps/austi-landing/**/*.png filter=lfs diff=lfs merge=lfs -text
+apps/austi-landing/**/*.webp filter=lfs diff=lfs merge=lfs -text
