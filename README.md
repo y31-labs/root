@@ -1,6 +1,6 @@
 # Root Monorepo
 
-This repository is a Bun workspace for the Code, Trading, Portfolio, and Flowguard projects.
+This repository is a Bun workspace for the Austi, Code, Trading, and Portfolio projects.
 
 ## Workspace Map
 
@@ -8,18 +8,13 @@ This repository is a Bun workspace for the Code, Trading, Portfolio, and Flowgua
 - `apps/code-desktop`: Tauri desktop app with Vite UI, Rust local runtime, Playwright coverage, and verifier packaging.
 - `apps/austi`: Tauri desktop app for experimenting with local Codex inference workflows.
 - `apps/austi-landing`: Astro marketing site for Austi.
-- `apps/interface-lab`: TanStack Start playground for prototyping AI-powered interfaces.
 - `apps/trading`: TanStack Start trading app with its own Convex app under `apps/trading/convex`.
 - `apps/portfolio`: Astro portfolio site.
-- `apps/flowguard-vscode`: Flowguard VS Code extension, webview, fixtures, and tests.
 - `packages/ui`: Shared shadcn/Tailwind UI primitives and app-level UI helpers.
 - `packages/web-foundation`: Shared TanStack Start, Vite, WorkOS, and Convex helpers.
 - `packages/code-workbench`: Shared Code workbench React components.
 - `packages/code-agent-contracts`: Shared Code domain contracts.
-- `packages/flowguard-contracts`: Pure Flowguard document contracts and validation.
-- `packages/flowguard-engine`: Pure Flowguard graph, impact, and layout helpers.
 - `scripts`: Code MVP smoke runner, report verifier, and demo repository tooling.
-- `plugins/flowguard-codex`: Local Codex plugin and Flowguard review skill.
 
 ## Common Commands
 
@@ -40,13 +35,11 @@ bun run code:dev
 bun run desktop:dev
 bun run austi:dev
 bun run austi-landing:dev
-bun run interface-lab:dev
 bun run trading:dev
 bun run portfolio:dev
 
 bun run code:check
 bun run code:verify
-bun run flowguard:check
 bun run trading:test
 bun run portfolio:build
 bun run austi-landing:build

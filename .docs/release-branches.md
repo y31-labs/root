@@ -14,7 +14,6 @@ belonged to from the Git ref alone.
 | Austi desktop | `release-austi` | GitHub Actions builds, signs, and publishes the Tauri release |
 | Austi landing | `release-austi-landing` | Vercel deploys `apps/austi-landing` to `austi.works` |
 | Portfolio | `release-portfolio` | Vercel deploys `apps/portfolio` |
-| Y31 / Interface Lab | `release-y31` | Vercel deploys `apps/interface-lab` |
 
 Create a release branch only when a project has a production release target. New release branches
 must follow the same `release-<project>` shape; do not recreate the generic `release` branch.
@@ -34,7 +33,7 @@ has been validated. Vercel's configured production branch must match the branch 
 one release branch must not deploy any other project.
 
 The same **Release product** action is the normal entry point for web releases. Choose
-`austi-landing`, `portfolio`, or `y31`; the version input is ignored for web products. The action
+`austi-landing` or `portfolio`; the version input is ignored for web products. The action
 refuses to overwrite a release branch that has diverged from `main`.
 
 Before deleting or renaming a release branch:
