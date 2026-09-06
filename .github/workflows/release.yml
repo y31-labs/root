@@ -12,7 +12,6 @@ on:
           - austi
           - austi-landing
           - portfolio
-          - y31
       version_update:
         description: Austi desktop version update (ignored for web products)
         required: true
@@ -58,7 +57,6 @@ jobs:
           case "$PRODUCT" in
             austi-landing) branch="release-austi-landing" ;;
             portfolio) branch="release-portfolio" ;;
-            y31) branch="release-y31" ;;
             *) echo "Unsupported web product: $PRODUCT" >&2; exit 1 ;;
           esac
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
