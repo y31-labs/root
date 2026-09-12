@@ -1,0 +1,5 @@
+export const GENERATION_TIMEOUT_MS = 120_000;
+export const DELIVERY_TIMEOUT_MS = 30_000;
+export const PROCESSING_LEASE_MS = 180_000;
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MEDIA_GROUP_WAIT_MS = 1000;
