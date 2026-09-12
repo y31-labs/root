@@ -4,6 +4,7 @@ import { internal } from "#convex/_generated/api";
 import { httpAction } from "#convex/_generated/server";
 import { getGitHubAppConfig } from "#convex/githubAppConfig";
 import { verifyGitHubWebhookSignature } from "#convex/githubWebhookVerify";
+import { telegramWebhook } from '#convex/telegramWebhook';
 
 type InstallationEvent = {
   action: string;
@@ -82,6 +83,8 @@ export const githubWebhook = httpAction(async (ctx, request) => {
 });
 
 const http = httpRouter();
+
+http.route({ path: '/telegram/webhook', method: 'POST', handler: telegramWebhook });
 
 http.route({
   path: "/github/webhook",

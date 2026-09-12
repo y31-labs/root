@@ -2,6 +2,15 @@ import { verificationGateKinds } from '@workspace/code-agent-contracts/manifest'
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
+import {
+  conversationScope,
+  deliveryStatus,
+  mediaGroupItem,
+  messagePart,
+  messageStatus,
+  sourceImage,
+} from '#convex/chat/validators';
+
 const runStatus = v.union(
   v.literal('queued'),
   v.literal('preparing'),
@@ -19,6 +28,54 @@ const flowNodeKind = v.union(v.literal('start'), v.literal('action'));
 const gateKind = v.union(...verificationGateKinds.map((kind) => v.literal(kind)));
 
 export default defineSchema({
+  users: defineTable({}),
+
+  identities: defineTable({
+    userId: v.id('users'),
+    provider: v.string(),
+    externalAccountId: v.string(),
+  }).index('by_provider_account', ['provider', 'externalAccountId']),
+
+  chats: defineTable({
+    userId: v.optional(v.id('users')),
+    scope: conversationScope,
+    activeMessageId: v.optional(v.id('messages')),
+  }).index('by_user_scope', ['userId', 'scope']),
+
+  chatChannels: defineTable({
+    chatId: v.id('chats'),
+    identityId: v.optional(v.id('identities')),
+    provider: v.string(),
+    integrationAccountId: v.string(),
+    externalConversationId: v.string(),
+  }).index('by_route', ['provider', 'integrationAccountId', 'externalConversationId']),
+
+  messages: defineTable({
+    chatId: v.id('chats'),
+    channelId: v.id('chatChannels'),
+    identityId: v.optional(v.id('identities')),
+    role: v.union(v.literal('user'), v.literal('assistant')),
+    parts: v.array(messagePart),
+    externalEventId: v.optional(v.string()),
+    externalMessageId: v.optional(v.string()),
+    externalMediaGroupId: v.optional(v.string()),
+    mediaGroupItems: v.optional(v.array(mediaGroupItem)),
+    mediaGroupReadyAt: v.optional(v.number()),
+    externalReplyIds: v.optional(v.array(v.string())),
+    sourceImage: v.optional(sourceImage),
+    unsupported: v.optional(v.boolean()),
+    status: messageStatus,
+    deliveryStatus: v.optional(deliveryStatus),
+    replyTo: v.optional(v.id('messages')),
+    error: v.optional(v.string()),
+    recoveryJobId: v.optional(v.id('_scheduled_functions')),
+  })
+    .index('by_chat_status', ['chatId', 'status'])
+    .index('by_chat_role_status', ['chatId', 'role', 'status', 'unsupported'])
+    .index('by_channel_event', ['channelId', 'externalEventId'])
+    .index('by_channel_media_group', ['channelId', 'externalMediaGroupId'])
+    .index('by_reply', ['replyTo']),
+
   userProfiles: defineTable({
     userId: v.string(),
     firstName: v.union(v.string(), v.null()),

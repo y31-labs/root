@@ -33,6 +33,11 @@ export const getForUser = async (ctx: QueryCtx, userId: string, repoId: Id<'repo
   return repo?.userId === userId ? repo : null;
 };
 
+export const getForUserInternal = internalQuery({
+  args: { id: v.id('repos'), userId: v.string() },
+  handler: (ctx, { id, userId }) => getForUser(ctx, userId, id),
+});
+
 export const getByIdInternal = internalQuery({
   args: { id: v.id('repos') },
   handler: (ctx, { id }) => ctx.db.get(id),
