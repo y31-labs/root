@@ -1,10 +1,5 @@
-import { clsx, type ClassValue } from "clsx";
 import { chain, first } from "lodash-es";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+export { cn } from "cn";
 
 interface User {
   firstName: string | null;
