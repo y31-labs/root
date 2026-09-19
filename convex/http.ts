@@ -1,9 +1,10 @@
-import { httpRouter } from "convex/server";
+import { httpRouter } from 'convex/server';
 
-import { internal } from "#convex/_generated/api";
-import { httpAction } from "#convex/_generated/server";
-import { getGitHubAppConfig } from "#convex/githubAppConfig";
-import { verifyGitHubWebhookSignature } from "#convex/githubWebhookVerify";
+import { internal } from '#convex/_generated/api';
+import { httpAction } from '#convex/_generated/server';
+import { getGitHubAppConfig } from '#convex/githubAppConfig';
+import { verifyGitHubWebhookSignature } from '#convex/githubWebhookVerify';
+import { preflight, stream } from '#convex/integrations/demo/http';
 import { telegramWebhook } from '#convex/telegramWebhook';
 
 type InstallationEvent = {
@@ -23,46 +24,46 @@ type InstallationRepositoriesEvent = {
 };
 
 export const githubWebhook = httpAction(async (ctx, request) => {
-  if (request.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+  if (request.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 });
   }
 
   let webhookSecret: string;
   try {
-    webhookSecret = getGitHubAppConfig().webhookSecret ?? "";
+    webhookSecret = getGitHubAppConfig().webhookSecret ?? '';
   } catch {
-    return new Response("GitHub App is not configured", { status: 500 });
+    return new Response('GitHub App is not configured', { status: 500 });
   }
 
   if (!webhookSecret) {
-    return new Response("GitHub webhook secret is not configured", {
+    return new Response('GitHub webhook secret is not configured', {
       status: 500,
     });
   }
 
   const payload = await request.text();
-  const signature = request.headers.get("x-hub-signature-256");
-  const event = request.headers.get("x-github-event");
+  const signature = request.headers.get('x-hub-signature-256');
+  const event = request.headers.get('x-github-event');
 
   if (!(await verifyGitHubWebhookSignature(payload, signature, webhookSecret))) {
-    return new Response("Invalid signature", { status: 401 });
+    return new Response('Invalid signature', { status: 401 });
   }
 
   const body = JSON.parse(payload) as InstallationEvent | InstallationRepositoriesEvent;
 
   switch (event) {
-    case "installation": {
+    case 'installation': {
       const installationEvent = body as InstallationEvent;
-      if (installationEvent.action === "deleted") {
+      if (installationEvent.action === 'deleted') {
         await ctx.runMutation(internal.githubInstallations.removeByInstallationIdInternal, {
           installationId: installationEvent.installation.id,
         });
       }
       break;
     }
-    case "installation_repositories": {
+    case 'installation_repositories': {
       const repoEvent = body as InstallationRepositoriesEvent;
-      if (repoEvent.action === "removed" && repoEvent.repositories_removed) {
+      if (repoEvent.action === 'removed' && repoEvent.repositories_removed) {
         await Promise.all(
           repoEvent.repositories_removed.map((repo) =>
             ctx.runMutation(internal.githubInstallations.removeRepoByPublicIdInternal, {
@@ -79,16 +80,19 @@ export const githubWebhook = httpAction(async (ctx, request) => {
       break;
   }
 
-  return new Response("OK", { status: 200 });
+  return new Response('OK', { status: 200 });
 });
 
 const http = httpRouter();
 
+http.route({ path: '/demo/stream', method: 'OPTIONS', handler: preflight });
+http.route({ path: '/demo/stream', method: 'POST', handler: stream });
+
 http.route({ path: '/telegram/webhook', method: 'POST', handler: telegramWebhook });
 
 http.route({
-  path: "/github/webhook",
-  method: "POST",
+  path: '/github/webhook',
+  method: 'POST',
   handler: githubWebhook,
 });
 

@@ -9,7 +9,7 @@ export type SourceImage = Infer<typeof sourceImage>;
 export type DeliveryStatus = Infer<typeof deliveryStatus>;
 export type DeliveryOutcome = Extract<DeliveryStatus, 'sent' | 'failed' | 'unknown'>;
 export type ResponseStage = 'generation' | 'delivery';
-export type ChatGenerationErrorCode = 'access_denied' | 'failed' | 'aborted';
+export type ChatGenerationErrorCode = 'missing_api_key' | 'access_denied' | 'failed' | 'aborted';
 export type ImageInputErrorCode = 'too_large' | 'unsupported_format' | 'unsupported_channel';
 
 export type ChatFailure = {

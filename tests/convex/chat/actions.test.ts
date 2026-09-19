@@ -7,7 +7,7 @@ import { deliverChatResponse } from '#convex/chat/delivery';
 import { ChatGenerationError, ImageInputError } from '#convex/chat/errors';
 import { buildModelMessages, generateReply } from '#convex/chat/generation';
 import { getChatIntegration } from '#convex/chat/integration';
-import { MEDIA_GROUP_WAIT_MS } from '#convex/chat/policy';
+import { CHAT_MODEL, MEDIA_GROUP_WAIT_MS } from '#convex/chat/policy';
 import { prepareChatResponse } from '#convex/chat/response';
 import { TelegramError } from '#convex/integrations/telegram/errors';
 import { splitTelegramText } from '#convex/integrations/telegram/text';
@@ -36,8 +36,8 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.mocked(getChatIntegration).mockReturnValue(integration);
-  vi.mocked(generateReply).mockImplementation(async (_messages, _signal, onText) => {
-    onText('Hello');
+  vi.mocked(generateReply).mockImplementation(async ({ onText }) => {
+    onText?.('Hello');
     return 'Hello';
   });
   integration.sendText.mockResolvedValue('reply-1');
@@ -100,7 +100,7 @@ it('schedules one album response with every image, even when there are more than
     Array.from({ length: 10 }, (_, index) => `image-${index + 1}`),
   );
   expect(generateReply).toHaveBeenCalledTimes(1);
-  const input = vi.mocked(generateReply).mock.calls[0]![0];
+  const input = vi.mocked(generateReply).mock.calls[0]![0].messages;
   expect(input).toHaveLength(1);
   expect(input[0]!.content).toHaveLength(11);
   expect(input[0]!.content[0]).toEqual({ type: 'text', content: 'Compare all these images' });
@@ -220,7 +220,7 @@ it('downloads and stores an image, generates with bytes, and persists the final 
     mediaType: 'image/png',
   });
   expect(JSON.stringify(stored)).not.toContain('image-file');
-  expect(vi.mocked(generateReply).mock.calls[0]![0][0]).toMatchObject({
+  expect(vi.mocked(generateReply).mock.calls[0]![0].messages[0]).toMatchObject({
     role: 'user',
     content: [
       { type: 'text' },
@@ -297,7 +297,7 @@ it('logs a safe Gateway failure and sends the generic failure reply', async () =
   );
   expect(console.error).toHaveBeenCalledWith('Chat response failed', {
     messageId: message._id,
-    model: 'zai/glm-5.3-flash',
+    model: CHAT_MODEL,
     stage: 'generation',
     code: 'access_denied',
     statusCode: 403,
@@ -469,12 +469,12 @@ it.each([false, true])(
     expect(vi.mocked(console.error).mock.calls.map(([, context]) => context)).toEqual([
       {
         messageId: message._id,
-        model: 'zai/glm-5.3-flash',
+        model: CHAT_MODEL,
         stage: 'generation',
         code: 'access_denied',
         statusCode: 403,
       },
-      { messageId: message._id, model: 'zai/glm-5.3-flash', stage: 'delivery', code: 'failed' },
+      { messageId: message._id, model: CHAT_MODEL, stage: 'delivery', code: 'failed' },
     ]);
     expect((await t.run((ctx) => ctx.db.get(message.chatId)))!.activeMessageId).toBeUndefined();
   },
