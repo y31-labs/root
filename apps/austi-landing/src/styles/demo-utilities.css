@@ -1,0 +1,26 @@
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@source '../../../../packages/ui/src/components/ui/button.tsx';
+@source '../../../../packages/ui/src/components/ui/textarea.tsx';
+@source '../../../../packages/ui/src/components/ui/sidebar.tsx';
+@source '../../../../packages/ui/src/components/ui/badge.tsx';
+
+@theme inline {
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-primary: var(--color-ink);
+  --color-primary-foreground: var(--color-paper);
+  --color-muted: var(--color-recessed);
+  --color-muted-foreground: var(--color-muted-paper);
+  --color-border: var(--line-paper);
+  --color-input: var(--line-paper);
+  --color-ring: var(--color-accent-ink);
+  --color-destructive: var(--color-accent-ink);
+  --color-sidebar: var(--color-night);
+  --color-sidebar-foreground: var(--color-text);
+  --color-sidebar-accent: color-mix(in srgb, var(--color-text) 10%, var(--color-night));
+  --color-sidebar-accent-foreground: var(--color-text);
+  --color-sidebar-border: var(--line-dark);
+  --color-sidebar-ring: var(--color-signal);
+}

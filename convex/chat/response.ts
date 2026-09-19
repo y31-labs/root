@@ -43,7 +43,13 @@ export const prepareChatResponse = async (
       if (!blob) throw new Error('Image is unavailable');
       return new Uint8Array(await blob.arrayBuffer());
     });
-    return { text: await generateReply(modelMessages, signal, progress.update) };
+    return {
+      text: await generateReply({
+        messages: modelMessages,
+        signal,
+        onText: progress.update,
+      }),
+    };
   } catch (error) {
     const failure = classifyChatFailure(error, 'generation');
     return { text: getFailureReply(failure), failure };

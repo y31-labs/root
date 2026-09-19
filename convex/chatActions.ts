@@ -6,8 +6,8 @@ import { internal } from '#convex/_generated/api';
 import { internalAction, type ActionCtx } from '#convex/_generated/server';
 import { deliverChatResponse } from '#convex/chat/delivery';
 import { classifyChatFailure, logChatFailure } from '#convex/chat/errors';
-import { CHAT_MODEL } from '#convex/chat/generation';
 import { getChatIntegration } from '#convex/chat/integration';
+import { CHAT_MODEL } from '#convex/chat/policy';
 import { prepareChatResponse } from '#convex/chat/response';
 import type { ChatDeliveryResult, ChatTurn } from '#convex/chat/types';
 
