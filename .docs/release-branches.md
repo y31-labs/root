@@ -25,7 +25,7 @@ Feature work lands on `main` through a pull request first. After its checks pass
 branches and do not commit feature work directly to them.
 
 The Austi desktop workflow owns promotion to `release-austi`, including version commits and tags.
-Run **Actions → Release product**, choose `austi`, and select the version update instead of moving
+Run **Actions → Release product**, choose `austi-desktop`, and select the version update instead of moving
 that branch manually.
 
 For a Vercel project, update its dedicated release branch from `main` after the relevant application

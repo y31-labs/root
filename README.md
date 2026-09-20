@@ -6,7 +6,7 @@ This repository is a Bun workspace for the Austi, Code, Trading, and Portfolio p
 
 - `apps/code`: TanStack Start web app backed by the root Convex app in `convex/`.
 - `apps/code-desktop`: Tauri desktop app with Vite UI, Rust local runtime, Playwright coverage, and verifier packaging.
-- `apps/austi`: Tauri desktop app for experimenting with local Codex inference workflows.
+- `apps/austi-desktop`: Tauri desktop app for experimenting with local Codex inference workflows.
 - `apps/austi-landing`: Astro marketing site for Austi.
 - `apps/trading`: TanStack Start trading app with its own Convex app under `apps/trading/convex`.
 - `apps/portfolio`: Astro portfolio site.
@@ -33,7 +33,7 @@ Product-specific commands:
 ```sh
 bun run code:dev
 bun run desktop:dev
-bun run austi:dev
+bun run austi-desktop:dev
 bun run austi-landing:dev
 bun run trading:dev
 bun run portfolio:dev

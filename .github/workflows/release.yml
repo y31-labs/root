@@ -9,7 +9,7 @@ on:
         required: true
         type: choice
         options:
-          - austi
+          - austi-desktop
           - austi-landing
           - portfolio
       version_update:
@@ -31,17 +31,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release-austi:
+  release-austi-desktop:
     name: Release Austi desktop
-    if: inputs.product == 'austi'
-    uses: ./.github/workflows/austi-release.yml
+    if: inputs.product == 'austi-desktop'
+    uses: ./.github/workflows/austi-desktop-release.yml
     with:
       version_update: ${{ inputs.version_update }}
     secrets: inherit
 
   release-web-product:
     name: Promote web product
-    if: inputs.product != 'austi'
+    if: inputs.product != 'austi-desktop'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

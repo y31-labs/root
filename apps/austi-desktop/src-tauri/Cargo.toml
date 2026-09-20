@@ -1,11 +1,11 @@
 [package]
-name = "austi"
+name = "austi-desktop"
 version = "0.1.0"
 description = "Local desktop workspace for generated operational software"
 edition = "2021"
 
 [lib]
-name = "austi_lib"
+name = "austi_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

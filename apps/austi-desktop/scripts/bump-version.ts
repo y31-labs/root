@@ -34,9 +34,9 @@ const main = async () => {
   }
 
   const repositoryRoot = resolve(import.meta.dir, '../../..');
-  const tauriConfigPath = resolve(repositoryRoot, 'apps/austi/src-tauri/tauri.conf.json');
-  const cargoManifestPath = resolve(repositoryRoot, 'apps/austi/src-tauri/Cargo.toml');
-  const cargoLockPath = resolve(repositoryRoot, 'apps/austi/src-tauri/Cargo.lock');
+  const tauriConfigPath = resolve(repositoryRoot, 'apps/austi-desktop/src-tauri/tauri.conf.json');
+  const cargoManifestPath = resolve(repositoryRoot, 'apps/austi-desktop/src-tauri/Cargo.toml');
+  const cargoLockPath = resolve(repositoryRoot, 'apps/austi-desktop/src-tauri/Cargo.lock');
 
   const tauriConfigContents = await Bun.file(tauriConfigPath).text();
   const tauriConfig = JSON.parse(tauriConfigContents);
@@ -47,8 +47,8 @@ const main = async () => {
     const cargoManifest = await Bun.file(cargoManifestPath).text();
     const cargoLock = await Bun.file(cargoLockPath).text();
     const tauriVersionPattern = /(\n  "version": ")[^"]+("[,\n])/;
-    const packageVersionPattern = /(\[package\]\nname = "austi"\nversion = ")[^"]+("\n)/;
-    const lockVersionPattern = /(\[\[package\]\]\nname = "austi"\nversion = ")[^"]+("\n)/;
+    const packageVersionPattern = /(\[package\]\nname = "austi-desktop"\nversion = ")[^"]+("\n)/;
+    const lockVersionPattern = /(\[\[package\]\]\nname = "austi-desktop"\nversion = ")[^"]+("\n)/;
 
     if (
       !tauriVersionPattern.test(tauriConfigContents) ||
