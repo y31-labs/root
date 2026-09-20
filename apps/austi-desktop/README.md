@@ -1,6 +1,6 @@
 # Austi
 
-`austi` is the native desktop foundation for **Austi**.
+`austi-desktop` is the native desktop foundation for **Austi**.
 
 ## Architecture
 
@@ -17,11 +17,11 @@
 Run commands from the monorepo root:
 
 ```sh
-bun run austi:dev
-bun run austi:build
-bun run austi:test
-bun run --filter austi typecheck
-bun run --filter austi test:rust
+bun run austi-desktop:dev
+bun run austi-desktop:build
+bun run austi-desktop:test
+bun run --filter austi-desktop typecheck
+bun run --filter austi-desktop test:rust
 ```
 
 ## Releases and updates
@@ -31,7 +31,7 @@ Austi uses Tauri's signed updater with GitHub Releases. When Austi-related chang
 `latest.json`. Publishing the GitHub Release makes the update available to installed copies of
 Austi.
 
-For the normal release path, open **Actions → Release product → Run workflow**, choose `austi`,
+For the normal release path, open **Actions → Release product → Run workflow**, choose `austi-desktop`,
 select a patch, minor, or major version update, and run it. The workflow merges `main` into
 `release-austi`, updates the version in the Tauri config, Cargo manifest, and lockfile, validates and
 tests the result, commits the release version, creates the matching `austi-v<version>` tag, and

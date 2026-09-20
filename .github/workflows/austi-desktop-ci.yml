@@ -1,12 +1,12 @@
-name: Austi CI
+name: Austi desktop CI
 
 on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/austi-ci.yml
+      - .github/workflows/austi-desktop-ci.yml
       - .node-version
-      - apps/austi/**
+      - apps/austi-desktop/**
       - packages/ui/**
       - bun.lock
       - oxlint.config.ts
@@ -14,9 +14,9 @@ on:
       - rust-toolchain.toml
   pull_request:
     paths:
-      - .github/workflows/austi-ci.yml
+      - .github/workflows/austi-desktop-ci.yml
       - .node-version
-      - apps/austi/**
+      - apps/austi-desktop/**
       - packages/ui/**
       - bun.lock
       - oxlint.config.ts
@@ -63,19 +63,19 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Lint
-        run: bun run --filter austi lint
+        run: bun run --filter austi-desktop lint
 
       # The shared vendored prompt-input component currently fails against Base UI 1.5 types.
       # Keep the signal visible without blocking this app's CI until packages/ui is regenerated.
       - name: Typecheck (non-blocking)
         continue-on-error: true
-        run: bun run --filter austi typecheck
+        run: bun run --filter austi-desktop typecheck
 
       - name: Test
-        run: bun run --filter austi test
+        run: bun run --filter austi-desktop test
 
       - name: Build frontend
-        run: bun run --filter austi build
+        run: bun run --filter austi-desktop build
 
   desktop:
     name: Native macOS checks
@@ -108,19 +108,19 @@ jobs:
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
         with:
-          cache-workspaces: apps/austi/src-tauri -> target
+          cache-workspaces: apps/austi-desktop/src-tauri -> target
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Check Rust formatting
-        run: bun run --filter austi check:format:rust
+        run: bun run --filter austi-desktop check:format:rust
 
       - name: Lint Rust
-        run: bun run --filter austi lint:rust
+        run: bun run --filter austi-desktop lint:rust
 
       - name: Test Rust
-        run: bun run --filter austi test:rust
+        run: bun run --filter austi-desktop test:rust
 
       - name: Build native bundles
-        run: bun run --filter austi tauri build --config '{"bundle":{"createUpdaterArtifacts":false}}'
+        run: bun run --filter austi-desktop tauri build --config '{"bundle":{"createUpdaterArtifacts":false}}'
