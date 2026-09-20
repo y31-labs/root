@@ -16,8 +16,8 @@
     "convex:test": "vitest run --config vitest.convex.config.ts",
     "convex:typecheck": "tsc --noEmit -p convex/tsconfig.json",
     "check": "bun run lint && bun run typecheck && bun run test && bun run convex:typecheck && bun run convex:test",
-    "typecheck": "bun run --filter code typecheck && bun run --filter trading typecheck && bun run --filter code-desktop typecheck && bun run --filter austi-desktop typecheck && bun run --filter portfolio check && bun run --filter @workspace/code-agent-contracts typecheck && bun run --filter @workspace/code-workbench typecheck && bun run --filter @workspace/ui typecheck && bun run --filter @workspace/web-foundation typecheck",
-    "test": "bun run --filter code test && bun run --filter trading test && bun run --filter code-desktop test && bun run --filter austi-desktop test && bun run --filter @workspace/code-agent-contracts test",
+    "typecheck": "bun run --filter code typecheck && bun run --filter trading typecheck && bun run --filter code-desktop typecheck && bun run --filter austi-desktop typecheck && bun run --filter austi typecheck && bun run --filter portfolio check && bun run --filter @workspace/code-agent-contracts typecheck && bun run --filter @workspace/code-workbench typecheck && bun run --filter @workspace/ui typecheck && bun run --filter @workspace/web-foundation typecheck",
+    "test": "bun run --filter code test && bun run --filter trading test && bun run --filter code-desktop test && bun run --filter austi-desktop test && bun run --filter austi test && bun run --filter @workspace/code-agent-contracts test",
     "format": "oxfmt --write .",
     "portfolio:dev": "bun run --elide-lines=0 --filter portfolio dev",
     "portfolio:build": "bun run --elide-lines=0 --filter portfolio build",
@@ -59,7 +59,10 @@
     "ui:add": "bun run --cwd packages/ui ui:add",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
-    "lint:typecheck": "oxlint --type-aware --type-check"
+    "lint:typecheck": "oxlint --type-aware --type-check",
+    "austi:dev": "bun run --filter austi dev",
+    "austi:build": "bun run --filter austi build",
+    "austi:preview": "bun run --filter austi preview"
   },
   "dependencies": {
     "@tanstack/ai": "^0.53.0",
