@@ -3,7 +3,10 @@ import { Table, TableBody, TableCell, TableRow } from '@workspace/ui/components/
 
 import { ThemeSelect } from '#/components/settings/theme-select';
 
-export const Route = createFileRoute('/settings')({ component: SettingsRoute });
+export const Route = createFileRoute('/settings')({
+  beforeLoad: () => ({ title: 'Settings' }),
+  component: SettingsRoute,
+});
 
 export function SettingsRoute() {
   return (
