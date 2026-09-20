@@ -17,7 +17,10 @@ import { useRef, useState } from 'react';
 
 import { useChatDrafts } from '#/providers/chat-drafts-provider';
 
-export const Route = createFileRoute('/')({ component: HomeRoute });
+export const Route = createFileRoute('/')({
+  beforeLoad: () => ({ title: 'New chat' }),
+  component: HomeRoute,
+});
 
 const suggestions = [
   {

@@ -1,4 +1,19 @@
-import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
+import type { ConvexQueryClient } from '@convex-dev/react-query';
+import type { QueryClient } from '@tanstack/react-query';
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRouteWithContext,
+  redirect,
+} from '@tanstack/react-router';
+import { getAuth, getSignInUrl, getSignUpUrl } from '@workos/authkit-tanstack-react-start';
+import {
+  WorkosConvexProvider,
+  fetchWorkosAuth,
+  setConvexQueryClientAuthForSsr,
+} from '@workspace/web-foundation';
+import type { ConvexReactClient } from 'convex/react';
 import type { ReactNode } from 'react';
 
 import { ChatDraftsProvider } from '#/providers/chat-drafts-provider';
@@ -7,7 +22,14 @@ import { AppShell } from '#/shell/app-shell';
 
 import themeUrl from '#/theme-overrides.css?url';
 
-export const Route = createRootRoute({
+interface Context {
+  title?: string;
+  queryClient: QueryClient;
+  convexClient: ConvexReactClient;
+  convexQueryClient: ConvexQueryClient;
+}
+
+export const Route = createRootRouteWithContext<Context>()({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -31,9 +53,19 @@ export const Route = createRootRoute({
       { rel: 'stylesheet', href: themeUrl },
     ],
   }),
+  beforeLoad: async ({ context }) => {
+    const { initialAuth, token } = await fetchWorkosAuth();
+    setConvexQueryClientAuthForSsr(context.convexQueryClient, token);
+    return { initialAuth };
+  },
+  loader: async () => {
+    const { user } = await getAuth();
+    if (!user) throw redirect({ to: '/api/auth/sign-in' });
+    const [signInUrl, signUpUrl] = await Promise.all([getSignInUrl(), getSignUpUrl()]);
+    return { signInUrl, signUpUrl };
+  },
   shellComponent: RootDocument,
   component: RootRoute,
-  notFoundComponent: NotFound,
 });
 
 export function RootDocument({ children }: { children: ReactNode }) {
@@ -51,22 +83,16 @@ export function RootDocument({ children }: { children: ReactNode }) {
 }
 
 export function RootRoute() {
-  return (
-    <ChatDraftsProvider>
-      <AppShell>
-        <Outlet />
-      </AppShell>
-    </ChatDraftsProvider>
-  );
-}
+  const { convexQueryClient, initialAuth } = Route.useRouteContext();
+  const { signInUrl, signUpUrl } = Route.useLoaderData();
 
-export function NotFound() {
   return (
-    <div className='m-auto space-y-4 p-8 text-center'>
-      <h1 className='text-2xl font-bold'>Page not found</h1>
-      <Link to='/' className='underline underline-offset-4'>
-        Back to your workspace
-      </Link>
-    </div>
+    <WorkosConvexProvider convexQueryClient={convexQueryClient} initialAuth={initialAuth}>
+      <ChatDraftsProvider>
+        <AppShell signInUrl={signInUrl} signUpUrl={signUpUrl}>
+          <Outlet />
+        </AppShell>
+      </ChatDraftsProvider>
+    </WorkosConvexProvider>
   );
 }

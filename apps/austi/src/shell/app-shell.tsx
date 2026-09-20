@@ -2,9 +2,13 @@ import { SidebarInset, SidebarProvider } from '@workspace/ui/components/ui/sideb
 import type { CSSProperties, ReactNode } from 'react';
 
 import { AppSidebar } from '#/components/navigation/app-sidebar';
-import { SiteHeader } from '#/components/site-header';
+import { SiteHeader, type AuthKitProps } from '#/components/site-header';
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  signInUrl,
+  signUpUrl,
+}: AuthKitProps & { children: ReactNode }) {
   return (
     <SidebarProvider
       defaultOpen
@@ -18,7 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     >
       <AppSidebar variant='inset' />
       <SidebarInset className='min-h-0 min-w-0 overflow-hidden'>
-        <SiteHeader />
+        <SiteHeader signInUrl={signInUrl} signUpUrl={signUpUrl} />
         <div
           id='main-content'
           tabIndex={-1}
