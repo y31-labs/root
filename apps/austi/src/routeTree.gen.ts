@@ -10,7 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as MaintenanceRouteImport } from './routes/maintenance'
+import { Route as ContractorsRouteImport } from './routes/contractors'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MaintenanceIndexRouteImport } from './routes/maintenance.index'
+import { Route as MaintenanceCaseIdRouteImport } from './routes/maintenance.$caseId'
 import { Route as ApiAuthSignInRouteImport } from './routes/api/auth/sign-in'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 
@@ -19,10 +23,30 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MaintenanceRoute = MaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContractorsRoute = ContractorsRouteImport.update({
+  id: '/contractors',
+  path: '/contractors',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const MaintenanceIndexRoute = MaintenanceIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MaintenanceRoute,
+} as any)
+const MaintenanceCaseIdRoute = MaintenanceCaseIdRouteImport.update({
+  id: '/$caseId',
+  path: '/$caseId',
+  getParentRoute: () => MaintenanceRoute,
 } as any)
 const ApiAuthSignInRoute = ApiAuthSignInRouteImport.update({
   id: '/api/auth/sign-in',
@@ -37,38 +61,70 @@ const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/contractors': typeof ContractorsRoute
+  '/maintenance': typeof MaintenanceRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/maintenance/$caseId': typeof MaintenanceCaseIdRoute
+  '/maintenance/': typeof MaintenanceIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/contractors': typeof ContractorsRoute
   '/settings': typeof SettingsRoute
+  '/maintenance/$caseId': typeof MaintenanceCaseIdRoute
+  '/maintenance': typeof MaintenanceIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/contractors': typeof ContractorsRoute
+  '/maintenance': typeof MaintenanceRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/maintenance/$caseId': typeof MaintenanceCaseIdRoute
+  '/maintenance/': typeof MaintenanceIndexRoute
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/sign-in': typeof ApiAuthSignInRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/api/auth/callback' | '/api/auth/sign-in'
+  fullPaths:
+    | '/'
+    | '/contractors'
+    | '/maintenance'
+    | '/settings'
+    | '/maintenance/$caseId'
+    | '/maintenance/'
+    | '/api/auth/callback'
+    | '/api/auth/sign-in'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/api/auth/callback' | '/api/auth/sign-in'
+  to:
+    | '/'
+    | '/contractors'
+    | '/settings'
+    | '/maintenance/$caseId'
+    | '/maintenance'
+    | '/api/auth/callback'
+    | '/api/auth/sign-in'
   id:
     | '__root__'
     | '/'
+    | '/contractors'
+    | '/maintenance'
     | '/settings'
+    | '/maintenance/$caseId'
+    | '/maintenance/'
     | '/api/auth/callback'
     | '/api/auth/sign-in'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContractorsRoute: typeof ContractorsRoute
+  MaintenanceRoute: typeof MaintenanceRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
   ApiAuthSignInRoute: typeof ApiAuthSignInRoute
@@ -83,12 +139,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/maintenance': {
+      id: '/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof MaintenanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contractors': {
+      id: '/contractors'
+      path: '/contractors'
+      fullPath: '/contractors'
+      preLoaderRoute: typeof ContractorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/maintenance/': {
+      id: '/maintenance/'
+      path: '/'
+      fullPath: '/maintenance/'
+      preLoaderRoute: typeof MaintenanceIndexRouteImport
+      parentRoute: typeof MaintenanceRoute
+    }
+    '/maintenance/$caseId': {
+      id: '/maintenance/$caseId'
+      path: '/$caseId'
+      fullPath: '/maintenance/$caseId'
+      preLoaderRoute: typeof MaintenanceCaseIdRouteImport
+      parentRoute: typeof MaintenanceRoute
     }
     '/api/auth/sign-in': {
       id: '/api/auth/sign-in'
@@ -107,8 +191,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface MaintenanceRouteChildren {
+  MaintenanceCaseIdRoute: typeof MaintenanceCaseIdRoute
+  MaintenanceIndexRoute: typeof MaintenanceIndexRoute
+}
+
+const MaintenanceRouteChildren: MaintenanceRouteChildren = {
+  MaintenanceCaseIdRoute: MaintenanceCaseIdRoute,
+  MaintenanceIndexRoute: MaintenanceIndexRoute,
+}
+
+const MaintenanceRouteWithChildren = MaintenanceRoute._addFileChildren(
+  MaintenanceRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContractorsRoute: ContractorsRoute,
+  MaintenanceRoute: MaintenanceRouteWithChildren,
   SettingsRoute: SettingsRoute,
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
   ApiAuthSignInRoute: ApiAuthSignInRoute,

@@ -16,14 +16,12 @@ import {
 import type { ConvexReactClient } from 'convex/react';
 import type { ReactNode } from 'react';
 
-import { ChatDraftsProvider } from '#/providers/chat-drafts-provider';
 import { ThemeProvider } from '#/providers/theme-provider';
 import { AppShell } from '#/shell/app-shell';
 
 import themeUrl from '#/theme-overrides.css?url';
 
 interface Context {
-  title?: string;
   queryClient: QueryClient;
   convexClient: ConvexReactClient;
   convexQueryClient: ConvexQueryClient;
@@ -37,7 +35,7 @@ export const Route = createRootRouteWithContext<Context>()({
       { name: 'theme-color', content: '#0a0a0a' },
       {
         name: 'description',
-        content: 'Your workspace for building tools and simplifying everyday work with Austi.',
+        content: 'Maintenance coordination for property managers.',
       },
       { title: 'Austi' },
     ],
@@ -88,11 +86,9 @@ export function RootRoute() {
 
   return (
     <WorkosConvexProvider convexQueryClient={convexQueryClient} initialAuth={initialAuth}>
-      <ChatDraftsProvider>
-        <AppShell signInUrl={signInUrl} signUpUrl={signUpUrl}>
-          <Outlet />
-        </AppShell>
-      </ChatDraftsProvider>
+      <AppShell signInUrl={signInUrl} signUpUrl={signUpUrl}>
+        <Outlet />
+      </AppShell>
     </WorkosConvexProvider>
   );
 }

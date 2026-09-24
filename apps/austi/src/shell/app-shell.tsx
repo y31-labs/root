@@ -15,7 +15,7 @@ export function AppShell({
       className='h-svh min-h-0 overflow-hidden'
       style={
         {
-          '--sidebar-width': 'calc(var(--spacing) * 72)',
+          '--sidebar-width': 'calc(var(--spacing) * 60)',
           '--header-height': 'calc(var(--spacing) * 12)',
         } as CSSProperties
       }
@@ -23,13 +23,13 @@ export function AppShell({
       <AppSidebar variant='inset' />
       <SidebarInset className='min-h-0 min-w-0 overflow-hidden'>
         <SiteHeader signInUrl={signInUrl} signUpUrl={signUpUrl} />
-        <div
+        <main
           id='main-content'
           tabIndex={-1}
           className='@container/main flex min-h-0 min-w-0 flex-1 flex-col outline-none'
         >
           {children}
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
