@@ -1,12 +1,4 @@
-import { useMatches } from '@tanstack/react-router';
 import { Avatar, AvatarFallback, AvatarImage } from '@workspace/ui/components/ui/avatar';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@workspace/ui/components/ui/breadcrumb';
 import { Button } from '@workspace/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -19,9 +11,8 @@ import { SidebarTrigger } from '@workspace/ui/components/ui/sidebar';
 import { useWorkosAuth } from '@workspace/web-foundation';
 import { Authenticated, Unauthenticated } from 'convex/react';
 import { LoaderCircleIcon, LogOutIcon } from 'lucide-react';
-import { Fragment } from 'react';
 
-import { useChatDrafts } from '#/providers/chat-drafts-provider';
+import { AppBreadcrumbs } from '#/components/navigation/app-breadcrumbs';
 
 export interface AuthKitProps {
   signInUrl: string;
@@ -29,39 +20,12 @@ export interface AuthKitProps {
 }
 
 export function SiteHeader({ signInUrl, signUpUrl }: AuthKitProps) {
-  const matches = useMatches();
-  const { activeChat } = useChatDrafts();
-  const segments = matches.flatMap(({ routeId, context: { title } }) => {
-    if (!title) return [];
-    return [routeId === '/' ? (activeChat?.title ?? title) : title];
-  });
-  const breadcrumbSegments = segments.length ? segments : ['Austi'];
-
   return (
-    <header className='flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)'>
+    <header className='flex h-(--header-height) shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)'>
       <div className='flex w-full min-w-0 items-center gap-1 px-4 lg:gap-2 lg:px-6'>
         <SidebarTrigger className='-ml-1' />
         <Separator orientation='vertical' className='mx-2 h-4 data-vertical:self-auto' />
-        <Breadcrumb className='min-w-0'>
-          <BreadcrumbList className='flex-nowrap'>
-            {breadcrumbSegments.map((segment, index) => {
-              const isLastSegment = index === breadcrumbSegments.length - 1;
-
-              return (
-                <Fragment key={`${segment}-${index}`}>
-                  <BreadcrumbItem className='min-w-0'>
-                    {isLastSegment ? (
-                      <BreadcrumbPage className='truncate text-base'>{segment}</BreadcrumbPage>
-                    ) : (
-                      <span className='truncate'>{segment}</span>
-                    )}
-                  </BreadcrumbItem>
-                  {isLastSegment ? null : <BreadcrumbSeparator />}
-                </Fragment>
-              );
-            })}
-          </BreadcrumbList>
-        </Breadcrumb>
+        <AppBreadcrumbs />
         <div className='ml-auto flex shrink-0 items-center gap-2'>
           <UserActions signInUrl={signInUrl} signUpUrl={signUpUrl} />
         </div>

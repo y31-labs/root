@@ -1,40 +1,43 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Table, TableBody, TableCell, TableRow } from '@workspace/ui/components/ui/table';
+import { Label } from '@workspace/ui/components/ui/label';
+import { type ReactNode } from 'react';
 
 import { ThemeSelect } from '#/components/settings/theme-select';
+import { Page, Section } from '#/features/maintenance/components';
 
 export const Route = createFileRoute('/settings')({
-  beforeLoad: () => ({ title: 'Settings' }),
-  component: SettingsRoute,
+  staticData: { breadcrumb: 'Settings' },
+  head: () => ({ meta: [{ title: 'Settings · Austi' }] }),
+  component: Settings,
 });
 
-export function SettingsRoute() {
+function Settings() {
   return (
-    <div className='mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-y-auto px-6 py-12'>
-      <Table className='mt-6'>
-        <TableBody>
-          <Row label='Appearance'>
-            <ThemeSelect />
-          </Row>
-          <Row label='Conversations'>-</Row>
-        </TableBody>
-      </Table>
-    </div>
+    <Page title='Settings'>
+      <Section title='Appearance'>
+        <SettingRow label='Theme' htmlFor='appearance-theme'>
+          <ThemeSelect id='appearance-theme' />
+        </SettingRow>
+      </Section>
+    </Page>
   );
 }
 
-interface RowProps {
+function SettingRow({
+  label,
+  htmlFor,
+  children,
+}: {
   label: string;
-  children: React.ReactNode;
-}
-
-function Row({ label, children }: RowProps) {
+  htmlFor: string;
+  children: ReactNode;
+}) {
   return (
-    <TableRow>
-      <TableCell className='w-px'>{label}</TableCell>
-      <TableCell className='whitespace-nowrap'>
-        <div className='flex justify-end'>{children}</div>
-      </TableCell>
-    </TableRow>
+    <div className='flex min-h-10 flex-wrap items-center justify-between gap-x-6 gap-y-3 py-1'>
+      <Label htmlFor={htmlFor} className='font-normal'>
+        {label}
+      </Label>
+      {children}
+    </div>
   );
 }

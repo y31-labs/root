@@ -8,11 +8,15 @@ const themes = [
   { value: 'dark', label: 'Dark' },
 ] satisfies { value: Theme; label: string }[];
 
-export function ThemeSelect() {
+interface ThemeSelectProps {
+  id?: string;
+}
+
+export function ThemeSelect({ id }: ThemeSelectProps) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <NativeSelect value={theme} onChange={(e) => setTheme(e.target.value as Theme)}>
+    <NativeSelect id={id} value={theme} onChange={(e) => setTheme(e.target.value as Theme)}>
       {themes.map(({ label, value }) => (
         <NativeSelectOption key={value} value={value}>
           {label}
